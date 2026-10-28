@@ -518,15 +518,16 @@
   }
   function _notificarConversaAberta(msg, ch, isAttn) {
     if (!_janelaSemFoco()) return;
-    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn && _shouldPlaySound(ch, msg.content)) playNotificationSound();
     if (!isAttn) _sendChatPush(msg);
   }
 
   /* ── Som seletivo por canal ── */
-  function _shouldPlaySound(ch) {
+  function _shouldPlaySound(ch, content) {
     if (!soundEnabled) return false;
     if (isMuted(ch)) return false;
     if (userStatus === 'foco') return false;
+    if (content && _mentionsMe(content)) return true;   /* fui mencionado: sempre avisa */
     if (isOpenChannel(ch)) return true;
     if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
     if (isDynamicChannel(ch) && channelHasUser(ch, user.auth_id)) return true;
@@ -842,10 +843,15 @@
 
     /* Reconecta o realtime ao voltar para a aba e busca na hora o que chegou. */
     function _onTabActive() {
-      if (document.visibilityState !== 'visible') return;
-      var state = msgCh && msgCh.state;
-      if (state !== 'joined' && state !== 'joining') subscribeIncoming();
-      _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+      if (document.visibilityState !== 'visible') { _ocultoDesde = _ocultoDesde || Date.now(); return; }
+      var longe = _ocultoDesde && (Date.now() - _ocultoDesde > 60000);   /* ficou mais de 1 min fora */
+      _ocultoDesde = null;
+      _garantirSessao().then(function () {
+        var state = msgCh && msgCh.state;
+        /* depois de sono/ausência longa a conexão pode parecer "joined" sem receber nada: reassina */
+        if (longe || (state !== 'joined' && state !== 'joining')) subscribeIncoming();
+        _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+      });
     }
     document.addEventListener('visibilitychange', _onTabActive);
     window.addEventListener('focus', _onTabActive);
@@ -1087,7 +1093,50 @@
     var pop = document.getElementById('fp-sound-pop');
     if (!pop) return;
     if (statusPopOpen) closeStatusPop();
-    soundPopOpen = true; pop.style.display = 'flex'; _renderSoundBtn();
+    soundPopOpen = true; pop.style.display = 'flex'; _renderSoundBtn(); _renderNotifStatus();
+  }
+  var VAPID_PUBLIC_KEY = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
+  function _renderNotifStatus(msg) {
+    var el = document.getElementById('fp-notif-status'); if (!el) return;
+    var p = ('Notification' in window) ? Notification.permission : 'indisponivel';
+    var txt = p === 'granted' ? 'Ativadas neste navegador'
+      : p === 'denied' ? 'Bloqueadas: libere nas configurações do navegador (cadeado ao lado do endereço)'
+      : p === 'indisponivel' ? 'Este navegador não suporta notificações'
+      : 'Ainda não ativadas';
+    el.innerHTML = '<div class="fp-notif-txt">' + escHtml(msg || txt) + '</div>' +
+      (p === 'default' ? '<button class="fp-notif-btn" onclick="fpChat.ativarNotificacoes()">Ativar notificações</button>' : '') +
+      (p === 'granted' ? '<button class="fp-notif-btn" onclick="fpChat.testarNotificacao()">Enviar teste</button>' : '');
+  }
+  function _vapidU8(b64) {
+    var pad = '='.repeat((4 - b64.length % 4) % 4);
+    var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(Array.prototype.map.call(raw, function (c) { return c.charCodeAt(0); }));
+  }
+  /* Pedido feito no clique (o Safari no Mac só mostra o pedido assim) + registro do push */
+  function ativarNotificacoes() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== 'granted') { _renderNotifStatus(); return; }
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) { _renderNotifStatus(); return; }
+      navigator.serviceWorker.register('./sw.js').then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (sub) {
+          return sub || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _vapidU8(VAPID_PUBLIC_KEY) });
+        });
+      }).then(function (sub) {
+        var appUserId = user && (user.app_user_id || user.id);
+        if (sub && appUserId) return sb.from('push_subscriptions').upsert(
+          { usuario_id: appUserId, endpoint: sub.endpoint, subscription: JSON.stringify(sub), plataforma: 'desktop' },
+          { onConflict: 'usuario_id,endpoint' });
+      }).then(function () { _renderNotifStatus('Ativadas. Use "Enviar teste" para conferir.'); },
+              function (e) { _renderNotifStatus('Não foi possível registrar: ' + (e && e.message || e)); });
+    });
+  }
+  function testarNotificacao() {
+    var appUserId = user && (user.app_user_id || user.id);
+    if (!appUserId) return;
+    _renderNotifStatus('Teste enviado. Se não aparecer em alguns segundos, no Mac confira Ajustes do Sistema › Notificações › seu navegador, e se o modo Foco está desligado.');
+    sb.functions.invoke('send-push', { body: { usuario_id: appUserId, title: 'Teste do chat EXP', body: 'Se você está vendo isto, as notificações funcionam.', url: window.location.href, tag: 'exp-chat-teste' } })
+      .catch(function (e) { _renderNotifStatus('Erro ao enviar teste: ' + (e && e.message || e)); });
   }
   function closeSoundPop() {
     var pop = document.getElementById('fp-sound-pop');
@@ -2045,7 +2094,7 @@
           if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
           if (isArchived(ch)) { archivedChannels.delete(ch); _saveSet(ARCH_KEY, archivedChannels); }
           updatePageTitle(); renderConvList();
-          if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+          if (!isAttn && _shouldPlaySound(ch, msg.content)) playNotificationSound();
           if (!isAttn) _sendChatPush(msg);
         }
       })
@@ -2069,7 +2118,7 @@
           channelUnread[ch]=(channelUnread[ch]||0)+1;
           if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
           updatePageTitle(); renderConvList();
-          if (_shouldPlaySound(ch)) playNotificationSound(); _sendChatPush(msg);
+          if (_shouldPlaySound(ch, msg.content)) playNotificationSound(); _sendChatPush(msg);
         }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_thread_messages'}, function(payload){
@@ -2126,13 +2175,24 @@
      quando o removeChannel() de subscribeIncoming() dispara um CLOSED. */
   var _reconnectTimer = null;
   var _reconnectDelay = 4000;
+  var _ocultoDesde = null;
+  /* Renova o login se ele venceu (ex.: computador dormiu) e repassa a credencial ao tempo real */
+  function _garantirSessao() {
+    if (!sb || !sb.auth) return Promise.resolve();
+    return sb.auth.getSession().then(function (r) {
+      var tk = r && r.data && r.data.session && r.data.session.access_token;
+      if (tk && sb.realtime && sb.realtime.setAuth) { try { sb.realtime.setAuth(tk); } catch (e) {} }
+    }).catch(function () {});
+  }
   function _scheduleReconnect() {
     if (_reconnectTimer) return;
     console.warn('[EXP ChatFP] reconectando realtime em ' + (_reconnectDelay / 1000) + 's...');
     _reconnectTimer = setTimeout(function () {
       _reconnectTimer = null;
-      var s = msgCh && msgCh.state;
-      if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      _garantirSessao().then(function () {
+        var s = msgCh && msgCh.state;
+        if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      });
       _reconnectDelay = Math.min(_reconnectDelay * 1.5, 30000);
     }, _reconnectDelay);
   }
@@ -2152,7 +2212,8 @@
     var ch  = msg.channel;
     var uid = user.auth_id;
     var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
-    if (!isOpenChannel(ch) && !isSocios && !channelHasUser(ch, uid)) return;
+    /* Conversas de projeto/revisão: o banco já só devolve as que a pessoa pode ver */
+    if (!isOpenChannel(ch) && !isSocios && !channelHasUser(ch, uid) && !isProjectChannel(ch)) return;
     if (msg.sender_id === uid) return;
     console.log('[EXP ChatFP] msg recuperada via polling', { ch: ch, id: msg.id });
     var isAttn = isAttentionSentinel(msg.content);
@@ -2168,7 +2229,7 @@
     channelUnread[ch] = (channelUnread[ch] || 0) + 1;
     if (_mentionsMe(msg.content)) mentionChannels[ch]=true;
     updatePageTitle(); renderConvList();
-    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn && _shouldPlaySound(ch, msg.content)) playNotificationSound();
     if (!isAttn) _sendChatPush(msg);
   }
 
@@ -2223,6 +2284,7 @@
      mensagem exibida e reconecta o tempo real se ele tiver caído. */
   function _catchUpCurrent() {
     if (!sb || !user || !user.auth_id) return;
+    _garantirSessao();
     if (msgCh && msgCh.state !== 'joined' && msgCh.state !== 'joining') subscribeIncoming();
     _pollMissed();
     if (!currentChannel || isLoading || !_conversaVisivel()) return;
@@ -3554,7 +3616,23 @@
     return _audioCtx;
   }
   /* Desbloqueia/retoma o AudioContext em qualquer interação (resume é no-op se já ativo) */
-  function _unlockAudio(){ var ctx=_getAudioCtx(); if(ctx && ctx.state==='suspended' && ctx.resume) ctx.resume(); }
+  function _unlockAudio(){
+    var ctx=_getAudioCtx(); if(ctx && ctx.state==='suspended' && ctx.resume) ctx.resume();
+    var av=document.getElementById('fp-som-bloqueado'); if(av) av.remove();
+  }
+  /* O navegador só libera som depois de um clique na página: avisa quando um som foi barrado */
+  function _avisoSomBloqueado(){
+    if (document.getElementById('fp-som-bloqueado')) return;
+    var d=document.createElement('div'); d.id='fp-som-bloqueado';
+    d.textContent='O navegador pausou os sons do chat. Clique em qualquer lugar desta página para reativar.';
+    d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;background:#111110;color:#fff;font-size:12px;padding:9px 16px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer';
+    d.onclick=function(){ _unlockAudio(); };
+    document.body.appendChild(d);
+  }
+  function _tocar(ctx, fn){
+    if (ctx.state === 'suspended') ctx.resume().then(function(){ if (ctx.state === 'running') fn(); else _avisoSomBloqueado(); }, _avisoSomBloqueado);
+    else fn();
+  }
   ['pointerdown','click','keydown','touchstart'].forEach(function(ev){ document.addEventListener(ev, _unlockAudio, { capture: true }); });
 
   function playNotificationSound(){
@@ -3574,8 +3652,7 @@
           osc.start(ctx.currentTime); osc.stop(ctx.currentTime+0.57);
         });
       }
-      if (ctx.state === 'suspended') ctx.resume().then(_play);
-      else _play();
+      _tocar(ctx, _play);
     } catch(e){}
   }
   /* Som de atenção — mais insistente (tripla batida ascendente) */
@@ -3597,7 +3674,7 @@
         osc.start(t0); osc.stop(t0+0.2);
       }
       function _play(){ var t=ctx.currentTime; _beep(t); _beep(t+0.16); _beep(t+0.32); }
-      if (ctx.state === 'suspended') ctx.resume().then(_play); else _play();
+      _tocar(ctx, _play);
     } catch(e){}
   }
 
@@ -4411,6 +4488,7 @@
      API PÚBLICA
   ═══════════════════════════════════════════════════════════════════ */
   window.fpChat = {
+    ativarNotificacoes, testarNotificacao,
     revResponder, revCancelar,
     toggleMediaPin,
     openChannel, filterConvs, toggleProjectSection,

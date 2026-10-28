@@ -661,10 +661,14 @@
 
     /* Reconecta o realtime ao voltar para a aba e busca na hora o que chegou. */
     function _onTabActive() {
-      if (document.visibilityState !== 'visible') return;
-      var state = msgCh && msgCh.state;
-      if (state !== 'joined' && state !== 'joining') subscribeIncoming();
-      _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+      if (document.visibilityState !== 'visible') { _ocultoDesde = _ocultoDesde || Date.now(); return; }
+      var longe = _ocultoDesde && (Date.now() - _ocultoDesde > 60000);   /* mais de 1 min fora: reassina */
+      _ocultoDesde = null;
+      _garantirSessao().then(function () {
+        var state = msgCh && msgCh.state;
+        if (longe || (state !== 'joined' && state !== 'joining')) subscribeIncoming();
+        _pollMissed(); /* resgate imediato, sem esperar o ciclo do worker */
+      });
     }
     document.addEventListener('visibilitychange', _onTabActive);
     window.addEventListener('focus', _onTabActive);
@@ -1721,7 +1725,7 @@
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
-          if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+          if (!isAttn && _shouldPlaySound(ch, (typeof msg !== 'undefined' && msg) ? msg.content : '')) playNotificationSound();
           if (!isAttn) _sendChatPush(msg);
         }
       })
@@ -1757,7 +1761,7 @@
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
-          if (_shouldPlaySound(ch)) playNotificationSound();
+          if (_shouldPlaySound(ch, (typeof msg !== 'undefined' && msg) ? msg.content : '')) playNotificationSound();
           _sendChatPush(msg);
         }
       })
@@ -1820,13 +1824,24 @@
      quando o removeChannel() de subscribeIncoming() dispara um CLOSED. */
   var _reconnectTimer = null;
   var _reconnectDelay = 4000;
+  var _ocultoDesde = null;
+  /* Renova o login vencido (ex.: computador dormiu) e repassa a credencial ao tempo real */
+  function _garantirSessao() {
+    if (!sb || !sb.auth) return Promise.resolve();
+    return sb.auth.getSession().then(function (r) {
+      var tk = r && r.data && r.data.session && r.data.session.access_token;
+      if (tk && sb.realtime && sb.realtime.setAuth) { try { sb.realtime.setAuth(tk); } catch (e) {} }
+    }).catch(function () {});
+  }
   function _scheduleReconnect() {
     if (_reconnectTimer) return;
     console.warn('[EXP Chat] reconectando realtime em ' + (_reconnectDelay / 1000) + 's...');
     _reconnectTimer = setTimeout(function () {
       _reconnectTimer = null;
-      var s = msgCh && msgCh.state;
-      if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      _garantirSessao().then(function () {
+        var s = msgCh && msgCh.state;
+        if (s !== 'joined' && s !== 'joining') subscribeIncoming();
+      });
       _reconnectDelay = Math.min(_reconnectDelay * 1.5, 30000);
     }, _reconnectDelay);
   }
@@ -1859,7 +1874,8 @@
     var ch  = msg.channel;
     var uid = user.auth_id;
     var isSocios = ch === 'socios' && isSocioLikeRole(user.role);
-    if (!isOpenChannel(ch) && !isSocios && !channelHasUser(ch, uid)) return;
+    /* Conversas de projeto/revisão: o banco já só devolve as que a pessoa pode ver */
+    if (!isOpenChannel(ch) && !isSocios && !channelHasUser(ch, uid) && String(ch || '').indexOf('project:') !== 0) return;
     if (msg.sender_id === uid) return;
 
     var isAttn = isAttentionSentinel(msg.content);
@@ -1879,7 +1895,7 @@
     updateBadge();
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
-    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn && _shouldPlaySound(ch, (typeof msg !== 'undefined' && msg) ? msg.content : '')) playNotificationSound();
     if (!isAttn) _sendChatPush(msg);
   }
 
@@ -3420,14 +3436,15 @@
   }
   function _notificarConversaAberta(msg, ch, isAttn) {
     if (!_janelaSemFoco()) return;
-    if (!isAttn && _shouldPlaySound(ch)) playNotificationSound();
+    if (!isAttn && _shouldPlaySound(ch, (typeof msg !== 'undefined' && msg) ? msg.content : '')) playNotificationSound();
     if (!isAttn) _sendChatPush(msg);
   }
 
-  function _shouldPlaySound(ch) {
+  function _shouldPlaySound(ch, content) {
     if (!soundEnabled) return false;
     if (isMuted(ch)) return false;
     if (userStatus === 'foco') return false;
+    if (content && typeof _mentionsMe === 'function' && _mentionsMe(content)) return true;   /* menção: sempre avisa */
     if (isOpenChannel(ch)) return true;
     if (ch === 'socios' && isSocioLikeRole(user.role)) return true;
     if (isDynamicChannel(ch) && channelHasUser(ch, user.auth_id)) return true;

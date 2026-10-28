@@ -15,7 +15,7 @@
 <script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 
 <!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
@@ -825,7 +825,12 @@ body {
 .proj-card-cliente { font-size: 10px; color: var(--txt-3); margin-bottom: 4px; }
 .proj-card-mid { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
 .proj-card-bot { display: flex; align-items: center; justify-content: space-between; }
-.proj-card-avs { display: flex; gap: 3px; }
+.proj-card-avs { display: flex; gap: 3px; min-width: 0; }
+/* Coordenador e revisor em texto */
+.eq-linha { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10px; color: var(--txt-2); line-height: 1.4; margin-top: 4px; min-width: 0; }
+.proj-card-avs .eq-linha, .prod-row-coord .eq-linha { margin-top: 0; }
+.eq-txt { white-space: nowrap; }
+.eq-txt b { font-weight: 700; color: var(--txt-3); font-size: 9px; letter-spacing: .3px; text-transform: uppercase; margin-right: 2px; }
 .av-revisor { box-shadow: 0 0 0 1.5px var(--bg, #fff), 0 0 0 3px var(--verde, #2e9e6b); }
 .proj-card-av {
   width: 18px; height: 18px; border-radius: 50%;
@@ -1746,6 +1751,29 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;min-width:46px;justify-content:flex-end}
 /* Conversas por item */
 .rc-btn{display:inline-flex;align-items:center}
+/* Número do item na prancha */
+.tarefa-num{flex-shrink:0;min-width:16px;font-size:10px;font-weight:700;color:var(--txt-3);text-align:right;font-variant-numeric:lining-nums tabular-nums}
+/* Re-revisar */
+.rr-chip{display:inline-block;margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--terracota);border:1px solid var(--terracota);border-radius:999px;padding:0 7px;vertical-align:1px}
+.tarefa-item-tools .rr-btn.on{opacity:1 !important;color:var(--terracota)}
+.rr-resumo{margin:8px 0 0;font-size:11px;font-weight:700;color:var(--terracota)}
+/* Nota final da revisão */
+.rev-nota{margin:0 0 12px;padding:12px 14px;border:1px solid var(--cinza2);border-left:3px solid var(--grafite);border-radius:0 8px 8px 0;background:var(--off)}
+.rev-nota-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.rev-nota-hd span{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-3)}
+.rev-nota-ed{background:none;border:none;padding:0;font-family:var(--font-ui);font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-2);cursor:pointer}
+.rev-nota-ed:hover{color:var(--grafite)}
+.rev-nota-tx{font-size:13px;color:var(--grafite);line-height:1.55;white-space:pre-wrap}
+.rev-nota-meta{font-size:10px;color:var(--txt-3);margin-top:5px}
+.rev-nota-vazio{font-size:11px;color:var(--txt-3)}
+.rev-nota textarea{width:100%;box-sizing:border-box;font-family:var(--font-ui);font-size:12px;border:1px solid var(--cinza);border-radius:8px;padding:8px 10px;background:var(--branco);color:var(--grafite);resize:vertical;outline:none;line-height:1.5}
+.rev-nota textarea:focus{border-color:var(--grafite)}
+.rev-nota-acoes{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+[data-theme="dark"] .rev-nota{background:rgba(255,255,255,.04);border-left-color:#D0CFC9}
+/* Renomear/excluir prancha: só ícone, discreto; cor ao passar o mouse */
+.prancha-ic{width:26px;height:26px;border:none;background:none;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--txt-3);opacity:.6;cursor:pointer;padding:0;transition:opacity .12s,color .12s,background .12s}
+.prancha-ic:hover,.prancha-ic:focus-visible{opacity:1;color:var(--grafite);background:rgba(0,0,0,.05)}
+.prancha-ic.tc:hover,.prancha-ic.tc:focus-visible{color:var(--terracota);background:var(--tc-bg)}
 .rc-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--cinza);background:var(--branco);color:var(--txt-2);border-radius:999px;padding:1px 7px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums}
 .rc-chip.novo{background:var(--grafite);border-color:var(--grafite);color:#fff}
 .rc-caixa{margin:2px 0 8px 54px;padding:10px 12px;border-left:2px solid var(--cinza);background:var(--off);border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:8px}
@@ -1813,7 +1841,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .tm-gal-status:empty{display:none}
 /* Miniatura na linha */
 .tm-mini{display:inline-flex;align-items:center;gap:4px;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}
-.tm-mini-img{width:30px;height:22px;border-radius:4px;border:1px solid var(--cinza);background:var(--off) center/cover no-repeat}
+.tm-mini-img{width:24px;height:18px;border-radius:3px;border:1px solid var(--cinza);background:var(--off) center/cover no-repeat}
 .tm-mini:hover .tm-mini-img{border-color:var(--txt-3)}
 .tm-mini-n{font-size:10px;font-weight:700;color:var(--txt-2);font-variant-numeric:lining-nums tabular-nums}
 /* Linha recebendo uma imagem arrastada */
@@ -1872,6 +1900,25 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .tmv-th:hover{opacity:1}
 .tmv-th.ativo{border-color:var(--grafite);opacity:1}
 [data-theme="dark"] .tmv{background:#1E1E1D}
+/* Nota numerada */
+.tmv-nota-ico{width:18px;height:18px;border-radius:50%;background:var(--grafite);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.gm-mv-nota-mk{position:absolute}
+.gm-mv-nota-n{width:22px;height:22px;border-radius:50%;background:var(--grafite);color:#fff;border:2px solid #fff;font-family:var(--font-ui);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:default}
+.gm-mv-nota-tip{display:none;position:absolute;left:28px;top:-4px;width:max-content;max-width:220px;background:#111110;color:#fff;font-family:var(--font-ui);font-size:11px;line-height:1.45;padding:6px 9px;border-radius:7px;white-space:normal}
+.gm-mv-nota-mk:hover .gm-mv-nota-tip{display:block}
+.tmv-nota-float{position:absolute;z-index:5;width:236px;background:var(--branco);border:1px solid var(--cinza);border-radius:10px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.tmv-nota-float-hd{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--grafite);margin-bottom:6px}
+.tmv-nota-float textarea{width:100%;box-sizing:border-box;font-family:var(--font-ui);font-size:12px;border:1px solid var(--cinza);border-radius:7px;padding:6px 8px;resize:none;outline:none;background:var(--branco);color:var(--grafite)}
+.tmv-nota-float-ac{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+.tmv-nota-n{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--grafite);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.tmv-notas{width:240px;flex-shrink:0;border-left:1px solid var(--cinza2);overflow:auto;padding:12px}
+.tmv-notas-hd{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-3);margin-bottom:8px}
+.tmv-notas-hd span{color:var(--txt-2);margin-left:3px}
+.tmv-nota-it{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--cinza2)}
+.tmv-nota-tx{font-size:12px;color:var(--grafite);line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.tmv-nota-meta{font-size:10px;color:var(--txt-3);margin-top:2px}
+.tmv-nota-del{background:none;border:none;color:var(--txt-4);font-size:15px;cursor:pointer;padding:0 2px;line-height:1}
+.tmv-nota-del:hover{color:var(--terracota)}
 
 /* ── Marcadores sobre imagens (checklists + presets) ── */
 .gm-mv-wrap{display:flex;gap:0;margin-top:12px}
@@ -2229,7 +2276,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .gp-check svg { width:11px; height:11px; }
 .gp-check:hover { background:var(--verde); border-color:var(--verde); color:#fff; }
 .gp-seguida-t { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-4); margin:14px 0 2px; }
-.gp-linha { display:grid; grid-template-columns:20px minmax(0,1fr) auto 22px; gap:12px; align-items:center; padding:9px 4px; border-top:1px solid var(--cinza2); cursor:pointer; }
+.gp-linha { display:grid; grid-template-columns:20px minmax(0,1fr) auto 18px; gap:12px; align-items:center; padding:9px 4px; border-top:1px solid var(--cinza2); cursor:pointer; }
 .gp-linha:hover { background:var(--off); }
 .gp-linha-n { width:20px; height:20px; border-radius:50%; background:var(--cinza2); color:var(--txt-2); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
 .gp-linha-nome { font-size:13px; font-weight:700; color:var(--grafite); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -2240,7 +2287,8 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .gp-linha-datas span { color:var(--txt-3); }
 .gp-linha.est-hoje .gp-linha-datas span { color:var(--ouro); font-weight:700; }
 .gp-linha.est-vencida .gp-linha-datas span { color:var(--terracota); font-weight:700; }
-.gp-linha .gp-check { opacity:0; }
+.gp-linha .gp-check { opacity:0; width:18px; height:18px; border-width:1.2px; }
+.gp-linha .gp-check svg { width:9px; height:9px; }
 .gp-linha:hover .gp-check, .gp-linha:focus-within .gp-check { opacity:1; }
 @media (hover:none) { .gp-linha .gp-check { opacity:1; } }
 [data-theme="dark"] .gp-agora.gp-futuro  { background:rgba(77,134,92,.14); }
@@ -5085,6 +5133,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
     <div class="tmv-corpo">
       <div class="gm-mv-toolbar tmv-tools">
         <button class="gm-mv-tool" id="gm-mv-tool-seta" onclick="gmMvSelectTool('seta')" title="Seta azul: clique na imagem para marcar" aria-label="Seta azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-seta_verde" onclick="gmMvSelectTool('seta_verde')" title="Seta verde: clique na imagem para marcar" aria-label="Seta verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-alerta" onclick="gmMvSelectTool('alerta')" title="Alerta: clique na imagem para marcar" aria-label="Alerta"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E2B141" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-x" onclick="gmMvSelectTool('x')" title="Marcar com X: clique na imagem para marcar" aria-label="Marcar com X"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#BC6143" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-circulo" onclick="gmMvSelectTool('circulo')" title="Círculo azul: clique na imagem para marcar" aria-label="Círculo azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-circulo_verde" onclick="gmMvSelectTool('circulo_verde')" title="Círculo verde: clique na imagem para marcar" aria-label="Círculo verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button>
+        <button class="gm-mv-tool" id="gm-mv-tool-nota" onclick="gmMvSelectTool('nota')" title="Nota numerada: clique na imagem e escreva" aria-label="Nota numerada"><span class="tmv-nota-ico">1</span></button>
         <div class="tmv-sep"></div>
         <button class="gm-mv-tool" id="tmv-limpar" type="button" onclick="gmMvLimparMinhas()" title="Limpar minhas marcações nesta imagem" aria-label="Limpar minhas marcações"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20H8l-5-5 10-10 7 7-5 5"/><line x1="10" y1="10" x2="15" y2="15"/></svg></button>
       </div>
@@ -5097,7 +5146,14 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         <div id="tm-view-empty" class="tmv-vazio">Carregando imagem…</div>
         <button class="tmv-nav next" type="button" id="tm-next-btn" onclick="moverTempMediaViewer(1)" aria-label="Próxima imagem (→)">›</button>
         <div class="tmv-dica" id="tmv-dica"></div>
+        <div class="tmv-nota-float" id="tmv-nota-float" style="display:none">
+          <div class="tmv-nota-float-hd"><span class="tmv-nota-n" id="tmv-nota-float-n">1</span>Nota</div>
+          <textarea id="tmv-nota-float-txt" rows="3" placeholder="Escreva a observação…"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gmMvSalvarNota()}else if(event.key==='Escape'){event.stopPropagation();gmMvCancelarNota()}"></textarea>
+          <div class="tmv-nota-float-ac"><button type="button" class="btn sm" onclick="gmMvCancelarNota()">Cancelar</button><button type="button" class="btn sm filled" onclick="gmMvSalvarNota()">Salvar</button></div>
+        </div>
       </div>
+      <div class="tmv-notas" id="tmv-notas"></div>
     </div>
     <div class="tmv-thumbs" id="tmv-thumbs"></div>
   </div>
@@ -5989,6 +6045,15 @@ function opcoesRevisor(selId) {
   return '<option value="">—</option>' + revisoresPermitidos()
     .map(u => `<option value="${u.id}" ${u.id === selId ? 'selected' : ''}>${_escN(u.nome)}</option>`).join('');
 }
+/* Coordenador e revisor do projeto em texto (mais leve que os avatares) */
+function equipeTxtHtml(p) {
+  const c = p?.coordenador_id ? usuarioPorId(p.coordenador_id) : null;
+  const r = p?.revisor_id ? usuarioPorId(p.revisor_id) : null;
+  const parte = (rot, u, papel) => u ? `<span class="eq-txt" title="${papel}: ${_escN(u.nome_completo || u.nome || '')}"><b>${rot}</b> ${_escN(u.nome || '')}</span>` : '';
+  const html = parte('Coord.', c, 'Coordenador') + parte('Rev.', r, 'Revisor');
+  return html ? `<div class="eq-linha">${html}</div>` : '';
+}
+
 function avRevisorHtml(p, size) {
   const r = p?.revisor_id ? usuarioPorId(p.revisor_id) : null;
   if (!r) return '';
@@ -6274,10 +6339,7 @@ function renderDashProjetos(prods, horasPorProd = {}) {
           <span>${hStr} registradas</span>
         </div>` : ''}
         <div class="proj-card-bot">
-          <div class="proj-card-avs">
-            ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'}" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : ''}
-            ${avRevisorHtml(p)}
-          </div>
+          <div class="proj-card-avs">${equipeTxtHtml(p)}</div>
           <div class="proj-card-acoes" onclick="event.stopPropagation()">
             ${!isSocioOrCoord && etapaAtiva ? `<button class="btn sm" onclick="solicitarRevisao(${etapaIdJs})">Solicitar revisão</button>` : ''}
             ${isSocioOrCoord && etapaAtiva ? `<button class="btn sm concluir" onclick="concluirEtapa(${etapaIdJs})">Concluir etapa</button>` : ''}
@@ -7087,6 +7149,7 @@ function _fqTipHtml(pr, r, o = {}) {
       ${sub ? `<div class="fq-tip-s">${_escN(sub)}</div>` : ''}
     </div></div>
     ${linha('Etapa', et ? _escN(et.nome) : '')}
+    ${linha('Coordenador', prod?.coordenador_id ? _escN(usuarioPorId(prod.coordenador_id)?.nome || '') : '')}
     ${linha('Desenvolvimento', tempo)}
     ${linha('Previsto', r && !r.semPrevisao ? F.faixa(r) : '')}
     ${linha('Entrega', o.prazo ? formatPrazoFluxo(String(o.prazo).slice(0, 10)) : '', o.estoura ? 'alerta' : '')}
@@ -7250,8 +7313,9 @@ function renderKanbanProjetos() {
             ${statusBadge}
             ${stEtapa ? `<span class="badge ${stEtapa.cls}" style="font-size:8px">${stEtapa.label}</span>` : ''}
           </div>
-          ${(coordHtml||revHtml||prazoHtml) ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${coordHtml}${revHtml}${prazoHtml}</div>` : ''}
+          ${prazoHtml ? `<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${prazoHtml}</div>` : ''}
         </div>
+        ${equipeTxtHtml(p)}
       </div>`;
     }).join('');
 
@@ -7387,8 +7451,7 @@ function renderListaProjetos() {
               <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
               <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '—'}</div>
               <div class="prod-row-coord">
-                ${coord ? `<div class="proj-card-av" style="background:${coord.cor||'#888'};display:inline-flex;width:20px;height:20px;font-size:8px" title="${coordNomeDisp}">${coordIniciaisDisp}</div>` : (p.revisor_id ? '' : '—')}
-                ${avRevisorHtml(p, 20)}
+                ${equipeTxtHtml(p) || '—'}
               </div>
               <div class="prod-row-datas">
                 ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
@@ -10491,6 +10554,24 @@ async function selecionarRevisao(id) {
       </div>
     </div>` : '';
 
+  // Quem revisa (abriu a revisão) e sócios: nota final e marca de re-revisar
+  G._podeRevisar = isSocioRole(G.usuario.role) || rev.aberta_por === G.usuario.id;
+  G._revNotaFinal = rev.nota_final || '';
+  const _nReRev = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao || []).filter(t => t.re_revisar).length, 0);
+  const _autorNota = rev.nota_final_por ? usuarioPorId(rev.nota_final_por) : null;
+  const notaFinalHtml = (rev.nota_final || G._podeRevisar) ? `
+    <div class="rev-nota" id="rev-nota">
+      <div class="rev-nota-hd">
+        <span>Nota final da revisão</span>
+        ${G._podeRevisar ? `<button class="rev-nota-ed" type="button" onclick="editarNotaFinal('${id}')">${rev.nota_final ? 'Editar' : '+ Escrever'}</button>` : ''}
+      </div>
+      ${rev.nota_final
+        ? `<div class="rev-nota-tx">${_escN(rev.nota_final)}</div>
+           <div class="rev-nota-meta">${_autorNota ? _escN(_autorNota.nome) : ''}${rev.nota_final_em ? ' · ' + new Date(rev.nota_final_em).toLocaleDateString('pt-BR') : ''}</div>`
+        : '<div class="rev-nota-vazio">Um recado geral para quem foi revisado: o que priorizar, o que mais chamou atenção.</div>'}
+    </div>` : '';
+  const reRevHtml = _nReRev ? `<div class="rr-resumo">${_nReRev} ponto${_nReRev > 1 ? 's' : ''} marcado${_nReRev > 1 ? 's' : ''} para re-revisar</div>` : '';
+
   const detalhe = document.getElementById('rev-detalhe');
   detalhe.innerHTML = `
     <div style="background:var(--branco);border:1px solid var(--cinza);border-radius:10px;padding:20px 22px">
@@ -10518,8 +10599,10 @@ async function selecionarRevisao(id) {
           Você pode acompanhar esta revisão em modo leitura, mas apenas participantes e coordenadores podem marcar as tarefas.
         </div>` : ''
       }
+      ${notaFinalHtml}
       ${datasBlockHtml}
       ${summaryBarsHtml}
+      ${reRevHtml}
       <div id="pranchas-wrap" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
         ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
         ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
@@ -10553,7 +10636,8 @@ function renderPrancha(pr, isSocioOrCoord) {
   // Checklist full (dentro de prancha-body-full) — ordenado por data de criação
   const tarefasOrdenadas = [...(pr.tarefas_revisao || [])].sort((a, b) =>
     (a.created_at || '').localeCompare(b.created_at || ''));
-  const tarefasHtml = tarefasOrdenadas.map(t => {
+  const tarefasHtml = tarefasOrdenadas.map((t, _i) => {
+    const _num = _i + 1;   // número do item na prancha (para citar em comentários: "item 3")
     const tarefaIdJs = _sqN(t.id);
     const tarefaTituloJs = _sqAttr(_sqN(`Tarefa de revisão · ${t.descricao}`));
     const mediaCount = tempMediaCount('revisao_tarefa', t.id);
@@ -10576,10 +10660,12 @@ function renderPrancha(pr, isSocioOrCoord) {
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
            ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
       ${prioControl}
-      <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}</div>
+      <span class="tarefa-num" title="Item ${_num} desta prancha">${_num}</span>
+      <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}${t.re_revisar ? '<span class="rr-chip" title="Ponto crítico: volta para uma segunda rodada de conferência">Re-revisar</span>' : ''}</div>
       ${mediaViewBtn}
       ${_rcContadorHtml(t.id)}
       <div class="tarefa-item-tools">
+        ${G._podeRevisar ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
         <button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">${GI.camera}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">${GI.edit}</button>` : ''}
@@ -10630,8 +10716,8 @@ function renderPrancha(pr, isSocioOrCoord) {
         <span class="prancha-prog">${conc}/${total}</span>
         <button class="btn sm" onclick="event.stopPropagation();addComentarioPrancha('${prId}')">+ Comentário</button>
         ${isSocioOrCoord ? `<button class="btn sm" onclick="event.stopPropagation();addTarefaPrancha('${prId}')">+ Tarefa</button>` : ''}
-        ${podeGerirPrancha ? `<button class="btn sm" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqAttr(_sqN(pr.nome))})" title="Renomear prancha">${GI.edit}</button>` : ''}
-        ${podeGerirPrancha ? `<button class="btn sm" style="color:var(--terracota);border-color:var(--terracota)" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha">${GI.x}</button>` : ''}
+        ${podeGerirPrancha ? `<button class="prancha-ic" type="button" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqAttr(_sqN(pr.nome))})" title="Renomear prancha" aria-label="Renomear prancha">${GI.edit}</button>` : ''}
+        ${podeGerirPrancha ? `<button class="prancha-ic tc" type="button" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha" aria-label="Excluir prancha">${GI.x}</button>` : ''}
       </div>
     </div>
     <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${pct}%"></div></div>
@@ -10651,6 +10737,36 @@ function renderPrancha(pr, isSocioOrCoord) {
       </div>
     </div>
   </div>`;
+}
+
+// ══ Nota final da revisão e itens para re-revisar ══
+function editarNotaFinal(revId) {
+  const box = document.getElementById('rev-nota');
+  if (!box) return;
+  box.innerHTML = `
+    <div class="rev-nota-hd"><span>Nota final da revisão</span></div>
+    <textarea id="rev-nota-txt" rows="3" placeholder="Ex.: atenção especial aos níveis e às rampas; o resto são ajustes pontuais.">${_escN(G._revNotaFinal || '')}</textarea>
+    <div class="rev-nota-acoes">
+      <button class="btn sm" type="button" onclick="selecionarRevisao('${revId}')">Cancelar</button>
+      <button class="btn sm filled" type="button" onclick="salvarNotaFinal('${revId}')">Salvar nota</button>
+    </div>`;
+  document.getElementById('rev-nota-txt')?.focus();
+}
+async function salvarNotaFinal(revId) {
+  const txt = (document.getElementById('rev-nota-txt')?.value || '').trim();
+  const { error } = await sb.from('revisoes').update({
+    nota_final: txt || null, nota_final_por: txt ? G.usuario.id : null, nota_final_em: txt ? new Date().toISOString() : null
+  }).eq('id', revId);
+  if (error) { toast('Não foi possível salvar a nota: ' + error.message, 4000); return; }
+  const r = (G._revisoes || []).find(x => x.id === revId);
+  if (r) Object.assign(r, { nota_final: txt || null, nota_final_por: txt ? G.usuario.id : null, nota_final_em: txt ? new Date().toISOString() : null });
+  await selecionarRevisao(revId);
+  toast(txt ? 'Nota final salva.' : 'Nota final removida.');
+}
+async function alternarReRevisar(tarefaId, atual) {
+  const { error } = await sb.from('tarefas_revisao').update({ re_revisar: !atual }).eq('id', tarefaId);
+  if (error) { toast('Não foi possível marcar: ' + error.message, 4000); return; }
+  await selecionarRevisao(G._revisaoAtiva);
 }
 
 // ══ Conversas por item da revisão ══
@@ -10703,7 +10819,7 @@ function _rcSecaoHtml(tarefas) {
   return `<div class="prancha-comments rc-secao">
     <div class="prancha-comments-title">Conversas por item</div>
     ${com.map(t => `<div class="rc-topico">
-      <button class="rc-topico-hd" type="button" onclick="rcAlternar('${t.id}', true)">↪ ${_escN(t.descricao)}</button>
+      <button class="rc-topico-hd" type="button" onclick="rcAlternar('${t.id}', true)">↪ ${tarefas.indexOf(t) + 1}. ${_escN(t.descricao)}</button>
       ${(G._revConv[t.id] || []).map(_rcMsgHtml).join('')}
     </div>`).join('')}
   </div>`;
@@ -14392,7 +14508,7 @@ function renderFluxoDetail(uid) {
         <span class="fluxo-drag-handle">⠿</span>
         <div class="fluxo-slot-num ${NUM_CLS[ord]}">${ord}</div>
         <select class="fluxo-prio-select fluxo-cli-sel" title="Cliente ou sociedade"
-          onchange="setRadarGrupo('${uid}','${pr.id}',this.value)">${_radarGrupoOpts(_radarGrupoDe(pr), isSocio)}</select>
+          onchange="setRadarGrupo('${uid}','${pr.id}',this.value)">${_radarGrupoOpts(_radarGrupoDe(pr), isSocio, true)}</select>
         <select class="fluxo-prio-select fluxo-proj-sel" title="Projeto ou tarefa" ${_radarGrupoDe(pr) ? '' : 'disabled'}
           onchange="setFluxoProduto('${uid}','${pr.id}',this.value)">${_radarItemOpts(_radarGrupoDe(pr), pr)}</select>
         ${etapaSel}
@@ -14578,9 +14694,12 @@ function _radarGrupoDe(rd) {
   }
   return '';
 }
-function _radarGrupoOpts(sel, incluirSoc) {
+/* soGestao: só clientes com projeto ativo na gestão (prioridades). Sem ele, todos os clientes (radar). */
+function _radarGrupoOpts(sel, incluirSoc, soGestao) {
   const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  const clis = [..._radarClientes().entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'pt-BR'));
+  let clis = [..._radarClientes().entries()];
+  if (soGestao) clis = clis.filter(([k, c]) => k === sel || c.prods.some(p => p.em_gestao !== false));   // mantém o já escolhido
+  clis.sort((a, b) => a[1].nome.localeCompare(b[1].nome, 'pt-BR'));
   return `<option value="">Cliente ou sociedade</option>`
     + (incluirSoc ? `<option value="soc"${sel === 'soc' ? ' selected' : ''}>Sociedade</option><option disabled>──────────</option>` : '')
     + clis.map(([k, c]) => `<option value="${k}"${k === sel ? ' selected' : ''}>${esc(c.nome)}</option>`).join('');
@@ -15361,6 +15480,7 @@ async function renderTempMediaViewer() {
   if (prevBtn) { prevBtn.disabled = viewer.index === 0; prevBtn.style.display = varias ? '' : 'none'; }
   if (nextBtn) { nextBtn.disabled = viewer.index >= viewer.items.length - 1; nextBtn.style.display = varias ? '' : 'none'; }
   tmvZoomReset();
+  gmMvCancelarNota();
   _tmvRenderThumbs();
   if (delBtn) delBtn.style.display = viewer.canManage ? 'flex' : 'none';
   if (emptyEl) emptyEl.textContent = 'Carregando imagem…';
@@ -15404,7 +15524,7 @@ const GM_MARK_SVGS = {
   circulo:       '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>',
   circulo_verde: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>'
 };
-const GM_MARK_TOOLS = ['seta','seta_verde','alerta','x','circulo','circulo_verde'];
+const GM_MARK_TOOLS = ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota'];
 
 function gmMvSelectTool(tool) {
   gmMvTool = (gmMvTool === tool) ? null : tool;
@@ -15416,7 +15536,7 @@ function gmMvSelectTool(tool) {
   if (canvas) canvas.classList.toggle('tool-active', !!gmMvTool);
   const dica = document.getElementById('tmv-dica');
   if (dica) {
-    const nome = { seta:'Seta azul', seta_verde:'Seta verde', alerta:'Alerta', x:'X', circulo:'Círculo azul', circulo_verde:'Círculo verde' }[gmMvTool];
+    const nome = { seta:'Seta azul', seta_verde:'Seta verde', alerta:'Alerta', x:'X', circulo:'Círculo azul', circulo_verde:'Círculo verde', nota:'Nota numerada' }[gmMvTool];
     dica.textContent = nome ? `${nome}: clique na imagem para marcar · clique duplo numa marcação sua para remover` : '';
     dica.style.display = nome ? '' : 'none';
   }
@@ -15492,7 +15612,8 @@ function tmvZoom(fator, cx, cy) {
     const ativo = document.activeElement;
     if (ativo && /^(INPUT|TEXTAREA|SELECT)$/.test(ativo.tagName)) return;
     if (G._tempMediaViewer) {
-      if (e.key === 'Escape') { e.preventDefault(); fecharTempMediaViewer(); }
+      if (e.key === 'Escape' && G._gmNotaPend) { e.preventDefault(); gmMvCancelarNota(); }
+      else if (e.key === 'Escape') { e.preventDefault(); fecharTempMediaViewer(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); moverTempMediaViewer(-1); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); moverTempMediaViewer(1); }
       else if (e.key === '+' || e.key === '=') { e.preventDefault(); tmvZoom(1.25); }
@@ -15504,6 +15625,13 @@ function tmvZoom(fator, cx, cy) {
 
 function gmMarksHtml(list, ownerCheck) {
   return (list || []).map(mk => {
+    if (mk.t === 'nota') {   // nota numerada (mesmo formato do chat): número na imagem, texto ao passar o mouse
+      const removable = ownerCheck(mk);
+      return `<div class="gm-mv-mark gm-mv-nota-mk" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%"` +
+        (removable ? ` ondblclick="${ownerCheck.removeCall}('${String(mk.id)}')"` : '') + `>` +
+        `<span class="gm-mv-nota-n">${String(mk.n || '?').replace(/[<>&"]/g,'')}</span>` +
+        (mk.texto ? `<span class="gm-mv-nota-tip">${String(mk.texto).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}</span>` : '') + `</div>`;
+    }
     const svg = GM_MARK_SVGS[mk.t] || '';
     const removable = ownerCheck(mk);
     return `<div class="gm-mv-mark" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%"` +
@@ -15520,6 +15648,21 @@ function gmMvRenderMarks() {
   const check = mk => mk.uid === G.usuario?.id;
   check.removeCall = 'gmMvRemoveMark';
   marks.innerHTML = gmMarksHtml(item?.marcadores, check);
+  _gmMvRenderNotas(item);
+}
+function _gmMvRenderNotas(item) {
+  const box = document.getElementById('tmv-notas');
+  if (!box) return;
+  const notas = (item?.marcadores || []).filter(mk => mk.t === 'nota').sort((a, b) => (a.n || 0) - (b.n || 0));
+  box.style.display = notas.length ? '' : 'none';
+  box.innerHTML = notas.length ? `<div class="tmv-notas-hd">Notas <span>${notas.length}</span></div>` + notas.map(mk => {
+    const u = (G.todosUsuarios || []).find(x => x.id === mk.uid);
+    const quando = mk.ts ? new Date(mk.ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div class="tmv-nota-it"><span class="tmv-nota-n">${_escN(String(mk.n || '?'))}</span>
+      <div style="min-width:0;flex:1"><div class="tmv-nota-tx">${_escN(mk.texto || '')}</div>
+      <div class="tmv-nota-meta">${_escN(u?.nome || mk.ini || '')}${quando ? ' · ' + quando : ''}</div></div>
+      ${mk.uid === G.usuario?.id ? `<button type="button" class="tmv-nota-del" title="Remover nota" onclick="gmMvRemoveMark('${String(mk.id)}')">×</button>` : ''}</div>`;
+  }).join('') : '';
 }
 
 function gmMvCanvasClick(e) {
@@ -15533,6 +15676,20 @@ function gmMvCanvasClick(e) {
   const x = ((e.clientX - r.left) / r.width)  * 100;
   const y = ((e.clientY - r.top)  / r.height) * 100;
   if (x < 0 || x > 100 || y < 0 || y > 100) return;
+  if (gmMvTool === 'nota') {
+    const proximo = Math.max(0, ...(item.marcadores || []).filter(m => m.t === 'nota').map(m => Number(m.n) || 0)) + 1;
+    G._gmNotaPend = { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, n: proximo };
+    const f = document.getElementById('tmv-nota-float'), st = document.getElementById('tmv-stage');
+    if (!f || !st) return;
+    const sr = st.getBoundingClientRect();
+    f.style.left = Math.min(e.clientX - sr.left + 14, sr.width - 250) + 'px';
+    f.style.top = Math.max(8, Math.min(e.clientY - sr.top - 20, sr.height - 170)) + 'px';
+    document.getElementById('tmv-nota-float-n').textContent = proximo;
+    const ta = document.getElementById('tmv-nota-float-txt'); ta.value = '';
+    f.style.display = '';
+    setTimeout(() => ta.focus(), 0);
+    return;
+  }
   const mk = {
     id:  crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
     t:   gmMvTool,
@@ -15543,6 +15700,29 @@ function gmMvCanvasClick(e) {
     ts:  new Date().toISOString()
   };
   item.marcadores = (item.marcadores || []).concat([mk]);
+  gmMvRenderMarks();
+  gmMvSaveMarks(item);
+}
+
+function gmMvCancelarNota() {
+  G._gmNotaPend = null;
+  const f = document.getElementById('tmv-nota-float'); if (f) f.style.display = 'none';
+}
+function gmMvSalvarNota() {
+  const pend = G._gmNotaPend, viewer = G._tempMediaViewer;
+  const txt = (document.getElementById('tmv-nota-float-txt')?.value || '').trim();
+  if (!pend || !viewer) return gmMvCancelarNota();
+  if (!txt) { document.getElementById('tmv-nota-float-txt')?.focus(); return; }
+  const item = viewer.items[viewer.index];
+  if (!item) return gmMvCancelarNota();
+  const mk = {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+    t: 'nota', n: pend.n, texto: txt, x: pend.x, y: pend.y,
+    ini: G.usuario?.iniciais || (G.usuario?.nome || '').substring(0, 2).toUpperCase(),
+    uid: G.usuario?.id, ts: new Date().toISOString()
+  };
+  item.marcadores = (item.marcadores || []).concat([mk]);
+  gmMvCancelarNota();
   gmMvRenderMarks();
   gmMvSaveMarks(item);
 }
@@ -21508,7 +21688,7 @@ init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-10-27a"></script>
+<script src="chat.js?v=2026-10-27b"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js"></script>
 <style>
@@ -21521,6 +21701,6 @@ init();
 
 
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-26e"></script>
+<script src="shared/exp-nav.js?v=2026-10-27b"></script>
 </body>
 </html>

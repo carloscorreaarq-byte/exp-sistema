@@ -13,7 +13,7 @@
 <script src="shared/fila-prioridades.js?v=2026-10-26c"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 <script>
   (function(){
@@ -528,6 +528,11 @@ body {
 .prio-hub-prazo.vencida { border-color: var(--terracota); color: var(--terracota); background: var(--tc-bg); }
 .prio-hub-prazo.hoje    { border-color: var(--ouro);      color: var(--ouro);      background: var(--am-bg); }
 .prio-hub-prazo.sem-prazo { border-style: dashed; color: var(--txt-3); }
+/* Coordenador do projeto */
+.coord-tag { font-size: 10px; color: var(--txt-2); }
+.coord-tag b { font-size: 9px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--txt-3); margin-right: 2px; }
+.coord-tag.so-txt { color: var(--txt-3); }
+.coord-av { width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 700; color: #fff; object-fit: cover; flex-shrink: 0; }
 /* Prioridade atual ("Agora") e as próximas em linhas ("Em seguida") */
 /* Card atual com semáforo: verde no prazo, amarelo vence hoje, terracota atrasada */
 .prio-hub-card.prio-agora { padding: 12px 14px; }
@@ -3817,6 +3822,18 @@ function renderTasksSection(tarefas, tarefasAtribuidas) {
 // Labels das subdivisões de tarefas societárias (sócios) — espelha SOCIETARIA_CATS de gestao.html
 const _SOC_CAT_LABEL = { comercial:'Comercial', marketing:'Marketing', administrativo:'Administrativo', juridico:'Jurídico', endomarketing:'Endomarketing', rh_pessoas:'RH e pessoas' };
 
+/* Coordenador do projeto: avatar + "Coord. Nome" (nome completo ao passar o mouse) */
+function _coordHub(prod, compacto) {
+  const u = prod?.coordenador_id ? (window._coordMap || {})[String(prod.coordenador_id)] : null;
+  if (!u) return '';
+  const nome = u.nome || '';
+  const curto = window.expNomeCurto ? window.expNomeCurto(nome) : nome.split(' ').slice(0, 2).join(' ');
+  /* só o nome: o avatar pesava demais visualmente */
+  return compacto
+    ? `<span class="coord-tag so-txt" title="Coordenador: ${escAttr(nome)}">Coord. ${escHtml(curto)}</span><br>`
+    : `<span class="coord-tag" title="Coordenador: ${escAttr(nome)}"><b>Coord.</b> ${escHtml(curto)}</span>`;
+}
+
 function _prioNomeHub(pr) {
   if (!pr.categoria_societaria && !pr.produto_id && pr.cliente?.nome) return pr.cliente.nome;   // só o cliente
   return pr.categoria_societaria
@@ -3955,6 +3972,7 @@ function renderPriosSection(prios, radar) {
             <div class="prio-agora-t">Agora</div>
             <div class="prio-hub-nome">${escHtml(_prioNomeHub(pr))}</div>
             ${sub ? `<div class="prio-hub-sub">${escHtml(sub)}</div>` : ''}
+            ${_coordHub(pr.produtos) ? `<div style="margin-top:6px">${_coordHub(pr.produtos)}</div>` : ''}
             <div class="prio-agora-datas">
               <span><b>Previsto</b>${r && !r.semPrevisao ? _faixaCurta(r, true) : 'sem previsão'}</span>
               <span class="${cls === 'futuro' ? '' : 'est-' + cls}"><b>Entrega</b>${prazoRef ? _dm(prazoRef) : '—'}</span>
@@ -3978,7 +3996,7 @@ function renderPriosSection(prios, radar) {
           <div class="prio-linha-nome">${escHtml(_prioNomeHub(pr))}</div>
           ${sub ? `<div class="prio-linha-sub">${escHtml(sub)}</div>` : ''}
         </div>
-        <div class="prio-linha-datas">${faixa}${prazoRef ? `<br><span>entrega ${_dm(prazoRef)}</span>` : ''}</div>
+        <div class="prio-linha-datas">${_coordHub(pr.produtos, true)}${faixa}${prazoRef ? `<br><span>entrega ${_dm(prazoRef)}</span>` : ''}</div>
         ${_check(pr)}
       </div>`;
   }
@@ -4062,6 +4080,7 @@ function renderPriosMesSection(itensMes) {
           <div class="prio-hub-body">
             <div class="prio-hub-nome" style="${nomeStyle}">${escHtml(nome)}</div>
             ${etapaSub ? `<div class="prio-hub-etapa">↳ ${escHtml(etapaSub)}</div>` : ''}
+            ${_coordHub(it.produtos) ? `<div style="margin-top:5px">${_coordHub(it.produtos)}</div>` : ''}
             <div style="margin-top:5px"><span class="prio-hub-prazo ${st.cls === 'vencida' ? 'vencida' : st.cls === 'hoje' ? 'hoje' : ''}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;margin-right:4px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${escHtml(st.label)}</span></div>
           </div>
           ${checkHtml}
@@ -4373,7 +4392,7 @@ async function loadDashboard(usuario) {
     // Prioridades — todas (inclusive concluídas, ordenadas: pendentes primeiro) + radar.
     // Se as colunas da fila ainda não existirem no banco, cai na consulta antiga.
     (async () => {
-      const base = 'id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))';
+      const base = 'id, ordem, prazo_texto, comentario, concluida, concluida_em, produto_id, categoria_societaria, produtos(nome, coordenador_id, oportunidades(projeto, clientes(nome)), etapas(nome, status, ordem))';
       const q = sel => sb.from('prioridades_usuario').select(sel).eq('usuario_id', usuario.id)
         .order('concluida', { ascending: true }).order('ordem', { ascending: true });
       const fila = base + ', tipo, blocos_previstos, etapa_id, inicio_fila, data_inicio, etapa_alvo:etapas!prioridades_usuario_etapa_id_fkey(nome, data_estimada, status)';
@@ -4385,7 +4404,7 @@ async function loadDashboard(usuario) {
 
     // Prioridades do mês — cadastradas por sócios em sociedade.html, visíveis para todos
     sb.from('prioridades_mes')
-      .select('id, mes, etapa_id, etapas(nome,status,data_conclusao), produtos(nome), oportunidades(projeto,num_legado), clientes(nome)')
+      .select('id, mes, etapa_id, etapas(nome,status,data_conclusao), produtos(nome,coordenador_id), oportunidades(projeto,num_legado), clientes(nome)')
       .order('mes', { ascending: true }),
 
     // Eventos desta semana para o mini-calendário
@@ -4411,14 +4430,20 @@ async function loadDashboard(usuario) {
     ...(tarefasAtribRaw || []).map(t => t.atribuido_para),
     ...(tarefasRaw || []).filter(t => String(t.atribuido_para) === String(usuario.id) && t.criado_por && String(t.criado_por) !== String(usuario.id)).map(t => t.criado_por),
   ].filter(Boolean))];
-  const [prodRes, userRes] = await Promise.all([
+  // coordenadores dos projetos das prioridades (pessoais e do mês)
+  const coordIds = [...new Set([...(priosRaw || []), ...(priosMesRaw || [])].map(p => p.produtos?.coordenador_id).filter(Boolean))];
+  const [prodRes, userRes, coordRes] = await Promise.all([
     produtoIds.length
       ? sb.from('produtos').select('id,nome').in('id', produtoIds)
       : Promise.resolve({ data: [] }),
     atribuidoIds.length
       ? sb.from('usuarios').select('id,nome').in('id', atribuidoIds)
       : Promise.resolve({ data: [] }),
+    coordIds.length
+      ? sb.from('usuarios').select('id,nome,iniciais,cor,avatar_url').in('id', coordIds)
+      : Promise.resolve({ data: [] }),
   ]);
+  window._coordMap = Object.fromEntries((coordRes?.data || []).map(u => [String(u.id), u]));
   const produtoMap = new Map((prodRes.data || []).map(p => [String(p.id), p.nome || null]));
   const usuarioMap = new Map((userRes.data || []).map(u => [String(u.id), u.nome || null]));
 
@@ -5467,10 +5492,10 @@ init().then(() => {
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <!-- EXP · Chat Widget -->
 <script src="app-fase2-checkpoint5.js?v=2026-10-26f" charset="UTF-8"></script>
-<script src="chat.js?v=2026-10-27a"></script>
+<script src="chat.js?v=2026-10-27b"></script>
 <!-- EXP · Nav compartilhada -->
 <script src="shared/app-notif.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-26e"></script>
+<script src="shared/exp-nav.js?v=2026-10-27b"></script>
 <script>
   ExpNav.init({
     module: 'app',

@@ -13,9 +13,9 @@
 <script src="shared/horas-creditos.js?v=2026-10-26c"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="preload" href="shared/app-shell.js" as="script">
-<link rel="preload" href="shared/exp-nav.js?v=2026-10-26e" as="script">
+<link rel="preload" href="shared/exp-nav.js?v=2026-10-27b" as="script">
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 <style>
 *,*::before,*::after{box-sizing:border-box;}
@@ -296,6 +296,26 @@ body{
   border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft);
 }
 .apo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ── Atividade e ferramenta (chips) + quadro de ajuda ── */
+#apo-ativ-wrap{position:relative}
+.apo-chips{display:flex;flex-wrap:wrap;gap:5px}
+.apo-chip{border:1px solid var(--cinza);background:var(--branco);color:var(--txt-2,#555);border-radius:999px;padding:4px 11px;font-family:inherit;font-size:11px;cursor:pointer;transition:border-color .12s,background .12s,color .12s;line-height:1.3}
+.apo-chip.sm{padding:3px 10px;font-size:10px}
+.apo-chip:hover{border-color:var(--grafite)}
+.apo-chip.on{background:var(--grafite);border-color:var(--grafite);color:#fff;font-weight:700}
+.apo-ajuda{width:16px;height:16px;border-radius:50%;border:1px solid var(--cinza);background:var(--branco);color:var(--txt-3,#888);font-size:9px;font-weight:700;cursor:pointer;padding:0;margin-left:5px;vertical-align:1px;line-height:1}
+.apo-ajuda:hover,.apo-ajuda[aria-expanded="true"]{border-color:var(--grafite);color:var(--grafite)}
+.apo-ajuda-pop{position:absolute;left:0;top:22px;z-index:50;width:min(560px,90vw);background:var(--branco);border:1px solid var(--cinza);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.16);padding:12px 14px}
+.apo-ajuda-hd{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-3,#888);margin-bottom:6px}
+.apo-ajuda-tb{width:100%;border-collapse:collapse;font-size:11px}
+.apo-ajuda-tb th{text-align:left;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-3,#888);font-weight:700;padding:4px 6px;border-bottom:1px solid var(--cinza)}
+.apo-ajuda-tb td{padding:5px 6px;border-bottom:1px solid var(--cinza2,#eee);vertical-align:top;color:var(--txt-2,#555);line-height:1.4}
+.apo-ajuda-tb td:first-child{font-weight:700;color:var(--grafite);white-space:nowrap}
+.apo-ajuda-pe{font-size:11px;color:var(--txt-2,#555);margin-top:8px;line-height:1.5}
+[data-theme="dark"] .apo-chip{background:transparent}
+[data-theme="dark"] .apo-chip.on{background:#D0CFC9;border-color:#D0CFC9;color:#111110}
+[data-theme="dark"] .apo-ajuda-pop{background:#1E1E1D}
 
 /* ── Subtarefas: campo de tags ───────────── */
 .apo-tagfield{
@@ -1337,6 +1357,17 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
               <div class="apo-note" id="apo-stage-note" hidden></div>
             </div>
 
+            <!-- Atividade padrão (projeto) + ferramenta: classificam o trabalho para a análise de horas -->
+            <div class="apo-field" id="apo-ativ-wrap" style="display:none">
+              <label>Atividade <button type="button" class="apo-ajuda" id="apo-ajuda-btn" aria-label="Como escolher a atividade" aria-expanded="false">?</button></label>
+              <div class="apo-chips" id="apo-ativ-chips" role="radiogroup" aria-label="Atividade"></div>
+              <div class="apo-ajuda-pop" id="apo-ajuda-pop" hidden></div>
+            </div>
+            <div class="apo-field" id="apo-ferr-wrap" style="display:none">
+              <label>Ferramenta (opcional)</label>
+              <div class="apo-chips" id="apo-ferr-chips" role="group" aria-label="Ferramenta"></div>
+            </div>
+
             <div class="apo-field" id="apo-subtarefas-wrap">
               <label for="apo-subtarefas-input">Subtarefas (opcional)</label>
               <div class="apo-tagfield" id="apo-subtarefas-tagfield">
@@ -1349,7 +1380,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
             <div class="apo-field">
               <label for="apo-desc">Descrição (opcional)</label>
-              <input type="text" id="apo-desc" placeholder="O que foi feito...">
+              <input type="text" id="apo-desc" placeholder="O que foi feito..." list="apo-desc-list" autocomplete="off">
+              <datalist id="apo-desc-list"></datalist>
             </div>
 
             <!-- mantidos para o código existente (duração/classificação), sem exibir -->
@@ -1875,9 +1907,9 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
 <script src="shared/app-shell.js"></script>
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-26e"></script>
+<script src="shared/exp-nav.js?v=2026-10-27b"></script>
 <!-- Widget de chat (mesmo dos outros módulos): espera a sessão do app-shell e usa window.sb -->
-<script src="chat.js?v=2026-10-27a"></script>
+<script src="chat.js?v=2026-10-27b"></script>
 <script>
 (function () {
   'use strict';
@@ -1906,6 +1938,23 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
   };
   var TIPO_PT = { projeto:'Projeto', organizacao:'Org. interna', sociedade:'Societária' };
+  /* Atividades padrão de projeto (montadas a partir das subtarefas/descrições mais usadas — 27/10/2026).
+     A chave fica gravada em horas_lancadas.atividade; o nome pode mudar sem perder o histórico. */
+  var ATIVIDADES = [
+    { k:'concepcao',     nome:'Concepção e estudo',             ex:'referências, composição de espécies, charrete, setorização, estudo' },
+    { k:'modelagem',     nome:'Modelagem',                       ex:'modelagem, modelagem Revit, entorno, ático' },
+    { k:'documentacao',  nome:'Documentação e detalhamento',     ex:'documentação, plantas, detalhamentos, cadernos de aprovação, perfis viários, paginação' },
+    { k:'especificacao', nome:'Especificação e quantitativos',   ex:'especificações, memorial, tabelas de quantitativos, tabela de mobiliários' },
+    { k:'imagens',       nome:'Imagens e apresentação',          ex:'Lumion, imagens, imagens IA, material para imagens, apresentação EP' },
+    { k:'orcamento',     nome:'Orçamento e fornecedores',        ex:'orçamentos, tabela de orçamento, material técnico, direcionamento de fornecedores' },
+    { k:'revisao',       nome:'Revisão (fazer)',                 ex:'revisão de projeto, de imagens, de entregável, orientação de projeto' },
+    { k:'ajustes',       nome:'Ajustes e correções',             ex:'correção, ajustes de desenho e de projeto, aplicar revisão' },
+    { k:'reuniao_ext',   nome:'Reunião com cliente ou parceiros', ex:'reunião de apresentação, com cliente, compatibilização, engenharia e cronograma' },
+    { k:'alinhamento',   nome:'Alinhamento interno',             ex:'reunião de alinhamento interna, alinhamento de tarefa ou produto' },
+    { k:'emissao',       nome:'Emissão e entrega',               ex:'emissão, exportação, ajuste e reemissão de PDFs, organização de arquivos' },
+    { k:'visita',        nome:'Visita e deslocamento',           ex:'viagem, visita técnica' }
+  ];
+  var FERRAMENTAS = ['Revit','Lumion','SketchUp','AutoCAD','Figma','IA'];
   var COR_TIPO = { projeto:'#5981CC', organizacao:'#4D865C', sociedade:'#E2B141' };
 
   var REEMBOLSO_DETALHES = {
@@ -4187,6 +4236,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     document.getElementById('apo-project-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-stage-wrap').style.display = isProj && document.getElementById('apo-project').value ? '' : 'none';
     document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-ativ-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-ferr-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
     if (!isProj) {
       clearSubtarefasTags();
@@ -4458,6 +4509,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     }).join('');
     renderSubtarefasSuggestions().catch(function(){});
     updateClassUI();
+    autoPreencherProjeto(pid).catch(function(){});
   }
 
   // ── UI: formulário custos ────────────────────────────────────────
@@ -4693,6 +4745,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       updateClassUI();
       clearSubtarefasTags();
       (await carregarSubtarefasDaHora(l.id)).forEach(function(t){ addSubtarefaTag(t); });
+      await carregarAtivDaHora(l.id);
     } else {
       var cat = document.getElementById('apo-category');
       if (l.subtipo && !Array.prototype.some.call(cat.options, function(o){ return o.value === l.subtipo; })) {
@@ -4727,6 +4780,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       updateClassUI();
       clearSubtarefasTags();
       (await carregarSubtarefasDaHora(l.id)).forEach(function(t){ addSubtarefaTag(t); });
+      await carregarAtivDaHora(l.id);
     } else {
       var cat = document.getElementById('apo-category');
       if (l.subtipo && !Array.prototype.some.call(cat.options, function(o){ return o.value === l.subtipo; })) {
@@ -4968,8 +5022,96 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
   // ── Reset forms ───────────────────────────────────────────────────
 
+  /* ── Atividade e ferramenta ── */
+  AP.atividade = ''; AP.ferramentas = [];
+  function renderAtivFerr() {
+    var a = document.getElementById('apo-ativ-chips'), f = document.getElementById('apo-ferr-chips');
+    if (a) a.innerHTML = ATIVIDADES.map(function(x){
+      var on = AP.atividade === x.k;
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" title="'+esc(x.ex)+'" data-ativ="'+x.k+'">'+esc(x.nome)+'</button>';
+    }).join('');
+    if (f) f.innerHTML = FERRAMENTAS.map(function(n){
+      var on = AP.ferramentas.indexOf(n) !== -1;
+      return '<button type="button" class="apo-chip sm'+(on?' on':'')+'" aria-pressed="'+on+'" data-ferr="'+esc(n)+'">'+esc(n)+'</button>';
+    }).join('');
+  }
+  function setAtividade(k, auto) {
+    AP.atividade = (AP.atividade === k && !auto) ? '' : k;
+    /* ferramenta: se nada marcado, sugere as que você mais usa nessa atividade */
+    if (AP.atividade && !AP.ferramentas.length) AP.ferramentas = sugerirFerramentas(AP.atividade);
+    renderAtivFerr();
+  }
+  function toggleFerramenta(n) {
+    var i = AP.ferramentas.indexOf(n);
+    if (i === -1) AP.ferramentas.push(n); else AP.ferramentas.splice(i, 1);
+    renderAtivFerr();
+  }
+  function limparAtivFerr() { AP.atividade = ''; AP.ferramentas = []; renderAtivFerr(); }
+  function renderAjudaAtiv() {
+    var pop = document.getElementById('apo-ajuda-pop'); if (!pop) return;
+    pop.innerHTML = '<div class="apo-ajuda-hd">Como escolher a atividade</div>' +
+      '<table class="apo-ajuda-tb"><thead><tr><th>Atividade</th><th>Junta o que hoje aparece como</th></tr></thead><tbody>' +
+      ATIVIDADES.map(function(x){ return '<tr><td>'+esc(x.nome)+'</td><td>'+esc(x.ex)+'</td></tr>'; }).join('') +
+      '</tbody></table>' +
+      '<div class="apo-ajuda-pe">A <b>ferramenta</b> (Revit, Lumion…) vai no campo de baixo. O <b>objeto</b> (térreo, praça, revestimentos, vegetação) vai nas subtarefas ou na descrição.</div>';
+  }
+  /* Histórico do próprio usuário (para sugerir etapa, atividade, ferramenta e descrição) */
+  AP.hist = null;
+  async function carregarHistAtiv() {
+    if (AP.hist) return AP.hist;
+    var q = function(sel){ return window.sb.from('horas_lancadas').select(sel).eq('usuario_id', uid())
+      .order('data_lancamento', { ascending:false }).order('hora_fim', { ascending:false }).limit(400); };
+    var r = await q('produto_id,etapa_id,descricao,atividade,ferramentas');
+    if (r.error) r = await q('produto_id,etapa_id,descricao');
+    AP.hist = r.data || [];
+    return AP.hist;
+  }
+  function _maisFrequente(lista) {
+    var c = {}, best = '', n = 0;
+    lista.forEach(function(v){ if (!v) return; c[v] = (c[v]||0) + 1; if (c[v] > n) { n = c[v]; best = v; } });
+    return best;
+  }
+  function sugerirFerramentas(ativ) {
+    var linhas = (AP.hist || []).filter(function(h){ return h.atividade === ativ && Array.isArray(h.ferramentas) && h.ferramentas.length; });
+    if (!linhas.length) return [];
+    var top = _maisFrequente(linhas.map(function(h){ return h.ferramentas.slice().sort().join('|'); }));
+    return top ? top.split('|') : [];
+  }
+  /* Ao escolher o projeto: etapa e atividade mais usadas por você nele; descrições recentes dele */
+  async function autoPreencherProjeto(pid) {
+    if (!pid || AP.editHoraId) return;
+    var hist = await carregarHistAtiv();
+    var doProj = hist.filter(function(h){ return h.produto_id === pid; });
+    var dl = document.getElementById('apo-desc-list');
+    if (dl) {
+      var vistos = {};
+      dl.innerHTML = doProj.map(function(h){ return (h.descricao||'').trim(); })
+        .filter(function(d){ if (!d || vistos[d.toLowerCase()]) return false; vistos[d.toLowerCase()] = 1; return true; })
+        .slice(0, 15).map(function(d){ return '<option value="'+esc(d)+'"></option>'; }).join('');
+    }
+    if (!doProj.length) return;
+    var st = document.getElementById('apo-stage');
+    if (st && !st.value && doProj[0].etapa_id && Array.prototype.some.call(st.options, function(o){ return o.value === doProj[0].etapa_id; })) {
+      st.value = doProj[0].etapa_id;
+    }
+    if (!AP.atividade) {
+      var mesmaEtapa = doProj.filter(function(h){ return st && h.etapa_id === st.value; });
+      var a = _maisFrequente((mesmaEtapa.length ? mesmaEtapa : doProj).map(function(h){ return h.atividade; }));
+      if (a) setAtividade(a, true);
+    }
+    updateClassUI();
+  }
+  async function carregarAtivDaHora(id) {
+    var r = await window.sb.from('horas_lancadas').select('atividade,ferramentas').eq('id', id).maybeSingle();
+    if (r.error || !r.data) return;
+    AP.atividade = r.data.atividade || '';
+    AP.ferramentas = Array.isArray(r.data.ferramentas) ? r.data.ferramentas.slice() : [];
+    renderAtivFerr();
+  }
+
   function resetHorasForm() {
     sairEdicaoHora(true);
+    limparAtivFerr();
     var today = new Date().toISOString().slice(0,10);
     document.getElementById('apo-hours-form').reset();
     document.getElementById('apo-date').value = today;
@@ -5050,12 +5192,20 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         dia_semana:week.isoDay, hora_inicio:start, hora_fim:end,
         tipo:type, subtipo:subtipo, produto_id:productId, etapa_id:stageId, descricao:desc||null,
       };
-      var res;
-      if (editId) {
-        res = await window.sb.from('horas_lancadas').update(payloadH).eq('id', editId).eq('usuario_id', uid()).select('id').single();
-      } else {
+      if (type === 'projeto') {
+        payloadH.atividade = AP.atividade || null;
+        payloadH.ferramentas = AP.ferramentas.length ? AP.ferramentas.slice() : null;
+      }
+      var gravar = function(){
+        if (editId) return window.sb.from('horas_lancadas').update(payloadH).eq('id', editId).eq('usuario_id', uid()).select('id').single();
         payloadH.usuario_id = uid();
-        res = await window.sb.from('horas_lancadas').insert(payloadH).select('id').single();
+        return window.sb.from('horas_lancadas').insert(payloadH).select('id').single();
+      };
+      var res = await gravar();
+      /* colunas de atividade ainda não criadas no banco: grava sem elas */
+      if (res.error && /atividade|ferramentas/.test(res.error.message || '')) {
+        delete payloadH.atividade; delete payloadH.ferramentas;
+        res = await gravar();
       }
       if (res.error) throw new Error(res.error.message);
       var subtSaved = await saveHorasSubtarefas(res.data && res.data.id, subtarefas, diffH(start, end), {
@@ -5065,6 +5215,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       });
       document.getElementById('apo-desc').value = '';
       clearSubtarefasTags();
+      if (AP.hist) AP.hist.unshift({ produto_id: productId, etapa_id: stageId, descricao: desc || null, atividade: payloadH.atividade || null, ferramentas: payloadH.ferramentas || null });
       setFb('apo-feedback', (editId ? 'Lançamento atualizado.' : 'Horas registradas.') + (subtSaved ? '' : ' As subtarefas ainda não estão disponíveis.'), subtSaved ? 'ok' : 'err');
       if (editId) sairEdicaoHora();
       AP._inicioSyncIso = null;
@@ -5826,6 +5977,28 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     });
     document.getElementById('apo-ver-pessoa').addEventListener('change', function(){ trocarPessoa(this.value); });
     document.getElementById('apo-leitura-aviso').addEventListener('click', function(ev){ if (ev.target.id === 'apo-ver-voltar') trocarPessoa(''); });
+    document.getElementById('apo-ativ-chips').addEventListener('click', function(e){
+      var b = e.target.closest('[data-ativ]'); if (b) setAtividade(b.dataset.ativ);
+    });
+    document.getElementById('apo-ferr-chips').addEventListener('click', function(e){
+      var b = e.target.closest('[data-ferr]'); if (b) toggleFerramenta(b.dataset.ferr);
+    });
+    document.getElementById('apo-ajuda-btn').addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      var pop = document.getElementById('apo-ajuda-pop');
+      if (pop.hidden) renderAjudaAtiv();
+      pop.hidden = !pop.hidden;
+      this.setAttribute('aria-expanded', String(!pop.hidden));
+    });
+    document.addEventListener('click', function(e){
+      var pop = document.getElementById('apo-ajuda-pop');
+      if (pop && !pop.hidden && !pop.contains(e.target) && e.target.id !== 'apo-ajuda-btn') { pop.hidden = true; document.getElementById('apo-ajuda-btn').setAttribute('aria-expanded','false'); }
+    });
+    document.addEventListener('keydown', function(e){
+      var pop = document.getElementById('apo-ajuda-pop');
+      if (e.key === 'Escape' && pop && !pop.hidden) { pop.hidden = true; document.getElementById('apo-ajuda-btn').setAttribute('aria-expanded','false'); }
+    });
+    renderAtivFerr();
     document.getElementById('apo-repetir').addEventListener('click', function(){ repetirUltimoLancamento().catch(function(e){ setFb('apo-feedback', e.message, 'err'); }); });
     document.getElementById('apo-week-finalizar').addEventListener('click', function(){ abrirFinalizarSemana().catch(function(e){ alert(e.message); }); });
     document.getElementById('apo-fin-confirmar').addEventListener('click', confirmarFinalizarSemana);
