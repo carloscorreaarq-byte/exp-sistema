@@ -1384,8 +1384,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
             <!-- Atividade padrão (projeto): classifica o trabalho para a análise de horas -->
             <div class="apo-field" id="apo-ativ-wrap" style="display:none">
-              <label>Atividade <button type="button" class="apo-ajuda" id="apo-ajuda-btn" aria-label="Como escolher a atividade" aria-expanded="false">?</button></label>
-              <div class="apo-chips" id="apo-ativ-chips" role="radiogroup" aria-label="Atividade"></div>
+              <label>Atividades <button type="button" class="apo-ajuda" id="apo-ajuda-btn" aria-label="Como escolher a atividade" aria-expanded="false">?</button></label>
+              <div class="apo-chips" id="apo-ativ-chips" role="group" aria-label="Atividades (pode marcar mais de uma)"></div>
               <div class="apo-ajuda-pop" id="apo-ajuda-pop" hidden></div>
             </div>
 
@@ -1931,7 +1931,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <script src="shared/exp-nav.js?v=2026-10-27b"></script>
 <!-- Widget de chat (mesmo dos outros módulos): espera a sessão do app-shell e usa window.sb -->
-<script src="chat.js?v=2026-10-27f"></script>
+<script src="chat.js?v=2026-10-27h"></script>
 <script>
 (function () {
   'use strict';
@@ -5046,17 +5046,25 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   // ── Reset forms ───────────────────────────────────────────────────
 
   /* ── Atividade ── */
+  /* Pode marcar mais de uma: AP.atividade guarda as chaves separadas por vírgula ("modelagem,documentacao"),
+     na ordem da lista; as horas do lançamento se dividem entre elas (subtarefas). */
   AP.atividade = '';
+  function ativLista(v) { return String(v == null ? AP.atividade : v || '').split(',').map(function(k){ return k.trim(); }).filter(Boolean); }
+  function ativObjs(v) { var l = ativLista(v); return ATIVIDADES.filter(function(x){ return l.indexOf(x.k) !== -1; }); }
   function renderAtivFerr() {
     var a = document.getElementById('apo-ativ-chips');
+    var sel = ativLista();
     if (a) a.innerHTML = ATIVIDADES.map(function(x){
-      var on = AP.atividade === x.k;
-      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" aria-label="'+esc(x.nome)+'" data-dica-t="'+esc(x.nome)+'" data-dica="'+esc(x.ex)+'" data-ativ="'+x.k+'">'+esc(x.curto || x.nome)+'</button>';
+      var on = sel.indexOf(x.k) !== -1;
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="checkbox" aria-checked="'+on+'" aria-label="'+esc(x.nome)+'" data-dica-t="'+esc(x.nome)+'" data-dica="'+esc(x.ex)+'" data-ativ="'+x.k+'">'+esc(x.curto || x.nome)+'</button>';
     }).join('');
 
   }
   function setAtividade(k, auto) {
-    AP.atividade = (AP.atividade === k && !auto) ? '' : k;
+    if (auto) { if (!AP.atividade) AP.atividade = k || ''; renderAtivFerr(); return; }   // sugestão: só preenche se vazio
+    var sel = ativLista();
+    if (sel.indexOf(k) !== -1) sel = sel.filter(function(x){ return x !== k; }); else sel.push(k);
+    AP.atividade = ATIVIDADES.filter(function(x){ return sel.indexOf(x.k) !== -1; }).map(function(x){ return x.k; }).join(',');
     renderAtivFerr();
   }
   function limparAtivFerr() { AP.atividade = ''; renderAtivFerr(); }
@@ -5066,7 +5074,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       '<table class="apo-ajuda-tb"><thead><tr><th>Atividade</th><th>Junta o que hoje aparece como</th></tr></thead><tbody>' +
       ATIVIDADES.map(function(x){ return '<tr><td>'+esc(x.nome)+'</td><td>'+esc(x.ex)+'</td></tr>'; }).join('') +
       '</tbody></table>' +
-      '<div class="apo-ajuda-pe">Escolha <b>o que foi feito</b>, não o programa usado (Revit, Lumion…). O <b>objeto</b> (térreo, praça, revestimentos, vegetação) vai na descrição.</div>';
+      '<div class="apo-ajuda-pe">Escolha <b>o que foi feito</b>, não o programa usado (Revit, Lumion…). Pode marcar <b>mais de uma</b>: as horas do bloco se dividem igualmente entre elas.</div>';
   }
   /* Histórico do próprio usuário (para sugerir etapa, atividade e descrição) */
   AP.hist = null;
@@ -5137,8 +5145,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       var partes;
       if (h.tipo === 'projeto') {
         var opp = (h.produtos||{}).oportunidades || {};
-        var a = ATIVIDADES.find(function(x){ return x.k === h.atividade; });
-        partes = [opp.projeto || (h.produtos||{}).nome || 'Projeto', h.etapas && h.etapas.nome, a && (a.curto || a.nome)];
+        var a = ativObjs(h.atividade).map(function(x){ return x.curto || x.nome; }).join(' + ');
+        partes = [opp.projeto || (h.produtos||{}).nome || 'Projeto', h.etapas && h.etapas.nome, a];
       } else {
         partes = [TIPO_PT[h.tipo] || h.tipo, h.subtipo];
       }
@@ -5225,8 +5233,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       var subtipo   = type!=='projeto'?(document.getElementById('apo-category').value||null):null;
       if (type==='projeto') commitPendingSubtarefaInput();
       /* A subtarefa é a própria atividade (nome completo). Sem atividade, mantém as subtarefas antigas do lançamento (edição). */
-      var _ativObj = ATIVIDADES.find(function(x){ return x.k === AP.atividade; });
-      var subtarefas = type!=='projeto' ? '' : (_ativObj ? _ativObj.nome : (document.getElementById('apo-subtarefas').value||'').trim());
+      var _ativNomes = ativObjs().map(function(x){ return x.nome; });
+      var subtarefas = type!=='projeto' ? '' : (_ativNomes.length ? _ativNomes.join(', ') : (document.getElementById('apo-subtarefas').value||'').trim());
       if (!date) throw new Error('Selecione a data.');
       if (!start||!end) throw new Error('Preencha início e fim.');
       if (start>=end) throw new Error('Hora final deve ser maior que a inicial.');

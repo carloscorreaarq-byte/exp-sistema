@@ -381,7 +381,7 @@
       '</div>',
       /* Atividade (só projeto) — mesmas do Apontamentos */
       '<div id="tmr-cf-ativ-wrap">',
-        '<div class="tmr-sel-lbl">Atividade</div>',
+        '<div class="tmr-sel-lbl">Atividades</div>',
         '<div class="tmr-chips" id="tmr-cf-ativ"></div>',
       '</div>',
       '<div id="tmr-cf-subtarefas-wrap">',
@@ -981,11 +981,14 @@
     ['reuniao_ext','Reunião externa','Reunião com cliente ou parceiros'], ['alinhamento','Alinhamento','Alinhamento interno'],
     ['emissao','Emissão','Emissão e entrega'], ['visita','Visita','Visita e deslocamento']
   ];
+  /* Pode marcar mais de uma: chaves separadas por vírgula, na ordem da lista (igual ao Apontamentos) */
   var _tmrAtiv = '';
+  function _tmrAtivLista() { return String(_tmrAtiv || '').split(',').map(function (k) { return k.trim(); }).filter(Boolean); }
   function _tmrRenderAtiv() {
     var a = document.getElementById('tmr-cf-ativ');
+    var sel = _tmrAtivLista();
     if (a) a.innerHTML = TMR_ATIV.map(function (x) {
-      return '<button type="button" class="tmr-chip' + (_tmrAtiv === x[0] ? ' on' : '') + '" title="' + x[2] + '" onclick="_tmr.ativ(\'' + x[0] + '\')">' + x[1] + '</button>';
+      return '<button type="button" class="tmr-chip' + (sel.indexOf(x[0]) !== -1 ? ' on' : '') + '" title="' + x[2] + '" onclick="_tmr.ativ(\'' + x[0] + '\')">' + x[1] + '</button>';
     }).join('');
 
   }
@@ -1017,7 +1020,9 @@
 
   var _tmr = {
     ativ: function (k) {
-      _tmrAtiv = _tmrAtiv === k ? '' : k;
+      var sel = _tmrAtivLista();
+      if (sel.indexOf(k) !== -1) sel = sel.filter(function (x) { return x !== k; }); else sel.push(k);
+      _tmrAtiv = TMR_ATIV.filter(function (x) { return sel.indexOf(x[0]) !== -1; }).map(function (x) { return x[0]; }).join(',');
       _tmrRenderAtiv();
     },
 
@@ -1392,9 +1397,9 @@
       var ini     = (document.getElementById('tmr-cf-ini')  || {}).value || '';
       var fim     = (document.getElementById('tmr-cf-fim')  || {}).value || '';
       var desc    = ((document.getElementById('tmr-cf-desc') || {}).value || '').trim();
-      /* A subtarefa é a própria atividade escolhida (nome completo) */
-      var _ativT = TMR_ATIV.filter(function (x) { return x[0] === _tmrAtiv; })[0];
-      var subtarefas = _ativT ? _ativT[2] : '';
+      /* As subtarefas são as atividades escolhidas (nomes completos); as horas se dividem entre elas */
+      var _selA = _tmrAtivLista();
+      var subtarefas = TMR_ATIV.filter(function (x) { return _selA.indexOf(x[0]) !== -1; }).map(function (x) { return x[2]; }).join(', ');
 
       if (!dataISO || !ini || !fim) {
         _toast('Preencha data, início e fim');

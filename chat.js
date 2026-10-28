@@ -174,6 +174,9 @@
     /* ── Date separator ── */
     '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:var(--font-mono);letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
+    /* linha "Novas mensagens": onde parou a leitura, na cor do tema do chat */
+    '.chat-new-divider{display:flex;align-items:center;gap:7px;margin:8px 0 4px;color:var(--verde,#4D865C);font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}',
+    '.chat-new-divider::before,.chat-new-divider::after{content:"";flex:1;height:1px;background:currentColor;opacity:.45}',
     /* ── Message bubble ── */
     '.chat-msg{display:flex;flex-direction:column;padding:2px 6px;border-radius:var(--radius-input,6px);transition:background .1s}',
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
@@ -1287,6 +1290,12 @@
         dmList.push({ channel: ch, content: 'Nova conversa', created_at: row.created_at, sender_id: uid });
       });
       dmList.sort(function (a, b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+      /* Recentes: só conversas com mensagem nos últimos 7 dias (fixadas e com não lidas ficam sempre).
+         As mais antigas continuam acessíveis pela busca e pelo "nova conversa". */
+      var _corte7d = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      dmList = dmList.filter(function (m) {
+        return new Date(m.created_at || 0).getTime() >= _corte7d || pinnedChannels.has(m.channel) || (channelUnread[m.channel] || 0) > 0;
+      });
 
       var html = '';
       var projectHtml = '';
@@ -1514,8 +1523,10 @@
     if (replyTo && replyTo.channel !== channel) replyTo = null;
     updateWidgetHeaderButtons(); renderReplyBar();
     loadReadStatus(channel); joinTyping(channel);
+    /* guarda até onde a pessoa tinha lido ANTES de marcar como lida (linha "Novas mensagens") */
+    _lastReadP = getChannelLastRead(channel).then(function (ts) { channelLastReadAt[channel] = ts; return ts; });
     loadMessages();
-    markRead();
+    _lastReadP.then(function () { if (currentChannel === channel) markRead(); });
     setTimeout(function () { if ($input) $input.focus(); }, 120);
   }
 
@@ -2124,9 +2135,12 @@
           hasOlderMessages = (r.data || []).length >= 200;
           messages = (r.data || []).slice().reverse().map(normalizeProjectMessage);
           clearMessageMediaCache();
-          renderMessages();
-          loadCurrentMessageMedia();
-          scrollBottom();
+          (_lastReadP || Promise.resolve()).then(function () {
+            if (channel !== currentChannel) return;
+            renderMessages();
+            loadCurrentMessageMedia();
+            scrollParaNovas();
+          });
         });
       return;
     }
@@ -2142,10 +2156,13 @@
         hasOlderMessages = (r.data || []).length >= MSG_LOAD_LIMIT;
         messages = (r.data || []).slice().reverse();
         clearMessageMediaCache();
-        renderMessages();
-        loadCurrentMessageMedia();
-        loadArquivosFor();
-        scrollBottom();
+        (_lastReadP || Promise.resolve()).then(function () {
+          if (channel !== currentChannel) return;
+          renderMessages();
+          loadCurrentMessageMedia();
+          loadArquivosFor();
+          scrollParaNovas();
+        });
       });
   }
 
@@ -2968,6 +2985,8 @@
     var uid = user.auth_id;
     var html = '';
     var prevSender = null, prevTime = null, lastDate = null;
+    var lastReadAt = channelLastReadAt[currentChannel] || null;
+    var _novasMostrada = showOnlyFlagged;   /* uma linha "Novas mensagens" por conversa */
 
     var _lastOwnIdx = -1;
     if ((isDynamicChannel(currentChannel) || isProjectChannel(currentChannel)) && readRows.length) {
@@ -2992,6 +3011,11 @@
       if (dateStr !== lastDate) {
         lastDate = dateStr;
         html += '<div class="chat-date-sep">' + fmtDateSep(dt) + '</div>';
+        prevSender = null;
+      }
+      if (!_novasMostrada && !isOwn && lastReadAt && !msg.deleted_at && msg.created_at > lastReadAt) {
+        _novasMostrada = true;
+        html += '<div class="chat-new-divider">Novas mensagens</div>';
         prevSender = null;
       }
 
@@ -3246,6 +3270,8 @@
   var replyTo       = null;
   var arquivosCache = {};
   var readRows      = [];
+  var channelLastReadAt = {};   /* canal → last_read_at de antes de abrir (marca a linha "Novas mensagens") */
+  var _lastReadP    = null;
   var typingCh      = null, typingUsers = {}, lastTypingSent = 0, typingTimer = null;
 
   function isFileSentinel(c) { return String(c || '').trim() === CHAT_FILE_SENTINEL; }
@@ -3601,6 +3627,19 @@
   }
 
   function scrollBottom() { if ($msgs) { $msgs.scrollTop = $msgs.scrollHeight; scrolledToEnd = true; } }
+  /* Abre a conversa na linha "Novas mensagens" (se houver); senão, no fim */
+  function scrollParaNovas() {
+    var d = $msgs && $msgs.querySelector('.chat-new-divider');
+    if (!d) { scrollBottom(); return; }
+    $msgs.scrollTop += d.getBoundingClientRect().top - $msgs.getBoundingClientRect().top - 16;
+    scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 40;
+  }
+  function getChannelLastRead(channel) {
+    var q = isProjectChannel(channel)
+      ? sb.from('chat_thread_reads').select('last_read_at').eq('user_auth_id', user.auth_id).eq('thread_id', projectThreadIdFromChannel(channel)).maybeSingle()
+      : sb.from('chat_read_status').select('last_read_at').eq('user_id', user.auth_id).eq('channel', channel).maybeSingle();
+    return q.then(function (r) { return r.data ? r.data.last_read_at : null; }, function () { return null; });
+  }
 
   function showLoading() { if ($msgs) $msgs.innerHTML = '<div class="chat-loading">' + ldots() + '</div>'; }
   function showError()   { if ($msgs) $msgs.innerHTML = '<div class="chat-empty">Erro ao carregar.<br>Tente novamente.</div>'; }

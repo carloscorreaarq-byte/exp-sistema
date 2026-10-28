@@ -285,6 +285,11 @@ body {
 .ck-item-act.tm.has-media{opacity:1;color:var(--azul)}
 .ck-edit-input{font-size:12px;flex:1;border:none;border-bottom:1.5px solid var(--azul);outline:none;padding:0;background:transparent;font-family:var(--font-ui);color:inherit;line-height:1.5}
 .ck-empty{font-size:10px;color:var(--txt-3);padding:4px 0}
+.ck-ref{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.5px;color:var(--txt-2);padding:6px 10px;border-bottom:1px solid var(--cinza2);background:var(--off)}
+.ck-ref-lbl{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-3)}
+.ck-ref-link{background:none;border:none;padding:0;font:inherit;font-weight:700;color:var(--grafite);cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:var(--cinza)}
+.ck-ref-link:hover{text-decoration-color:var(--grafite)}
+.pre-live-meta-sel{border:1px solid var(--cinza2);border-radius:6px;background:var(--branco);font-family:var(--font-ui);font-size:11px;color:var(--grafite);padding:2px 6px;min-width:0;flex:1;max-width:220px}
 .ck-atrib{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txt-2);padding:3px 10px;background:var(--off);border-top:1px solid var(--cinza2)}
 .ck-av{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0}
 .ck-tag-fechado{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;background:#f0ede8;color:var(--txt-3);border-radius:4px;padding:2px 7px}
@@ -914,6 +919,11 @@ body {
   transition: color .12s; opacity: 0;
 }
 .task-item:hover .task-edit-btn { opacity: 1; }
+/* Fotos da tarefa: câmera discreta (aparece no hover) e miniatura quando há imagem */
+.task-foto-btn { flex-shrink: 0; margin-top: 1px; background: none; border: none; color: #c2c8d1; cursor: pointer; padding: 0 2px; font-size: 13px; line-height: 1; opacity: 0; transition: opacity .12s, color .12s; }
+.task-item:hover .task-foto-btn { opacity: .7; }
+.task-foto-btn:hover { color: var(--grafite); opacity: 1 !important; }
+.task-item .tm-mini { margin-top: 1px; }
 .task-edit-btn:hover { color: var(--grafite); }
 .task-item:last-child { border-bottom: none; }
 .task-check {
@@ -2309,21 +2319,22 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fq-hd-sem { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-3); padding:3px 8px; border-left:1px solid var(--cinza); }
 .fq-hd-dia { font-size:10px; color:var(--txt-3); text-align:center; padding:2px 0 4px; border-left:1px solid var(--cinza2); font-variant-numeric:lining-nums tabular-nums; }
 .fq-hd-dia.hoje { color:var(--grafite); font-weight:700; }
-.fq-pessoa { grid-column:1; display:flex; align-items:center; gap:8px; padding:6px 10px 6px 14px; border-top:1px solid var(--cinza2); min-width:0; }
+.fq-pessoa { grid-column:1; display:flex; align-items:center; gap:9px; padding:8px 10px 8px 14px; border-top:1px solid var(--cinza2); min-width:0; }
 .fq-pessoa > div:last-child { min-width:0; padding-top:1px; }
 .fq-pessoa > :first-child { flex-shrink:0; }
 .fq-pessoa.link { cursor:pointer; }
 .fq-pessoa.link:hover .fq-pessoa-nome { text-decoration:underline; }
-.fq-pessoa-nome { font-size:11.5px; font-weight:700; color:var(--grafite); line-height:1.3; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.fq-pessoa-role { font-size:9.5px; color:var(--txt-3); line-height:1.2; }
-.fq-linha { grid-column:2 / span 30; border-top:1px solid var(--cinza2); padding:6px 0; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:4px; }
-.fq-pista { position:relative; height:24px; }
-.fq-slot { position:absolute; top:-6px; bottom:-4px; }
+.fq-pessoa-nome { font-size:12px; font-weight:700; color:var(--grafite); line-height:1.3; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.fq-pessoa-role { font-size:10px; color:var(--txt-3); line-height:1.25; margin-top:1px; }
+/* todas as linhas com a mesma altura: pista + faixa do radar (vazia quando não há radar) */
+.fq-linha { grid-column:2 / span 30; border-top:1px solid var(--cinza2); padding:9px 0; height:72px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:flex-start; gap:6px; }
+.fq-pista { position:relative; height:28px; flex-shrink:0; }
+.fq-slot { position:absolute; top:-9px; bottom:-35px; }
 .fq-slot.manha { border-left:1px solid var(--cinza2); }
 .fq-slot.semana { border-left:1px solid var(--cinza); }
 .fq-slot.bloq { background:repeating-linear-gradient(45deg, transparent 0 4px, rgba(0,0,0,.09) 4px 5px); }
 .fq-slot.passou { background-color:rgba(0,0,0,.025); }
-.fq-bar { position:absolute; top:1px; height:22px; border-radius:6px; color:#fff; font-size:10.5px; font-weight:700; display:flex; align-items:center; gap:4px; padding:0 8px; box-sizing:border-box; border:2px solid var(--branco); overflow:visible; white-space:nowrap; }
+.fq-bar { position:absolute; top:1px; height:26px; border-radius:7px; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; padding:0 8px; box-sizing:border-box; border:2px solid var(--branco); overflow:visible; white-space:nowrap; }
 .fq-bar > span:first-child { overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .fq-bar.link { cursor:pointer; }
 .fq-bar.fq-nodia { color:#4A3A0A; }
@@ -2332,9 +2343,15 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fq-bar.sem { background:transparent; border:1px dashed var(--txt-4); color:var(--txt-3); font-weight:400; }
 .fq-alerta-ico { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:var(--terracota); color:#fff; font-size:10px; font-weight:700; flex-shrink:0; box-shadow:0 0 0 2px var(--branco); }
 .fq-bar .fq-alerta-ico { position:absolute; right:-8px; top:-7px; }
-.fq-livre { position:absolute; top:2px; margin-left:6px; font-size:10px; color:var(--txt-2); white-space:nowrap; background:var(--branco); border:1px solid var(--cinza); border-radius:999px; padding:1px 9px; z-index:2; }
+.fq-livre { position:absolute; top:4px; margin-left:6px; font-size:10px; color:var(--txt-2); white-space:nowrap; background:var(--branco); border:1px solid var(--cinza); border-radius:999px; padding:1px 9px; z-index:2; }
 .fq-radar { display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding-left:2px; }
 .fq-radar .rdr-chip { font-size:10px; padding:0 8px; line-height:17px; }
+/* Radar na Fila: discreto, em cinza (na pessoa e no Hub ele continua amarelo); uma linha só */
+.fq-grid .fq-radar { position:relative; z-index:1; height:20px; flex-wrap:nowrap; flex-shrink:0; }
+.fq-grid .fq-radar .rdr-chip { font-weight:400; color:var(--txt-2); background:var(--branco); border-color:var(--cinza); max-width:240px; }
+.fq-grid .fq-radar .rdr-chip.link:hover { border-color:var(--txt-3); }
+.fq-grid .fq-radar .rdr-obs-ico { background:var(--txt-4); }
+[data-theme="dark"] .fq-grid .fq-radar .rdr-chip { color:var(--txt-2); background:transparent; border-color:#3A3836; }
 .fq-radar-t { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-4); margin-right:3px; }
 .fq-radar-chip { font-size:11px; color:var(--txt-2); border:1px solid var(--cinza); border-radius:999px; padding:1px 9px; background:var(--branco); white-space:nowrap; }
 .fq-radar-chip.link { cursor:pointer; }
@@ -6494,7 +6511,46 @@ async function carregarTarefas() {
     })
     .sort(ordenar);
 
+  try { await carregarTempMediaCounts('tarefa_livre', [...pendentes, ...acompanhando].map(t => t.id)); } catch (e) {}
   renderTarefas({ pendentes, acompanhando });
+  _tarefaFotosFaxina();
+}
+
+/* ── Fotos das tarefas (contexto 'tarefa_livre' em gestao_anexos_temporarios) ──
+   Ficam enquanto a tarefa está aberta; ao concluir ou excluir, saem do bucket. */
+async function _tarefaFotosApagar(tarefaIds, motivo) {
+  const ids = [...new Set((tarefaIds || []).filter(Boolean))];
+  if (!ids.length) return;
+  const { data } = await sb.from('gestao_anexos_temporarios')
+    .select('id,storage_path')
+    .eq('contexto_tipo', 'tarefa_livre').in('contexto_id', ids).is('removido_em', null);
+  if (!data || !data.length) return;
+  const paths = data.map(r => r.storage_path).filter(Boolean);
+  if (paths.length) {
+    const { error } = await sb.storage.from('gestao-anexos-temp').remove(paths);
+    if (error) { console.warn('[tarefas] fotos não removidas do bucket:', error.message); return; }
+  }
+  await sb.from('gestao_anexos_temporarios')
+    .update({ removido_em: new Date().toISOString(), remocao_motivo: motivo || 'context_completed' })
+    .in('id', data.map(r => r.id));
+  ids.forEach(id => { delete G._tempMediaLists[tempMediaKey('tarefa_livre', id)]; G._tempMediaCounts[tempMediaKey('tarefa_livre', id)] = 0; });
+}
+/* Faxina (uma vez por sessão): fotos que eu anexei em tarefas já concluídas ou excluídas
+   em outra tela (Hub, painel de listas) também saem do bucket. */
+async function _tarefaFotosFaxina() {
+  if (G._tarefaFaxinaFeita) return;
+  G._tarefaFaxinaFeita = true;
+  try {
+    const { data } = await sb.from('gestao_anexos_temporarios')
+      .select('contexto_id').eq('contexto_tipo', 'tarefa_livre')
+      .eq('criado_por', G.usuario.id).is('removido_em', null);
+    const ids = [...new Set((data || []).map(r => r.contexto_id))];
+    if (!ids.length) return;
+    const { data: abertas } = await sb.from('tarefas_livres').select('id').in('id', ids).eq('concluida', false);
+    const vivas = new Set((abertas || []).map(t => t.id));
+    const mortas = ids.filter(id => !vivas.has(id));
+    if (mortas.length) await _tarefaFotosApagar(mortas, 'context_completed');
+  } catch (e) { console.warn('[tarefas] faxina de fotos:', e.message); }
 }
 
 function renderTarefas({ pendentes = [], acompanhando = [] }) {
@@ -6535,6 +6591,14 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
     const taskIdJs = _sqN(t.id);
     const descDisp = _escN(t.descricao || '');
     const tipoDisp = _escN(TIPO_LABEL[t.tipo]||t.tipo||'');
+    // Fotos: câmera para anexar, miniatura com a contagem; colar/arrastar direto na linha
+    const fotoTit = _sqAttr(_sqN('Tarefa · ' + (t.descricao || '')));
+    const fotoN = tempMediaCount('tarefa_livre', t.id);
+    const fotoBtn = `<button class="task-foto-btn" type="button" onclick="abrirTempMediaUpload('tarefa_livre', ${taskIdJs}, ${fotoTit})" title="Anexar foto (some quando a tarefa for concluída)">${GI.camera}</button>`;
+    const fotoMini = fotoN
+      ? `<button class="tm-mini" type="button" data-ctx="tarefa_livre" data-id="${_escN(t.id)}" title="Ver fotos" onclick="abrirTempMediaUpload('tarefa_livre', ${taskIdJs}, ${fotoTit})"><span class="tm-mini-img"></span><span class="tm-mini-n">${fotoN}</span></button>`
+      : '';
+    const fotoAttrs = ` data-tm-ctx="tarefa_livre" data-tm-id="${_escN(t.id)}" data-tm-tit="${_escN('Tarefa · ' + (t.descricao || ''))}"`;
 
     if (acompanhada) {
       const paraHtml = destino
@@ -6542,7 +6606,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
            <span style="font-size:10px;color:var(--txt-3)">para ${_escN((destino.nome||'').split(' ')[0]||'')}</span>`
         : '';
       const statusChip = `<span class="task-status-chip ${t.concluida ? 'ok' : 'pend'}">${t.concluida ? 'Concluída' : 'Pendente'}</span>`;
-      return `<div class="task-item">
+      return `<div class="task-item"${t.concluida ? '' : fotoAttrs}>
         <div class="task-check" style="border-color:#ddd;color:var(--txt-3);font-size:10px;cursor:pointer" onclick="confirmarExcluirTarefa(${taskIdJs})" title="Excluir tarefa">${GI.x}</div>
         <div style="flex:1;min-width:0">
           <div class="task-desc ${t.concluida?'done':''}">${descDisp}</div>
@@ -6557,12 +6621,13 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
             </div>
           </div>
         </div>
+        ${t.concluida ? '' : fotoMini + fotoBtn}
         <button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">${GI.edit}</button>
       </div>`;
     }
 
     const podeEditar = !t.criado_por || t.criado_por === G.usuario.id;
-    return `<div class="task-item">
+    return `<div class="task-item"${fotoAttrs}>
       <div class="task-check ${t.concluida?'done':''}" onclick="toggleTarefa(${taskIdJs},${t.concluida})"></div>
       <div style="flex:1;min-width:0">
         <div class="task-desc ${t.concluida?'done':''}">${descDisp}</div>
@@ -6574,6 +6639,7 @@ function renderTarefas({ pendentes = [], acompanhando = [] }) {
           ${prazoHtml ? `<div style="flex-shrink:0;margin-left:auto">${prazoHtml}</div>` : ''}
         </div>
       </div>
+      ${fotoMini}${fotoBtn}
       ${podeEditar ? `<button class="task-edit-btn" onclick="abrirEditarTarefa(${taskIdJs})" title="Editar tarefa">${GI.edit}</button>` : ''}
     </div>`;
   }).join('');
@@ -6717,6 +6783,7 @@ async function toggleTarefa(id, atual) {
   await sb.from('tarefas_livres').update({
     concluida: !atual, concluida_em: atual ? null : new Date().toISOString()
   }).eq('id', id);
+  if (!atual) _tarefaFotosApagar([id], 'context_completed').catch(() => {});
   ExpNav.refreshTarefas();
   carregarTarefas();
 }
@@ -6802,6 +6869,7 @@ function confirmarExcluirTarefa(id) {
     'Esta tarefa atribuída será removida permanentemente.',
     async () => {
       if (t) _taskHistSalvar(t, 'excluida');
+      await _tarefaFotosApagar([id], 'context_deleted').catch(() => {});
       await sb.from('tarefas_livres').delete().eq('id', id);
       carregarTarefas();
     }
@@ -7138,11 +7206,11 @@ function _renderFilaEquipe(grid) {
     const radar = _radarAtivos(_fluxoRadarData[u.id]);
     const radarHtml = radar.length
       ? `<div class="fq-radar"><span class="fq-radar-t">Radar</span>${radar.map(rd => _radarChipHtml(rd)).join('')}</div>`
-      : '';
+      : '<div class="fq-radar"></div>';   // faixa vazia: mantém a mesma altura em todas as linhas
     const podeEditar = isSocioRole(G.usuario?.role);
     return `
       <div class="fq-pessoa${podeEditar ? ' link' : ''}"${podeEditar ? ` onclick="_filaAbrirPessoa('${u.id}')" title="Editar a fila no Fluxo de trabalho"` : ''}>
-        ${_avImg(u, 24, 9)}
+        ${_avImg(u, 30, 10)}
         <div style="min-width:0"><div class="fq-pessoa-nome">${_escN(u.nome)}</div><div class="fq-pessoa-role">${ROLES_LABEL[u.role] || ''}</div></div>
       </div>
       <div class="fq-linha">
@@ -15154,6 +15222,7 @@ function _tmAtualizarTelaDoItem(contextoTipo) {
   if (contextoTipo === 'revisao_tarefa' && G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
   else if (contextoTipo === 'checklist_etapa_exec_item' && G.produtoAtivo) _renderCkEtapas(G.produtoAtivo);
   else if (contextoTipo === 'checklist_tarefa_item') _renderCkAbertos();
+  else if (contextoTipo === 'tarefa_livre') carregarTarefas();
 }
 
 async function _tmRemover(id) {
@@ -15362,6 +15431,11 @@ async function carregarEstadoTempMediaContexto(contextoTipo, contextoId, cfg) {
     concluidoEm = data?.concluido_em || null;
   }
 
+  if (contextoTipo === 'tarefa_livre') {
+    // Fotos de tarefa não vencem pelo tempo: saem do bucket quando a tarefa é concluída ou excluída
+    const dt = new Date(); dt.setFullYear(dt.getFullYear() + 10);
+    return { concluido: false, concluidoEm: null, expiresAt: dt.toISOString() };
+  }
   const expiresAt = tempMediaExpiresAt(concluido, cfg, fallbackDias);
   return { concluido, concluidoEm, expiresAt };
 }
@@ -18888,6 +18962,66 @@ G._ckPresets  = [];
 // CARREGAR / RENDERIZAR CHECKLIST DO PRODUTO
 // ═════════════════════════════════════════════════════════════
 
+/* ── Projeto de referência do modelo de checklist (checklist_etapa_preset.ref_oportunidade_id) ──
+   Projeto com as pranchas completas daquela etapa e tipo, para consultar além do checklist.
+   Escolhido no modelo (cliente > projeto); aparece no início do checklist da etapa. */
+async function _ckRefCarregarOpps(force) {
+  if (G._ckRefOpps && !force) return G._ckRefOpps;
+  const { data } = await sb.from('oportunidades').select('id, projeto, cliente_id, clientes(id, nome)').order('projeto');
+  G._ckRefOpps = data || [];
+  return G._ckRefOpps;
+}
+function _ckRefOpp(oppId) {
+  if (!oppId) return null;
+  const o = (G._ckRefOpps || []).find(x => x.id === oppId);
+  if (o) return { id: o.id, projeto: o.projeto, cliente: o.clientes?.nome || '', cliente_id: o.cliente_id };
+  const p = (G.todosProdutos || []).find(x => x.oportunidades?.id === oppId);
+  if (p) return { id: oppId, projeto: p.oportunidades.projeto, cliente: p.oportunidades.clientes?.nome || '', cliente_id: p.oportunidades.cliente_id };
+  return null;
+}
+function _ckRefNome(oppId) {
+  const o = _ckRefOpp(oppId);
+  return o ? [o.cliente, o.projeto].filter(Boolean).join(' · ') : 'Projeto de referência';
+}
+function _preRefSelectsHtml() {
+  const opps = G._ckRefOpps;
+  if (!opps) return '<span style="font-size:11px;color:var(--txt-3)">Carregando…</span>';
+  if (_preState.refOpp && !_preState.refCliente) _preState.refCliente = _ckRefOpp(_preState.refOpp)?.cliente_id || '';
+  const clientes = {};
+  opps.forEach(o => { if (o.cliente_id) clientes[o.cliente_id] = o.clientes?.nome || '—'; });
+  const cliOpts = Object.entries(clientes).sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'))
+    .map(([id, nome]) => `<option value="${_ckA(id)}"${id === _preState.refCliente ? ' selected' : ''}>${_ckE(nome)}</option>`).join('');
+  const oppOpts = opps.filter(o => o.cliente_id === _preState.refCliente)
+    .map(o => `<option value="${_ckA(o.id)}"${o.id === _preState.refOpp ? ' selected' : ''}>${_ckE(o.projeto || 'Sem nome')}</option>`).join('');
+  return `<select class="pre-live-meta-sel" onchange="_preState.refCliente=this.value;_preState.refOpp='';_renderPreForm()">
+      <option value="">Cliente…</option>${cliOpts}</select>
+    <select class="pre-live-meta-sel" ${_preState.refCliente ? '' : 'disabled'} onchange="_preState.refOpp=this.value">
+      <option value="">Projeto…</option>${oppOpts}</select>`;
+}
+async function _ckCarregarReferencias(execs) {
+  G._ckRefPorPreset = G._ckRefPorPreset || {};
+  const ids = [...new Set((execs || []).map(e => e.preset_id).filter(Boolean))];
+  if (!ids.length) return;
+  const { data, error } = await sb.from('checklist_etapa_preset').select('id, ref_oportunidade_id').in('id', ids);
+  if (error) return;   // coluna ainda não criada
+  (data || []).forEach(p => { G._ckRefPorPreset[p.id] = p.ref_oportunidade_id || null; });
+  const faltam = (data || []).map(p => p.ref_oportunidade_id).filter(id => id && !_ckRefOpp(id));
+  if (faltam.length) await _ckRefCarregarOpps(true);
+}
+function _ckRefHtml(exec) {
+  const oppId = exec?.preset_id ? G._ckRefPorPreset?.[exec.preset_id] : null;
+  if (!oppId) return '';
+  return `<div class="ck-ref"><span class="ck-ref-lbl">Projeto de referência</span>
+    <button class="ck-ref-link" type="button" onclick="abrirProjetoReferencia(${_sqCk(oppId)})" title="Abrir o projeto de referência">${_ckE(_ckRefNome(oppId))}</button></div>`;
+}
+function abrirProjetoReferencia(oppId) {
+  const prods = (G.todosProdutos || []).filter(p => p.oportunidades?.id === oppId || p.oportunidade_id === oppId);
+  const atual = (G.todosProdutos || []).find(p => p.id === G.produtoAtivo);
+  const mesmo = prods.find(p => atual && p.tipo && p.tipo === atual.tipo) || prods[0];
+  if (!mesmo) { toast('O projeto de referência não está na Gestão.'); return; }
+  abrirProduto(mesmo.id);
+}
+
 async function carregarChecklist(prodId) {
   if(!prodId) return;
   document.getElementById('ck-etapa-lista').innerHTML  = '<div class="loading-state">Carregando…</div>';
@@ -18898,6 +19032,7 @@ async function carregarChecklist(prodId) {
     .select('*, checklist_etapa_exec_item(*), checklist_etapa_exec_secao(*)')
     .eq('produto_id', prodId);
   G._ckEtapas = execs || [];
+  await _ckCarregarReferencias(G._ckEtapas);
   await carregarTempMediaCounts(
     'checklist_etapa_exec_item',
     G._ckEtapas.flatMap(exec => (exec.checklist_etapa_exec_item || []).map(item => item.id))
@@ -18946,6 +19081,7 @@ function _ckEtapaCard(etapa, defaultOpen) {
       ${config}
     </div>
     <div class="ck-card-body${defaultOpen?' open':''}" id="ck-e-${etapa.id}">
+      ${_ckRefHtml(exec)}
       ${bodyItems}
       ${atrib}
     </div>
@@ -19910,6 +20046,7 @@ async function carregarPresetsAdmin() {
     .select('*, checklist_etapa_preset_secao(*, checklist_etapa_preset_item(*)), checklist_etapa_preset_item(*)')
     .order('nome');
   G._ckPresets = data || [];
+  if (G._ckPresets.some(p => p.ref_oportunidade_id)) await _ckRefCarregarOpps().catch(() => {});
   _renderPresetsAdmin();
 }
 
@@ -19950,6 +20087,7 @@ function _renderPresetsAdmin() {
         <div class="preset-card-meta">
           ${p.tipo_produto?`<span class="preset-tag preset-tag-nucleo">${_ckE(p.tipo_produto)}</span>`:'<span class="preset-tag preset-tag-etapa">Genérico</span>'}
           ${p.etapa_tipo?`<span class="preset-tag preset-tag-etapa">${_ckE(p.etapa_tipo)}</span>`:''}
+          ${p.ref_oportunidade_id?`<span class="preset-tag preset-tag-etapa" title="Projeto de referência">Ref.: ${_ckE(_ckRefNome(p.ref_oportunidade_id))}</span>`:''}
           <span class="preset-tag preset-tag-etapa">${nItens} ${nItens===1?'item':'itens'} · ${secoes.length} ${secoes.length===1?'seção':'seções'}</span>
         </div>
         ${semSec.map(it=>`<div class="preset-item-row"><span style="color:var(--txt-3);margin-right:4px">·</span>${_ckE(it.texto)}</div>`).join('')}
@@ -20012,6 +20150,8 @@ function _preSetFromPreset(preset) {
     nome:        preset.nome || '',
     nucleo:      preset.tipo_produto || '',
     etapa:       preset.etapa_tipo   || '',
+    refOpp:      preset.ref_oportunidade_id || '',
+    refCliente:  '',
     basedOnId:   null,
     secoes: secoes.map(s => ({
       titulo: s.titulo || '',
@@ -20033,7 +20173,8 @@ function abrirFormPreset(id) {
   }
 
   const preset = id ? G._ckPresets.find(p => p.id === id) : null;
-  _preState = preset ? _preSetFromPreset(preset) : { id: null, nome: '', nucleo: '', etapa: '', basedOnId: null, secoes: [], semSecao: [] };
+  _preState = preset ? _preSetFromPreset(preset) : { id: null, nome: '', nucleo: '', etapa: '', refOpp: '', refCliente: '', basedOnId: null, secoes: [], semSecao: [] };
+  _ckRefCarregarOpps().then(() => { if (_preState) _renderPreForm(); });
   if(!_preState.secoes.length) _preAddSecao();
   _renderPreForm();
 
@@ -20138,6 +20279,10 @@ function _renderPreForm() {
       </div>
       ${forkRow}
       <div class="pre-live-meta">
+        <div class="pre-live-meta-row" title="Projeto com as pranchas completas desta etapa, para consultar além do checklist">
+          <span class="pre-live-meta-label">Referência</span>
+          ${_preRefSelectsHtml()}
+        </div>
         <div class="pre-live-meta-row">
           <span class="pre-live-meta-label">Núcleo</span>
           ${nucleoPills}
@@ -20475,13 +20620,23 @@ async function salvarPreset(id) {
 
   let presetId = id || null;
   if(presetId) {
-    await sb.from('checklist_etapa_preset').update({ nome, tipo_produto: tipoProduto, etapa_tipo: etapaTipo }).eq('id', presetId);
+    const _upd = { nome, tipo_produto: tipoProduto, etapa_tipo: etapaTipo, ref_oportunidade_id: _preState.refOpp || null };
+    let { error: _eu } = await sb.from('checklist_etapa_preset').update(_upd).eq('id', presetId);
+    if (_eu && /ref_oportunidade_id/.test(_eu.message || '')) {
+      delete _upd.ref_oportunidade_id;
+      await sb.from('checklist_etapa_preset').update(_upd).eq('id', presetId);
+      toast('Projeto de referência não salvo: rode o SQL checklist_referencia.sql no Supabase.');
+    }
     await sb.from('checklist_etapa_preset_secao').delete().eq('preset_id', presetId);
     await sb.from('checklist_etapa_preset_item').delete().eq('preset_id', presetId);
   } else {
-    const { data: pNew, error } = await sb.from('checklist_etapa_preset')
-      .insert({ nome, tipo_produto: tipoProduto, etapa_tipo: etapaTipo, criado_por: G.usuario.id, created_at: new Date().toISOString() })
-      .select().single();
+    const _ins = { nome, tipo_produto: tipoProduto, etapa_tipo: etapaTipo, ref_oportunidade_id: _preState.refOpp || null, criado_por: G.usuario.id, created_at: new Date().toISOString() };
+    let { data: pNew, error } = await sb.from('checklist_etapa_preset').insert(_ins).select().single();
+    if (error && /ref_oportunidade_id/.test(error.message || '')) {
+      delete _ins.ref_oportunidade_id;
+      ({ data: pNew, error } = await sb.from('checklist_etapa_preset').insert(_ins).select().single());
+      if (!error) toast('Projeto de referência não salvo: rode o SQL checklist_referencia.sql no Supabase.');
+    }
     if(error) { toast('Erro: '+error.message); return; }
     presetId = pNew.id;
   }
@@ -21720,9 +21875,9 @@ init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-10-27f"></script>
+<script src="chat.js?v=2026-10-27h"></script>
 <!-- EXP · Timer Widget -->
-<script src="timer.js"></script>
+<script src="timer.js?v=2026-10-27a"></script>
 <style>
   #exp-timer-widget {
     left:   calc(72px + (66px / 2) - 23px) !important;
