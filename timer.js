@@ -379,19 +379,17 @@
           '<input type="time" class="tmr-input" id="tmr-cf-fim">',
         '</div>',
       '</div>',
-      /* Atividade e ferramenta (só projeto) — mesmas do Apontamentos */
+      /* Atividade (só projeto) — mesmas do Apontamentos */
       '<div id="tmr-cf-ativ-wrap">',
         '<div class="tmr-sel-lbl">Atividade</div>',
         '<div class="tmr-chips" id="tmr-cf-ativ"></div>',
-        '<div class="tmr-sel-lbl">Ferramenta <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
-        '<div class="tmr-chips" id="tmr-cf-ferr"></div>',
       '</div>',
       '<div id="tmr-cf-subtarefas-wrap">',
         '<div class="tmr-sel-lbl">Subtarefas <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
         '<input type="text" class="tmr-input" id="tmr-cf-subtarefas" placeholder="Ex: lan&#231;amento, montagem&#8230;">',
         '<div id="tmr-cf-subtarefas-sugestoes" style="display:none;gap:5px;flex-wrap:wrap;margin-top:5px"></div>',
       '</div>',
-      '<div>',
+      '<div style="display:none">',   /* descrição não é mais pedida: a atividade classifica o trabalho */
         '<div class="tmr-sel-lbl">Descri&#231;&#227;o <span style="font-weight:400;text-transform:none;font-size:7px">(opcional)</span></div>',
         '<textarea class="tmr-textarea" id="tmr-cf-desc" placeholder="O que foi feito&#8230;"></textarea>',
       '</div>',
@@ -959,7 +957,7 @@
   /* ═══════════════════════════════════════════════════════════════
      Ações do widget (_tmr — chamadas via onclick no HTML)
   ═══════════════════════════════════════════════════════════════ */
-  /* ── Atividade padrão e ferramenta (mesmas chaves do Apontamentos; nomes curtos aqui) ── */
+  /* ── Atividade padrão (mesmas chaves do Apontamentos; nomes curtos aqui) ── */
   var TMR_ATIV = [
     ['concepcao','Concepção','Concepção e estudo'], ['modelagem','Modelagem','Modelagem'],
     ['documentacao','Documentação','Documentação e detalhamento'], ['especificacao','Especificação','Especificação e quantitativos'],
@@ -968,16 +966,13 @@
     ['reuniao_ext','Reunião externa','Reunião com cliente ou parceiros'], ['alinhamento','Alinhamento','Alinhamento interno'],
     ['emissao','Emissão','Emissão e entrega'], ['visita','Visita','Visita e deslocamento']
   ];
-  var TMR_FERR = ['Revit','Lumion','SketchUp','AutoCAD','Figma','IA'];
-  var _tmrAtiv = '', _tmrFerr = [];
+  var _tmrAtiv = '';
   function _tmrRenderAtiv() {
-    var a = document.getElementById('tmr-cf-ativ'), f = document.getElementById('tmr-cf-ferr');
+    var a = document.getElementById('tmr-cf-ativ');
     if (a) a.innerHTML = TMR_ATIV.map(function (x) {
       return '<button type="button" class="tmr-chip' + (_tmrAtiv === x[0] ? ' on' : '') + '" title="' + x[2] + '" onclick="_tmr.ativ(\'' + x[0] + '\')">' + x[1] + '</button>';
     }).join('');
-    if (f) f.innerHTML = TMR_FERR.map(function (n) {
-      return '<button type="button" class="tmr-chip' + (_tmrFerr.indexOf(n) !== -1 ? ' on' : '') + '" onclick="_tmr.ferr(\'' + n + '\')">' + n + '</button>';
-    }).join('');
+
   }
   function _tmrAtivVisivel() {
     var st = _loadState() || {};
@@ -989,42 +984,25 @@
     lista.forEach(function (v) { if (!v) return; c[v] = (c[v] || 0) + 1; if (c[v] > n) { n = c[v]; best = v; } });
     return best;
   }
-  /* Sugestão: atividade mais usada por você neste projeto; ferramenta mais usada nessa atividade */
+  /* Sugestão: atividade mais usada por você neste projeto (de preferência nesta etapa) */
   async function _tmrAutoAtiv(state) {
     try {
       if ((state.tipo || 'projeto') !== 'projeto' || !state.produtoId) return;
       var client = _getSb(), user = await _getUser();
       if (!client || !user || !user.id) return;
-      var r = await client.from('horas_lancadas').select('atividade,ferramentas,etapa_id')
+      var r = await client.from('horas_lancadas').select('atividade,etapa_id')
         .eq('usuario_id', user.id).eq('produto_id', state.produtoId).not('atividade', 'is', null)
         .order('data_lancamento', { ascending: false }).limit(30);
       if (r.error || !r.data || !r.data.length || _tmrAtiv) return;
       var mesmaEtapa = r.data.filter(function (h) { return state.etapaId && h.etapa_id === state.etapaId; });
       _tmrAtiv = _maisFreq((mesmaEtapa.length ? mesmaEtapa : r.data).map(function (h) { return h.atividade; }));
-      if (_tmrAtiv && !_tmrFerr.length) await _tmrSugerirFerr(client, user.id);
       _tmrRenderAtiv();
     } catch (e) {}
-  }
-  async function _tmrSugerirFerr(client, uid) {
-    var r = await client.from('horas_lancadas').select('ferramentas').eq('usuario_id', uid).eq('atividade', _tmrAtiv)
-      .not('ferramentas', 'is', null).order('data_lancamento', { ascending: false }).limit(20);
-    if (r.error || !r.data || !r.data.length) return;
-    var top = _maisFreq(r.data.map(function (h) { return (h.ferramentas || []).slice().sort().join('|'); }));
-    _tmrFerr = top ? top.split('|') : [];
   }
 
   var _tmr = {
     ativ: function (k) {
       _tmrAtiv = _tmrAtiv === k ? '' : k;
-      _tmrRenderAtiv();
-      if (_tmrAtiv && !_tmrFerr.length) {
-        var client = _getSb();
-        _getUser().then(function (u) { if (client && u && u.id) return _tmrSugerirFerr(client, u.id); }).then(_tmrRenderAtiv, function () {});
-      }
-    },
-    ferr: function (n) {
-      var i = _tmrFerr.indexOf(n);
-      if (i === -1) _tmrFerr.push(n); else _tmrFerr.splice(i, 1);
       _tmrRenderAtiv();
     },
 
@@ -1341,7 +1319,7 @@
       setVal('tmr-cf-desc', '');
       setVal('tmr-cf-subtarefas', '');
       var subtWrap = document.getElementById('tmr-cf-subtarefas-wrap');
-      if (subtWrap) subtWrap.style.display = ((state.tipo || 'projeto') === 'projeto') ? '' : 'none';
+      if (subtWrap) subtWrap.style.display = 'none';   // a subtarefa agora é a atividade escolhida
       var subtInput = document.getElementById('tmr-cf-subtarefas');
       if (subtInput) {
         subtInput.oninput = function () { _renderTimerSubtarefasSuggestions().catch(function () {}); };
@@ -1350,7 +1328,7 @@
       var btn = document.getElementById('tmr-save-btn');
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
       _renderTimerSubtarefasSuggestions().catch(function () {});
-      _tmrAtiv = ''; _tmrFerr = [];
+      _tmrAtiv = '';
       _tmrRenderAtiv(); _tmrAtivVisivel();
       _tmrAutoAtiv(state);
       _showPanel('confirm');
@@ -1395,7 +1373,9 @@
       var ini     = (document.getElementById('tmr-cf-ini')  || {}).value || '';
       var fim     = (document.getElementById('tmr-cf-fim')  || {}).value || '';
       var desc    = ((document.getElementById('tmr-cf-desc') || {}).value || '').trim();
-      var subtarefas = ((document.getElementById('tmr-cf-subtarefas') || {}).value || '').trim();
+      /* A subtarefa é a própria atividade escolhida (nome completo) */
+      var _ativT = TMR_ATIV.filter(function (x) { return x[0] === _tmrAtiv; })[0];
+      var subtarefas = _ativT ? _ativT[2] : '';
 
       if (!dataISO || !ini || !fim) {
         _toast('Preencha data, início e fim');
@@ -1487,12 +1467,11 @@
         etapa_id:        state.etapaId   || null,
         descricao:       desc || null,
         atividade:       (state.tipo || 'projeto') === 'projeto' ? (_tmrAtiv || null) : null,
-        ferramentas:     (state.tipo || 'projeto') === 'projeto' && _tmrFerr.length ? _tmrFerr.slice() : null,
       };
       var lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
       /* colunas de atividade ainda não criadas no banco: grava sem elas */
-      if (lancRes.error && /atividade|ferramentas/.test(lancRes.error.message || '')) {
-        delete payloadL.atividade; delete payloadL.ferramentas;
+      if (lancRes.error && /atividade/.test(lancRes.error.message || '')) {
+        delete payloadL.atividade;
         lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
       }
 
@@ -1822,7 +1801,7 @@
     }).catch(function (e) { console.warn('[EXP Timer Push]', e); });
   }
 
-  /* trocar o tipo na confirmação mostra/esconde atividade e ferramenta */
+  /* trocar o tipo na confirmação mostra/esconde a atividade */
   ['applyCfEdit', 'changeTipoCfe'].forEach(function (k) {
     var orig = _tmr[k]; if (typeof orig !== 'function') return;
     _tmr[k] = function () { var r = orig.apply(this, arguments); setTimeout(_tmrAtivVisivel, 0); return r; };

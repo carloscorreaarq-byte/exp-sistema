@@ -297,7 +297,7 @@ body{
 }
 .apo-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 
-/* ── Atividade e ferramenta (chips) + quadro de ajuda ── */
+/* ── Atividade (chips) + quadro de ajuda ── */
 #apo-ativ-wrap{position:relative}
 .apo-chips{display:flex;flex-wrap:wrap;gap:3px}
 .apo-chip{border:1px solid var(--cinza);background:var(--branco);color:var(--txt-2,#555);border-radius:999px;padding:1px 7px;font-family:inherit;font-size:9.5px;cursor:pointer;transition:border-color .12s,background .12s,color .12s;line-height:1.5}
@@ -514,6 +514,7 @@ body{
 .bh-eq-table tr:last-child td{border-bottom:none}
 .bh-eq-table tbody tr{cursor:pointer}
 .stab[hidden]{display:none !important}
+.apo-field[hidden]{display:none !important}
 /* Submissão: grade de 6 semanas */
 .sub-grade-wrap{overflow-x:auto}
 .sub-grade{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;font-variant-numeric:lining-nums tabular-nums}
@@ -1357,15 +1358,11 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
               <div class="apo-note" id="apo-stage-note" hidden></div>
             </div>
 
-            <!-- Atividade padrão (projeto) + ferramenta: classificam o trabalho para a análise de horas -->
+            <!-- Atividade padrão (projeto): classifica o trabalho para a análise de horas -->
             <div class="apo-field" id="apo-ativ-wrap" style="display:none">
               <label>Atividade <button type="button" class="apo-ajuda" id="apo-ajuda-btn" aria-label="Como escolher a atividade" aria-expanded="false">?</button></label>
               <div class="apo-chips" id="apo-ativ-chips" role="radiogroup" aria-label="Atividade"></div>
               <div class="apo-ajuda-pop" id="apo-ajuda-pop" hidden></div>
-            </div>
-            <div class="apo-field" id="apo-ferr-wrap" style="display:none">
-              <label>Ferramenta (opcional)</label>
-              <div class="apo-chips" id="apo-ferr-chips" role="group" aria-label="Ferramenta"></div>
             </div>
 
             <div class="apo-field" id="apo-subtarefas-wrap">
@@ -1378,7 +1375,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
               <div id="apo-subtarefas-sugestoes" style="display:none"></div>
             </div>
 
-            <div class="apo-field">
+            <!-- Descrição não é mais pedida (a atividade classifica o trabalho); o campo fica oculto para preservar a de lançamentos antigos ao editar -->
+            <div class="apo-field" hidden>
               <label for="apo-desc">Descrição (opcional)</label>
               <input type="text" id="apo-desc" placeholder="O que foi feito..." list="apo-desc-list" autocomplete="off">
               <datalist id="apo-desc-list"></datalist>
@@ -1941,20 +1939,19 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   /* Atividades padrão de projeto (montadas a partir das subtarefas/descrições mais usadas — 27/10/2026).
      A chave fica gravada em horas_lancadas.atividade; o nome pode mudar sem perder o histórico. */
   var ATIVIDADES = [
-    { k:'concepcao',     nome:'Concepção e estudo',             ex:'referências, composição de espécies, charrete, setorização, estudo' },
-    { k:'modelagem',     nome:'Modelagem',                       ex:'modelagem, modelagem Revit, entorno, ático' },
-    { k:'documentacao',  nome:'Documentação e detalhamento',     ex:'documentação, plantas, detalhamentos, cadernos de aprovação, perfis viários, paginação' },
-    { k:'especificacao', nome:'Especificação e quantitativos',   ex:'especificações, memorial, tabelas de quantitativos, tabela de mobiliários' },
-    { k:'imagens',       nome:'Imagens e apresentação',          ex:'Lumion, imagens, imagens IA, material para imagens, apresentação EP' },
-    { k:'orcamento',     nome:'Orçamento e fornecedores',        ex:'orçamentos, tabela de orçamento, material técnico, direcionamento de fornecedores' },
-    { k:'revisao',       nome:'Revisão (fazer)',                 ex:'revisão de projeto, de imagens, de entregável, orientação de projeto' },
-    { k:'ajustes',       nome:'Ajustes e correções',             ex:'correção, ajustes de desenho e de projeto, aplicar revisão' },
-    { k:'reuniao_ext',   nome:'Reunião com cliente ou parceiros', ex:'reunião de apresentação, com cliente, compatibilização, engenharia e cronograma' },
-    { k:'alinhamento',   nome:'Alinhamento interno',             ex:'reunião de alinhamento interna, alinhamento de tarefa ou produto' },
-    { k:'emissao',       nome:'Emissão e entrega',               ex:'emissão, exportação, ajuste e reemissão de PDFs, organização de arquivos' },
-    { k:'visita',        nome:'Visita e deslocamento',           ex:'viagem, visita técnica' }
+    { k:'concepcao', curto:'Concepção',     nome:'Concepção e estudo',             ex:'referências, composição de espécies, charrete, setorização, estudo' },
+    { k:'modelagem', curto:'Modelagem',     nome:'Modelagem',                       ex:'modelagem, modelagem Revit, entorno, ático' },
+    { k:'documentacao', curto:'Documentação',  nome:'Documentação e detalhamento',     ex:'documentação, plantas, detalhamentos, cadernos de aprovação, perfis viários, paginação' },
+    { k:'especificacao', curto:'Especificação', nome:'Especificação e quantitativos',   ex:'especificações, memorial, tabelas de quantitativos, tabela de mobiliários' },
+    { k:'imagens', curto:'Imagens',       nome:'Imagens e apresentação',          ex:'Lumion, imagens, imagens IA, material para imagens, apresentação EP' },
+    { k:'orcamento', curto:'Orçamento',     nome:'Orçamento e fornecedores',        ex:'orçamentos, tabela de orçamento, material técnico, direcionamento de fornecedores' },
+    { k:'revisao', curto:'Revisão',       nome:'Revisão (fazer)',                 ex:'revisão de projeto, de imagens, de entregável, orientação de projeto' },
+    { k:'ajustes', curto:'Ajustes',       nome:'Ajustes e correções',             ex:'correção, ajustes de desenho e de projeto, aplicar revisão' },
+    { k:'reuniao_ext', curto:'Reunião externa',   nome:'Reunião com cliente ou parceiros', ex:'reunião de apresentação, com cliente, compatibilização, engenharia e cronograma' },
+    { k:'alinhamento', curto:'Alinhamento',   nome:'Alinhamento interno',             ex:'reunião de alinhamento interna, alinhamento de tarefa ou produto' },
+    { k:'emissao', curto:'Emissão',       nome:'Emissão e entrega',               ex:'emissão, exportação, ajuste e reemissão de PDFs, organização de arquivos' },
+    { k:'visita', curto:'Visita',        nome:'Visita e deslocamento',           ex:'viagem, visita técnica' }
   ];
-  var FERRAMENTAS = ['Revit','Lumion','SketchUp','AutoCAD','Figma','IA'];
   var COR_TIPO = { projeto:'#5981CC', organizacao:'#4D865C', sociedade:'#E2B141' };
 
   var REEMBOLSO_DETALHES = {
@@ -4235,9 +4232,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var isProj = type==='projeto';
     document.getElementById('apo-project-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-stage-wrap').style.display = isProj && document.getElementById('apo-project').value ? '' : 'none';
-    document.getElementById('apo-subtarefas-wrap').style.display = isProj?'':'none';
+    document.getElementById('apo-subtarefas-wrap').style.display = 'none';   // a subtarefa agora é a atividade escolhida
     document.getElementById('apo-ativ-wrap').style.display = isProj?'':'none';
-    document.getElementById('apo-ferr-wrap').style.display = isProj?'':'none';
     document.getElementById('apo-category-wrap').style.display = isProj?'none':'';
     if (!isProj) {
       clearSubtarefasTags();
@@ -5022,46 +5018,36 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
   // ── Reset forms ───────────────────────────────────────────────────
 
-  /* ── Atividade e ferramenta ── */
-  AP.atividade = ''; AP.ferramentas = [];
+  /* ── Atividade ── */
+  AP.atividade = '';
   function renderAtivFerr() {
-    var a = document.getElementById('apo-ativ-chips'), f = document.getElementById('apo-ferr-chips');
+    var a = document.getElementById('apo-ativ-chips');
     if (a) a.innerHTML = ATIVIDADES.map(function(x){
       var on = AP.atividade === x.k;
-      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" title="'+esc(x.ex)+'" data-ativ="'+x.k+'">'+esc(x.nome)+'</button>';
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" title="'+esc(x.nome+': '+x.ex)+'" data-ativ="'+x.k+'">'+esc(x.curto || x.nome)+'</button>';
     }).join('');
-    if (f) f.innerHTML = FERRAMENTAS.map(function(n){
-      var on = AP.ferramentas.indexOf(n) !== -1;
-      return '<button type="button" class="apo-chip sm'+(on?' on':'')+'" aria-pressed="'+on+'" data-ferr="'+esc(n)+'">'+esc(n)+'</button>';
-    }).join('');
+
   }
   function setAtividade(k, auto) {
     AP.atividade = (AP.atividade === k && !auto) ? '' : k;
-    /* ferramenta: se nada marcado, sugere as que você mais usa nessa atividade */
-    if (AP.atividade && !AP.ferramentas.length) AP.ferramentas = sugerirFerramentas(AP.atividade);
     renderAtivFerr();
   }
-  function toggleFerramenta(n) {
-    var i = AP.ferramentas.indexOf(n);
-    if (i === -1) AP.ferramentas.push(n); else AP.ferramentas.splice(i, 1);
-    renderAtivFerr();
-  }
-  function limparAtivFerr() { AP.atividade = ''; AP.ferramentas = []; renderAtivFerr(); }
+  function limparAtivFerr() { AP.atividade = ''; renderAtivFerr(); }
   function renderAjudaAtiv() {
     var pop = document.getElementById('apo-ajuda-pop'); if (!pop) return;
     pop.innerHTML = '<div class="apo-ajuda-hd">Como escolher a atividade</div>' +
       '<table class="apo-ajuda-tb"><thead><tr><th>Atividade</th><th>Junta o que hoje aparece como</th></tr></thead><tbody>' +
       ATIVIDADES.map(function(x){ return '<tr><td>'+esc(x.nome)+'</td><td>'+esc(x.ex)+'</td></tr>'; }).join('') +
       '</tbody></table>' +
-      '<div class="apo-ajuda-pe">A <b>ferramenta</b> (Revit, Lumion…) vai no campo de baixo. O <b>objeto</b> (térreo, praça, revestimentos, vegetação) vai nas subtarefas ou na descrição.</div>';
+      '<div class="apo-ajuda-pe">Escolha <b>o que foi feito</b>, não o programa usado (Revit, Lumion…). O <b>objeto</b> (térreo, praça, revestimentos, vegetação) vai na descrição.</div>';
   }
-  /* Histórico do próprio usuário (para sugerir etapa, atividade, ferramenta e descrição) */
+  /* Histórico do próprio usuário (para sugerir etapa, atividade e descrição) */
   AP.hist = null;
   async function carregarHistAtiv() {
     if (AP.hist) return AP.hist;
     var q = function(sel){ return window.sb.from('horas_lancadas').select(sel).eq('usuario_id', uid())
       .order('data_lancamento', { ascending:false }).order('hora_fim', { ascending:false }).limit(400); };
-    var r = await q('produto_id,etapa_id,descricao,atividade,ferramentas');
+    var r = await q('produto_id,etapa_id,descricao,atividade');
     if (r.error) r = await q('produto_id,etapa_id,descricao');
     AP.hist = r.data || [];
     return AP.hist;
@@ -5070,12 +5056,6 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var c = {}, best = '', n = 0;
     lista.forEach(function(v){ if (!v) return; c[v] = (c[v]||0) + 1; if (c[v] > n) { n = c[v]; best = v; } });
     return best;
-  }
-  function sugerirFerramentas(ativ) {
-    var linhas = (AP.hist || []).filter(function(h){ return h.atividade === ativ && Array.isArray(h.ferramentas) && h.ferramentas.length; });
-    if (!linhas.length) return [];
-    var top = _maisFrequente(linhas.map(function(h){ return h.ferramentas.slice().sort().join('|'); }));
-    return top ? top.split('|') : [];
   }
   /* Ao escolher o projeto: etapa e atividade mais usadas por você nele; descrições recentes dele */
   async function autoPreencherProjeto(pid) {
@@ -5102,10 +5082,9 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     updateClassUI();
   }
   async function carregarAtivDaHora(id) {
-    var r = await window.sb.from('horas_lancadas').select('atividade,ferramentas').eq('id', id).maybeSingle();
+    var r = await window.sb.from('horas_lancadas').select('atividade').eq('id', id).maybeSingle();
     if (r.error || !r.data) return;
     AP.atividade = r.data.atividade || '';
-    AP.ferramentas = Array.isArray(r.data.ferramentas) ? r.data.ferramentas.slice() : [];
     renderAtivFerr();
   }
 
@@ -5154,7 +5133,9 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       var stageId   = type==='projeto'?(document.getElementById('apo-stage').value||null):null;
       var subtipo   = type!=='projeto'?(document.getElementById('apo-category').value||null):null;
       if (type==='projeto') commitPendingSubtarefaInput();
-      var subtarefas = type==='projeto'?(document.getElementById('apo-subtarefas').value||'').trim():'';
+      /* A subtarefa é a própria atividade (nome completo). Sem atividade, mantém as subtarefas antigas do lançamento (edição). */
+      var _ativObj = ATIVIDADES.find(function(x){ return x.k === AP.atividade; });
+      var subtarefas = type!=='projeto' ? '' : (_ativObj ? _ativObj.nome : (document.getElementById('apo-subtarefas').value||'').trim());
       if (!date) throw new Error('Selecione a data.');
       if (!start||!end) throw new Error('Preencha início e fim.');
       if (start>=end) throw new Error('Hora final deve ser maior que a inicial.');
@@ -5194,7 +5175,6 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       };
       if (type === 'projeto') {
         payloadH.atividade = AP.atividade || null;
-        payloadH.ferramentas = AP.ferramentas.length ? AP.ferramentas.slice() : null;
       }
       var gravar = function(){
         if (editId) return window.sb.from('horas_lancadas').update(payloadH).eq('id', editId).eq('usuario_id', uid()).select('id').single();
@@ -5203,8 +5183,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       };
       var res = await gravar();
       /* colunas de atividade ainda não criadas no banco: grava sem elas */
-      if (res.error && /atividade|ferramentas/.test(res.error.message || '')) {
-        delete payloadH.atividade; delete payloadH.ferramentas;
+      if (res.error && /atividade/.test(res.error.message || '')) {
+        delete payloadH.atividade;
         res = await gravar();
       }
       if (res.error) throw new Error(res.error.message);
@@ -5215,7 +5195,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       });
       document.getElementById('apo-desc').value = '';
       clearSubtarefasTags();
-      if (AP.hist) AP.hist.unshift({ produto_id: productId, etapa_id: stageId, descricao: desc || null, atividade: payloadH.atividade || null, ferramentas: payloadH.ferramentas || null });
+      if (AP.hist) AP.hist.unshift({ produto_id: productId, etapa_id: stageId, descricao: desc || null, atividade: payloadH.atividade || null });
       setFb('apo-feedback', (editId ? 'Lançamento atualizado.' : 'Horas registradas.') + (subtSaved ? '' : ' As subtarefas ainda não estão disponíveis.'), subtSaved ? 'ok' : 'err');
       if (editId) sairEdicaoHora();
       AP._inicioSyncIso = null;
@@ -5979,9 +5959,6 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     document.getElementById('apo-leitura-aviso').addEventListener('click', function(ev){ if (ev.target.id === 'apo-ver-voltar') trocarPessoa(''); });
     document.getElementById('apo-ativ-chips').addEventListener('click', function(e){
       var b = e.target.closest('[data-ativ]'); if (b) setAtividade(b.dataset.ativ);
-    });
-    document.getElementById('apo-ferr-chips').addEventListener('click', function(e){
-      var b = e.target.closest('[data-ferr]'); if (b) toggleFerramenta(b.dataset.ferr);
     });
     document.getElementById('apo-ajuda-btn').addEventListener('click', function(e){
       e.preventDefault(); e.stopPropagation();
