@@ -47,13 +47,52 @@
   }
 
   /* itens: prioridades PENDENTES na ordem da fila (sem radar).
-     Retorna { [id]: { ini, fim, blocos, atual, atrasada, semPrevisao } } */
-  function calcular(itens, cred) {
-    var hoje = agora(), cursor = hoje, out = {};
+     concluidas (opcional): prioridades já concluídas (com concluida_em). Continuam na fila como
+     concluídas, do início até o momento da conclusão — e a conclusão da última marca o início
+     da próxima pendente.
+     Retorna { [id]: { ini, fim, blocos, atual, atrasada, semPrevisao, concluida } } */
+  function anterior(s) { return s.p === 1 ? { d: s.d, p: 0 } : { d: addDia(s.d, -1), p: 1 }; }
+  function anteriorLivre(s, cred) {
+    for (var i = 0; i < 1000; i++) { s = anterior(s); if (livres(s.d, cred)[s.p]) return s; }
+    return s;
+  }
+  /* Meio-período em que algo foi concluído; "cedo" = na primeira metade do período */
+  function slotDaConclusao(iso) {
+    var d = new Date(iso), h = d.getHours() + d.getMinutes() / 60;
+    var p = h >= 13 ? 1 : 0;
+    return { s: { d: isoLocal(d), p: p }, cedo: p ? h < 15.5 : h < 10.5 };
+  }
+  function calcular(itens, cred, concluidas) {
+    var hoje = agora(), cursor = hoje, out = {}, ancora = null;
+    (concluidas || []).filter(function (c) { return c && c.concluida_em; })
+      .sort(function (a, b) { return a.concluida_em < b.concluida_em ? -1 : 1; })
+      .forEach(function (c) {
+        var cs = slotDaConclusao(c.concluida_em);
+        /* concluiu cedo no período: a concluída termina no período anterior e a próxima começa neste */
+        var fim = cs.cedo ? anteriorLivre(cs.s, cred) : cs.s;
+        var prox = cs.cedo ? cs.s : proximo(cs.s);
+        var n = Math.max(1, Math.round(Number(c.blocos_previstos || 0)) || 1);
+        var ini;
+        if (c.inicio_fila) ini = primeiroLivre({ d: String(c.inicio_fila).slice(0, 10), p: 0 }, cred);
+        else { ini = fim; for (var k = 1; k < n; k++) ini = anteriorLivre(ini, cred); }
+        if (antes(fim, ini)) fim = ini;
+        out[c.id] = { ini: ini, fim: fim, blocos: c.blocos_previstos || 0, atual: false, atrasada: false, semPrevisao: false, concluida: true, concluidaEm: c.concluida_em };
+        ancora = prox;
+      });
     (itens || []).forEach(function (it, idx) {
       var n = Math.max(0, Math.round(Number(it.blocos_previstos || 0)));
       var ini = cursor;
-      if (idx === 0 && it.inicio_fila) ini = { d: String(it.inicio_fila).slice(0, 10), p: 0 };
+      if (idx === 0) {
+        /* a 1ª pendente começa onde a última concluída terminou; senão, no início marcado (inicio_fila) */
+        var marcado = it.inicio_fila ? { d: String(it.inicio_fila).slice(0, 10), p: 0 } : null;
+        if (ancora && (!marcado || !antes(ancora, marcado))) {
+          ini = ancora;
+          /* prioridade criada depois da conclusão: não começa antes de existir */
+          var criada = it.created_at ? slotDaConclusao(it.created_at).s : null;
+          if (criada && antes(ini, criada)) ini = criada;
+        }
+        else if (marcado) ini = marcado;
+      }
       if (it.data_inicio) {
         var lib = { d: String(it.data_inicio).slice(0, 10), p: 0 };
         if (antes(ini, lib)) ini = lib;
@@ -92,6 +131,6 @@
   }
 
   window.ExpFila = { calcular: calcular, fmt: fmt, faixa: faixa, carregarCreditos: carregarCreditos,
-    livres: livres, proximo: proximo, antes: antes, addDia: addDia, primeiroLivre: primeiroLivre, agora: agora, isoLocal: isoLocal,
+    livres: livres, proximo: proximo, anterior: anterior, antes: antes, addDia: addDia, primeiroLivre: primeiroLivre, agora: agora, isoLocal: isoLocal,
     hoje: function () { return isoLocal(new Date()); } };
 })();
