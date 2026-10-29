@@ -2339,6 +2339,43 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var HORA_INI = 7, HORA_FIM = 21, SLOT_H = 26;
     var SLOTS = (HORA_FIM - HORA_INI) * 2;
 
+    /* Posição das barras de crédito no dia. Ausência por período fica no seu horário (8h ou 13h).
+       Compensação do banco de horas pode ser em qualquer horário: é encaixada nos intervalos livres
+       entre 8h e 19h (começando no horário sugerido), sem cobrir os lançamentos do dia; se o dia não
+       tiver espaço, usa 19h–21h e, por último, o horário sugerido. Pode ficar dividida em partes. */
+    function _min(t) { var p = String(t || '00:00').split(':').map(Number); return p[0] * 60 + (p[1] || 0); }
+    var credPecas = credPorDia.map(function(c, i) {
+      if (!c || feriadoDia[i]) return [];
+      var ocup = lancPorDia[i].map(function(l){ return [_min(l.hora_inicio), _min(l.hora_fim)]; });
+      var pecas = [];
+      c.itens.filter(function(it){ return it.tipo !== 'compensacao_bh'; }).forEach(function(it) {
+        var ini = it.inicioH * 60, fim = ini + Math.round(it.horas * 60);
+        pecas.push({ it: it, ini: ini, fim: fim }); ocup.push([ini, fim]);
+      });
+      c.itens.filter(function(it){ return it.tipo === 'compensacao_bh'; }).forEach(function(it) {
+        var falta = Math.round(it.horas * 60);
+        var livres = function(de, ate) {   // intervalos livres em [de, ate), em ordem
+          var o = ocup.filter(function(x){ return x[1] > de && x[0] < ate; }).sort(function(a, b){ return a[0] - b[0]; });
+          var res = [], cur = de;
+          o.forEach(function(x){ if (x[0] > cur) res.push([cur, Math.min(x[0], ate)]); cur = Math.max(cur, x[1]); });
+          if (cur < ate) res.push([cur, ate]);
+          return res.filter(function(g){ return g[1] - g[0] >= 15; });
+        };
+        var sug = it.inicioH * 60;
+        var janelas = [[sug, 19 * 60], [8 * 60, sug], [19 * 60, HORA_FIM * 60]];
+        janelas.forEach(function(j) {
+          livres(j[0], j[1]).forEach(function(g) {
+            if (falta <= 0) return;
+            var dur = Math.min(falta, g[1] - g[0]);
+            pecas.push({ it: it, ini: g[0], fim: g[0] + dur }); ocup.push([g[0], g[0] + dur]);
+            falta -= dur;
+          });
+        });
+        if (falta > 0) pecas.push({ it: it, ini: sug, fim: sug + falta });   // sem espaço livre: horário sugerido
+      });
+      return pecas;
+    });
+
     var html = '';
 
     // Header sticky
@@ -2402,13 +2439,16 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
             '</div>';
         });
 
-        // Barra vermelha das horas creditadas, começando no horário do período
-        if (credPorDia[i] && !feriadoDia[i]) credPorDia[i].itens.forEach(function(it) {   /* feriado: a hachura substitui a barra */
-          if ((it.inicioH - HORA_INI) * 2 !== s) return;
-          var hgt = Math.max(16, it.horas * 2 * SLOT_H - 2);
-          blocoHtml += '<div class="cal-bloco cb-credito" style="top:0;height:' + hgt + 'px" title="' + esc(it.label + ' — ' + fmtH(it.horas) + ' contadas como trabalhadas') + '">' +
+        // Barras das horas creditadas (ausência no seu período; compensação nos horários livres)
+        credPecas[i].forEach(function(pc) {   /* feriado: a hachura substitui a barra */
+          if (Math.floor((pc.ini - HORA_INI * 60) / 30) !== s) return;
+          var it = pc.it, durMin = pc.fim - pc.ini;
+          var hgt = Math.max(16, durMin / 30 * SLOT_H - 2);
+          var topC = ((pc.ini % 30) / 30) * SLOT_H;
+          var parte = it.horas * 60 > durMin + 1 ? fmtH(durMin / 60) + ' de ' + fmtH(it.horas) : fmtH(it.horas);
+          blocoHtml += '<div class="cal-bloco cb-credito" style="top:' + topC + 'px;height:' + hgt + 'px" title="' + esc(it.label + ' — ' + parte + ' contadas como trabalhadas') + '">' +
             '<span class="cal-bloco-linha1">' + esc(it.label) + '</span>' +
-            (hgt > 22 ? '<span class="cal-bloco-linha2">' + esc(fmtH(it.horas)) + '</span>' : '') +
+            (hgt > 22 ? '<span class="cal-bloco-linha2">' + esc(parte) + '</span>' : '') +
             '</div>';
         });
 
