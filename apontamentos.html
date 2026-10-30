@@ -314,6 +314,11 @@ body{
 .apo-chips{display:flex;flex-wrap:wrap;gap:3px}
 .apo-chip{border:1px solid var(--cinza);background:var(--branco);color:var(--txt-2,#555);border-radius:999px;padding:1px 7px;font-family:inherit;font-size:9.5px;cursor:pointer;transition:border-color .12s,background .12s,color .12s;line-height:1.5}
 .apo-chip.sm{padding:1px 7px;font-size:9.5px}
+/* Eventos do custo: últimos eventos como tag; + abre o campo de novo evento */
+.apo-ev-tags{margin-bottom:2px}
+.apo-ev-tags .apo-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apo-ev-tags .apo-chip.mais{font-weight:700;padding:1px 9px}
+.apo-field input[hidden]{display:none}
 .apo-chip:hover{border-color:var(--grafite)}
 .apo-chip.on{background:var(--grafite);border-color:var(--grafite);color:#fff;font-weight:700}
 .apo-ajuda{width:16px;height:16px;border-radius:50%;border:1px solid var(--cinza);background:var(--branco);color:var(--txt-3,#888);font-size:9px;font-weight:700;cursor:pointer;padding:0;margin-left:5px;vertical-align:1px;line-height:1}
@@ -1488,12 +1493,14 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 
             <div class="apo-field" id="apo-cost-evp-wrap" style="display:none">
               <label id="apo-cost-evp-label" for="apo-cost-evento-proj">Evento</label>
-              <input type="text" id="apo-cost-evento-proj" list="apo-cost-evp-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
+              <div class="apo-chips apo-ev-tags" id="apo-cost-evp-tags"></div>
+              <input type="text" id="apo-cost-evento-proj" list="apo-cost-evp-dl" placeholder="Digite o novo evento ou busque um antigo" autocomplete="off" hidden>
               <datalist id="apo-cost-evp-dl"></datalist>
             </div>
             <div class="apo-field" id="apo-cost-evs-wrap" style="display:none">
               <label id="apo-cost-evs-label" for="apo-cost-evento-soc">Evento</label>
-              <input type="text" id="apo-cost-evento-soc" list="apo-cost-evs-dl" placeholder="Selecionar ou digitar novo..." autocomplete="off">
+              <div class="apo-chips apo-ev-tags" id="apo-cost-evs-tags"></div>
+              <input type="text" id="apo-cost-evento-soc" list="apo-cost-evs-dl" placeholder="Digite o novo evento ou busque um antigo" autocomplete="off" hidden>
               <datalist id="apo-cost-evs-dl"></datalist>
             </div>
 
@@ -4638,6 +4645,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       onClienteCascata('c');
       document.getElementById('apo-cost-evento-proj').value = '';
       document.getElementById('apo-cost-evento-soc').value = '';
+      AP.evNovo = {};
     }
     fillCostDetails();
     syncCostEventos().catch(function(){});
@@ -4657,16 +4665,72 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   }
 
   // Eventos do custo (eventos_custo / eventos_sociedade) — mesma regra da Gestão
+  /* Os eventos são de todos: relê a cada 2 minutos para aparecer o que outra pessoa criou.
+     Mais recentes primeiro (se a tabela não tiver data, fica em ordem de nome). */
   async function ensureEventosCusto(force) {
-    if (!force && Array.isArray(AP.evCusto) && Array.isArray(AP.evSoc)) return;
-    var r = await Promise.all([
-      window.sb.from('eventos_custo').select('id,nome,produto_id').order('nome'),
-      window.sb.from('eventos_sociedade').select('id,nome,tipo,categoria').order('nome'),
-    ]);
+    if (!force && Array.isArray(AP.evCusto) && Array.isArray(AP.evSoc) && Date.now() - (AP.evLidoEm || 0) < 120000) return;
+    function recentes(tabela, cols) {
+      return window.sb.from(tabela).select(cols + ',created_at').order('created_at', { ascending:false }).then(function(r){
+        return r.error ? window.sb.from(tabela).select(cols).order('nome') : r;
+      });
+    }
+    var r = await Promise.all([ recentes('eventos_custo', 'id,nome,produto_id'), recentes('eventos_sociedade', 'id,nome,tipo,categoria') ]);
     AP.evCusto = (r[0] && r[0].data) || [];
     AP.evSoc = (r[1] && r[1].data) || [];
+    AP.evLidoEm = Date.now();
   }
-  function dlOpts(list) { return (list||[]).map(function(e){ return '<option value="'+esc(e.nome)+'">'; }).join(''); }
+  function dlOpts(list) {
+    return (list||[]).slice().sort(function(a,b){ return String(a.nome||'').localeCompare(String(b.nome||''), 'pt-BR'); })
+      .map(function(e){ return '<option value="'+esc(e.nome)+'">'; }).join('');
+  }
+  /* Tags dos últimos eventos + botão "+" (novo evento ou busca de um antigo no campo) */
+  var EV_TAGS_MAX = 6;
+  AP.evNovo = {};
+  AP.evLista = {};
+  function evCampos(k) {
+    return k === 'soc'
+      ? { inp:'apo-cost-evento-soc', tags:'apo-cost-evs-tags' }
+      : { inp:'apo-cost-evento-proj', tags:'apo-cost-evp-tags' };
+  }
+  function renderEvTags(k, lista) {
+    if (lista) AP.evLista[k] = lista;
+    var c = evCampos(k), inp = document.getElementById(c.inp), box = document.getElementById(c.tags);
+    if (!inp || !box) return;
+    var val = inp.value.trim(), low = val.toLowerCase();
+    var nomes = [];
+    (AP.evLista[k] || []).forEach(function(e){
+      var n = String(e.nome||'').trim();
+      if (n && nomes.length < EV_TAGS_MAX && !nomes.some(function(x){ return x.toLowerCase() === n.toLowerCase(); })) nomes.push(n);
+    });
+    /* evento já escolhido e fora dos últimos (ao editar um custo antigo) também vira tag */
+    var existe = (AP.evLista[k] || []).find(function(e){ return String(e.nome||'').trim().toLowerCase() === low; });
+    if (val && existe && !nomes.some(function(x){ return x.toLowerCase() === low; })) { nomes.unshift(String(existe.nome).trim()); AP.evNovo[k] = false; }
+    var naLista = nomes.some(function(x){ return x.toLowerCase() === low; });
+    var abrir = !!AP.evNovo[k] || (!!val && !naLista);
+    box.innerHTML = nomes.map(function(n){
+      var on = n.toLowerCase() === low;
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" aria-pressed="'+on+'" title="'+esc(n)+'" data-ev-tag="'+k+'" data-ev-nome="'+esc(n)+'">'+esc(n)+'</button>';
+    }).join('') +
+      '<button type="button" class="apo-chip mais'+(abrir?' on':'')+'" aria-expanded="'+abrir+'" title="Novo evento" aria-label="Novo evento" data-ev-mais="'+k+'">+</button>';
+    inp.hidden = !abrir;
+  }
+  function renderEvTagsTodas() { renderEvTags('proj'); renderEvTags('soc'); }
+  function onEvTagClick(ev) {
+    var t = ev.target.closest && ev.target.closest('[data-ev-tag],[data-ev-mais]');
+    if (!t) return;
+    var k = t.dataset.evTag || t.dataset.evMais, inp = document.getElementById(evCampos(k).inp);
+    if (t.dataset.evMais) {
+      var abrir = inp.hidden;
+      AP.evNovo[k] = abrir;
+      inp.value = '';
+      renderEvTags(k);
+      if (abrir) inp.focus();
+      return;
+    }
+    AP.evNovo[k] = false;
+    inp.value = inp.value.trim().toLowerCase() === t.dataset.evNome.toLowerCase() ? '' : t.dataset.evNome;   // clicar de novo desmarca
+    renderEvTags(k);
+  }
   async function syncCostEventos() {
     var tipo = document.getElementById('apo-cost-type').value || 'projeto';
     var prodId = document.getElementById('apo-cost-project').value || '';
@@ -4678,7 +4742,9 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var lbl = rules.requer_evento ? 'Evento *' : 'Evento (opcional)';
     if (tipo === 'sociedade') {
       setText('apo-cost-evs-label', lbl);
-      document.getElementById('apo-cost-evs-dl').innerHTML = dlOpts(AP.evSoc.filter(function(e){ return !e.tipo || e.tipo === 'sociedade'; }));
+      var evsS = AP.evSoc.filter(function(e){ return !e.tipo || e.tipo === 'sociedade'; });
+      document.getElementById('apo-cost-evs-dl').innerHTML = dlOpts(evsS);
+      renderEvTags('soc', evsS);
       sw.style.display = '';
       return;
     }
@@ -4687,6 +4753,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       ? AP.evCusto.filter(function(e){ return !e.produto_id; })
       : AP.evCusto.filter(function(e){ return !e.produto_id || !prodId || String(e.produto_id) === String(prodId); });
     document.getElementById('apo-cost-evp-dl').innerHTML = dlOpts(evs);
+    renderEvTags('proj', evs);
     pw.style.display = '';
   }
   // Acha o evento pelo nome; se não existir, cria (como a Gestão faz)
@@ -4700,7 +4767,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       if (ex) return { socId:ex.id, evtId:null };
       var r1 = await window.sb.from('eventos_sociedade').insert({ tipo:tipo, categoria:areaLabel||null, nome:n, criado_por:uid() }).select('id,nome,tipo,categoria').single();
       if (r1.error) throw new Error(r1.error.message);
-      AP.evSoc.push(r1.data);
+      AP.evSoc.unshift(r1.data);
       return { socId:r1.data.id, evtId:null };
     }
     var cands = tipo === 'organizacao'
@@ -4710,7 +4777,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     if (ex2) return { evtId:ex2.id, socId:null };
     var r2 = await window.sb.from('eventos_custo').insert({ produto_id:produtoId||null, nome:n, criado_por:uid() }).select('id,nome,produto_id').single();
     if (r2.error) throw new Error(r2.error.message);
-    AP.evCusto.push(r2.data);
+    AP.evCusto.unshift(r2.data);
     return { evtId:r2.data.id, socId:null };
   }
 
@@ -4897,6 +4964,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     var evS = c.evento_soc_id && AP.evSoc.find(function(e){ return String(e.id) === String(c.evento_soc_id); });
     document.getElementById('apo-cost-evento-proj').value = evP ? evP.nome : '';
     document.getElementById('apo-cost-evento-soc').value = evS ? evS.nome : '';
+    AP.evNovo = {};
+    renderEvTagsTodas();
     document.getElementById('apo-cost-desc').value = c.descricao || '';
     marcarEdicao('apo-costs-form', true, 'Editando custo de ' + fmtDate(c.data_lancamento), 'apo-cost-submit', 'Salvar alterações', 'apo-cost-reset');
     abrirEdicaoModal('c', 'Editar custo', fmtDate(c.data_lancamento) + ' · R$ ' + Number(c.valor||0).toFixed(2).replace('.',','));
@@ -5247,6 +5316,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   }
 
   function resetCostForm() {
+    AP.evNovo = {};
     sairEdicaoCusto(true);
     document.getElementById('apo-costs-form').reset();
     document.getElementById('apo-cost-date').value = document.getElementById('apo-date').value || new Date().toISOString().slice(0,10);
@@ -5404,6 +5474,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       document.getElementById('apo-cost-desc').value = '';
       document.getElementById('apo-cost-evento-proj').value = '';
       document.getElementById('apo-cost-evento-soc').value = '';
+      AP.evNovo = {};
       syncCostEventos().catch(function(){});
       loadCustosData().catch(function(){});
       setFb('apo-cost-feedback','Custo registrado. O reflexo financeiro final é tratado no módulo Financeiro. O reflexo financeiro final deve ser tratado no modulo Financeiro.','ok');
@@ -6143,6 +6214,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       document.getElementById('apo-ativ-chips').addEventListener('mouseleave', esconder);
       document.getElementById('apo-ativ-chips').addEventListener('mouseout', function(e){ if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('[data-dica]')) esconder(); });
     })();
+    document.getElementById('apo-costs-form').addEventListener('click', onEvTagClick);
     document.getElementById('apo-recentes').addEventListener('click', function(e){
       var b = e.target.closest('[data-rec]'); if (b) aplicarRecente(Number(b.dataset.rec)).catch(function(err){ setFb('apo-feedback', err.message, 'err'); });
     });
