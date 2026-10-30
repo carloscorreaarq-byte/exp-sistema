@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared/privacidade.js?v=2026-10-26c"></script>
+<script src="shared/dados-cache.js?v=2026-10-30a"></script>
 <script src="shared/nome-curto.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="shared/app-notif.js?v=2026-10-25"></script>
@@ -5710,10 +5711,12 @@ async function init() {
 
   // Carrega dados base
   await Promise.all([
-    carregarUsuarios(),
-    carregarProdutos(),
-    carregarHorasGlobal(),
-    carregarReembolsoAreas(),
+    // Na abertura pode reaproveitar o que foi baixado há pouco (shared/dados-cache.js);
+    // as demais chamadas destas funções, depois de gravar algo, sempre buscam de novo.
+    carregarUsuarios({ cache: true }),
+    carregarProdutos({ cache: true }),
+    carregarHorasGlobal({ cache: true }),
+    carregarReembolsoAreas({ cache: true }),
   ]);
 
   // Notificações + registro push desktop
@@ -5991,9 +5994,17 @@ function usuarioPorId(id) {
   return (G.todosUsuarios || []).find(u => u.id === id) || (G.usuariosInativos || []).find(u => u.id === id);
 }
 
-async function carregarUsuarios() {
+function _dadosLer(nome, opts) { return opts?.cache && window.ExpCache ? ExpCache.ler(nome, G.usuario?.id) : null; }
+function _dadosGravar(nome, dados) { if (window.ExpCache) ExpCache.gravar(nome, G.usuario?.id, dados); }
+
+async function carregarUsuarios(cfg) {
   // Uma leitura só: separa ativos e inativos aqui
-  const { data: _todos } = await sb.from('usuarios').select('*').order('nome');
+  let _todos = _dadosLer('usuarios', cfg);
+  if (!_todos) {
+    const { data: _lidos, error: _eUs } = await sb.from('usuarios').select('*').order('nome');
+    _todos = _lidos;
+    if (!_eUs && _lidos) _dadosGravar('usuarios', _lidos);
+  }
   const data = (_todos || []).filter(u => u.ativo === true);
   const inativos = (_todos || []).filter(u => u.ativo === false);
   window._listsMembersCache = data.map(u => ({ id: u.id, nome: u.nome, iniciais: u.iniciais, cor: u.cor, apelido: u.apelido }));
@@ -6057,12 +6068,15 @@ function normalizarNucleo(raw) {
   return null;
 }
 
-async function carregarHorasGlobal() {
+async function carregarHorasGlobal(cfg) {
+  const _guardado = _dadosLer('horas_prod', cfg);
+  if (_guardado) { G._horasPorProd = _guardado; return; }
   // Total por projeto somado no banco: uma linha por projeto, sem o limite de linhas da consulta
   const { data: _tot, error: _totErr } = await sb.rpc('horas_por_produto');
   if (!_totErr) {
     G._horasPorProd = {};
     (_tot || []).forEach(r => { if (r.produto_id) G._horasPorProd[r.produto_id] = Number(r.horas) || 0; });
+    _dadosGravar('horas_prod', G._horasPorProd);
     return;
   }
   // SQL horas_por_produto.sql ainda não rodado: soma aqui (como antes)
@@ -6075,7 +6089,7 @@ async function carregarHorasGlobal() {
   });
 }
 
-async function carregarProdutos() {
+async function carregarProdutos(cfg) {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
   const _buscarProdutos = async () => {
@@ -6096,14 +6110,20 @@ async function carregarProdutos() {
   ];
 
   // Produtos, propostas, etapas e desenvolvedores saem juntos (uma consulta não depende da outra)
-  const [prodsGestao, { data: proposals }, { data: etapas }, { data: devLinks }] = await Promise.all([
-    _buscarProdutos(),
-    sb.from('exp_proposals')
-      .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
-      .in('status', STAGES_FECHADOS),
-    sb.from('etapas').select('*').order('ordem'),
-    sb.from('etapa_desenvolvedores').select('etapa_id, usuario_id'),
-  ]);
+  let _base = _dadosLer('produtos', cfg);
+  if (!_base) {
+    const [_pr, _rProp, _rEt, _rDev] = await Promise.all([
+      _buscarProdutos(),
+      sb.from('exp_proposals')
+        .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
+        .in('status', STAGES_FECHADOS),
+      sb.from('etapas').select('*').order('ordem'),
+      sb.from('etapa_desenvolvedores').select('etapa_id, usuario_id'),
+    ]);
+    _base = { prodsGestao: _pr, proposals: _rProp.data, etapas: _rEt.data, devLinks: _rDev.data };
+    if (_pr && !_rProp.error && !_rEt.error && !_rDev.error) _dadosGravar('produtos', _base);
+  }
+  const { prodsGestao, proposals, etapas, devLinks } = _base;
 
   // 3. Para propostas CRM, mantém só versão mais recente de cada parent
   const byParent = {};
@@ -8406,11 +8426,16 @@ async function deletarLancamento(id) {
 //   LANÇAMENTOS DE CUSTO
 // ══════════════════════════════════════════════════════════════
 
-async function carregarReembolsoAreas() {
-  const { data } = await sb.from('fin_plano_contas')
-    .select('id,grupo,subconta,ordem')
-    .eq('ativo', true)
-    .order('ordem');
+async function carregarReembolsoAreas(cfg) {
+  let data = _dadosLer('plano_contas', cfg);
+  if (!data) {
+    const { data: _pc, error: _ePc } = await sb.from('fin_plano_contas')
+      .select('id,grupo,subconta,ordem')
+      .eq('ativo', true)
+      .order('ordem');
+    data = _pc;
+    if (!_ePc && _pc) _dadosGravar('plano_contas', _pc);
+  }
   // Filtra apenas as áreas válidas para lançamento de custo na Gestão
   G._reembolsoAreas = (data || []).filter(pc => GESTAO_CUSTOS_AREAS.has(pc.subconta));
   // Agrupa por grupo (conta) para exibir optgroups
