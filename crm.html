@@ -814,7 +814,7 @@ textarea{resize:vertical;min-height:60px}
       <div class="kitems" id="k-prosp"></div>
     </div>
     <div class="kcol">
-      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--ouro)"></div><div class="kcol-title">Orçamento ativo</div><div class="kcol-cnt" id="k-cnt-o">0</div><div class="kcol-sum" id="k-sum-o"></div></div>
+      <div class="kcol-hd"><div class="kcol-stripe" style="background:var(--ouro)"></div><div class="kcol-title">Ativo</div><div class="kcol-cnt" id="k-cnt-o">0</div><div class="kcol-sum" id="k-sum-o"></div></div>
       <div class="kitems" id="k-orc"></div>
     </div>
     <div class="kcol">
@@ -852,7 +852,7 @@ textarea{resize:vertical;min-height:60px}
     <select class="filter-select" id="of-status" onchange="renderOrc()">
       <option value="todos">Todos status</option>
       <option value="Prospecção">Prospecção</option>
-      <option value="Orçamento ativo">Orçamento ativo</option>
+      <option value="Ativo">Ativo</option>
       <option value="Fechado">Fechado</option>
       <option value="Negado">Negado</option>
       <option value="Cancelado">Cancelado</option>
@@ -884,7 +884,7 @@ textarea{resize:vertical;min-height:60px}
         <th onclick="sortOrc('valor_proposto')" id="oth-valor">Proposta</th>
         <th title="Valor que compete à EXP (exclui repasses e subcontratações)">Efetivo EXP</th>
         <th onclick="sortOrc('valor_fechado')" id="oth-fech">Fechamento</th>
-        <th>Prob.</th>
+        <th onclick="sortOrc('data_fechamento')" id="oth-data-fech">Data fech.</th>
         <th>Dias envio</th>
         <th>Status</th>
       </tr></thead>
@@ -1325,7 +1325,7 @@ textarea{resize:vertical;min-height:60px}
               <label>Estágio inicial</label>
               <select id="opp-stage">
                 <option value="prospecção">Lead</option>
-                <option value="enviada">Orçamento ativo</option>
+                <option value="enviada">Ativo</option>
                 <option value="negociacao">Negociação</option>
               </select>
               <div id="opp-stage-help" style="display:none;font-size:10px;color:#8A867E;margin-top:5px">Com produtos vinculados, o estágio da oportunidade passa a seguir automaticamente o status dos produtos.</div>
@@ -1469,27 +1469,15 @@ textarea{resize:vertical;min-height:60px}
         <div class="fgroup"><label>Área (m²)</label><input type="number" id="prod-area" step="1" min="0" placeholder="0"></div>
       </div>
 
-      <div class="fg fg2 mb8">
-        <div class="fgroup">
-          <label>Status</label>
-          <select id="prod-status">
-            <option value="ativo" selected>Ativo</option>
-            <option value="negociacao">Em negociação</option>
-            <option value="fechado">Fechado</option>
-            <option value="negado">Negado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-        <div class="fgroup">
-          <label>Probabilidade (1–5)</label>
-          <select id="prod-prob">
-            <option value="1">1 — Muito baixa</option>
-            <option value="2">2 — Baixa</option>
-            <option value="3" selected>3 — Média</option>
-            <option value="4">4 — Alta</option>
-            <option value="5">5 — Muito alta</option>
-          </select>
-        </div>
+      <div class="fgroup mb8">
+        <label>Status</label>
+        <select id="prod-status">
+          <option value="ativo" selected>Ativo</option>
+          <option value="negociacao">Em negociação</option>
+          <option value="fechado">Fechado</option>
+          <option value="negado">Negado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
       </div>
 
       <div class="fg fg2 mb8">
@@ -1532,7 +1520,7 @@ textarea{resize:vertical;min-height:60px}
 
 <div class="pcard-menu" id="pcard-menu">
   <button class="pcard-menu-item" id="pcm-prosp"   onclick="moverCardStage('prospecção')">← Prospecção</button>
-  <button class="pcard-menu-item" id="pcm-enviada"  onclick="moverCardStage('enviada')">Orçamento ativo</button>
+  <button class="pcard-menu-item" id="pcm-enviada"  onclick="moverCardStage('enviada')">Ativo</button>
   <button class="pcard-menu-item" id="pcm-negoc"    onclick="moverCardStage('negociacao')">Negociação</button>
   <button class="pcard-menu-item" id="pcm-fechada"  onclick="moverCardStage('fechada')">✓ Fechar</button>
   <div class="pcard-menu-sep"></div>
@@ -1945,7 +1933,7 @@ window.sb = sb;
 //
 // produtos: id, oportunidade_id, nucleo, subtipo, area,
 //   valor_calculado, valor_proposto, valor_fechado, status,
-//   prob, calc_id, data_envio, data_previsao, data_fechamento,
+//   calc_id, data_envio, data_previsao, data_fechamento,
 //   motivo_negativa, prob_retorno, cancel_note, obs, versao_atual,
 //   created_at, updated_at
 // status valores: 'prospecção','ativo','enviado','negociacao','fechado','negado','cancelado'
@@ -1995,7 +1983,7 @@ let origMode    = 'resumido';
 // Mapa de pipeline_stage → label amigável
 const STAGE_LABEL = {
   'prospecção':'Lead','prospeccao':'Lead',
-  'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
+  'enviada':'Ativo','ativo':'Ativo',
   'negociacao':'Negociação','negociação':'Negociação',
   'fechada':'Fechado','fechado':'Fechado',
   'negada':'Negado','negado':'Negado',
@@ -2005,7 +1993,7 @@ const STAGE_LABEL = {
 // Agrupamento para filtros kanban
 const STAGE_GROUP = {
   'prospecção':'Lead','prospeccao':'Lead',
-  'enviada':'Orçamento ativo','ativo':'Orçamento ativo',
+  'enviada':'Ativo','ativo':'Ativo',
   'negociacao':'Negociação','negociação':'Negociação',
   'fechada':'Fechado','fechado':'Fechado',
   'negada':'Negado','negado':'Negado',
@@ -2045,7 +2033,7 @@ const TIPO_BADGE = {
   'Projetos Especiais':'b-esp',
 };
 const ESTAGIO_BADGE = {
-  'Prospecção':'b-az','Orçamento ativo':'b-am','Negociação':'b-am',
+  'Prospecção':'b-az','Ativo':'b-am','Negociação':'b-am',
   'Fechado':'b-vd','Negado':'b-tc','Cancelado':'b-tc','Expirado':'b-exp','Perdida':'b-tc',
 };
 const ESTAGIO_BADGE_PROD = {
@@ -2086,7 +2074,7 @@ function stageLabel(s){return STAGE_LABEL[s?.toLowerCase()]||s||'—';}
 function stageGroup(s){
   const sl=(s||'').toLowerCase();
   if(['prospecção','prospeccao'].includes(sl))return'Lead';
-  if(['enviada','ativo'].includes(sl))return'Orçamento ativo';
+  if(['enviada','ativo'].includes(sl))return'Ativo';
   if(['negociacao','negociação'].includes(sl))return'Negociação';
   if(['fechada','fechado'].includes(sl))return'Fechado';
   return'Negado/Cancelado';
@@ -2168,10 +2156,6 @@ function respBadge(uid){
 function respAvatar(uid,sz=22){
   const u=userById(uid);
   return`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${u.cor}22;color:${u.cor};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0">${u.iniciais}</div>`;
-}
-function probDots(p){
-  p=+p||0;
-  return[1,2,3,4,5].map(i=>`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:2px;background:${i<=p?'var(--ouro)':'var(--cinza)'}"></span>`).join('');
 }
 function origGroup(o){
   if(!o)return'—';const lo=o.toLowerCase();
@@ -2739,6 +2723,22 @@ function oppDataFechamento(op){
   const fechados=op._produtos.filter(p=>p.data_fechamento);
   if(!fechados.length)return null;
   return fechados.slice().sort((a,b)=>b.data_fechamento.localeCompare(a.data_fechamento))[0].data_fechamento;
+}
+// Data de envio: produto principal (maior valor), outro produto ou data da proposta na calculadora
+function oppDataEnvio(op){
+  const prods=op._produtos.slice().sort((a,b)=>(+b.valor_proposto||0)-(+a.valor_proposto||0));
+  const doProduto=prods.find(p=>p.data_envio)?.data_envio;
+  if(doProduto)return doProduto;
+  let dj=op._proposal?.data_json;
+  try{ if(typeof dj==='string')dj=JSON.parse(dj); }catch(e){ dj=null; }
+  return /^\d{4}-\d{2}-\d{2}/.test(dj?.data||'')?dj.data:null;
+}
+// Em aberto conta até hoje; fechado para na data do fechamento; negado ou cancelado não conta
+function oppDiasEnvio(op,dataEnvio){
+  if(!dataEnvio||stageLabel(op.pipeline_stage)==='Negado/Cancelado')return null;
+  if(!isFechada(op))return Math.max(0,diasDesde(dataEnvio));
+  const fech=oppDataFechamento(op);
+  return fech?Math.max(0,Math.floor((new Date(fech)-new Date(dataEnvio))/86400000)):null;
 }
 function isFechada(op){
   return ['fechada','fechado'].includes((op.pipeline_stage||'').toLowerCase());
@@ -3776,7 +3776,7 @@ function renderOrc(){
   if(ano!=='todos'&&!orcIncompletos)ops=ops.filter(o=>(o.data_entrada||'').startsWith(ano)||(oppDataFechamento(o)||'').startsWith(ano));
   if(nucleo!=='todos')ops=ops.filter(o=>o._produtos.some(p=>NUCLEO_GRUPO[p.nucleo]===nucleo));
   if(status!=='todos'){
-    const slMap={'Prospecção':['prospecção','prospeccao'],'Orçamento ativo':['enviada','ativo'],'Negociação':['negociacao','negociação'],'Fechado':['fechada','fechado'],'Negado':['negada','negado','perdida'],'Cancelado':['cancelada','cancelado'],'Expirado':'exp'};
+    const slMap={'Prospecção':['prospecção','prospeccao'],'Ativo':['enviada','ativo'],'Negociação':['negociacao','negociação'],'Fechado':['fechada','fechado'],'Negado':['negada','negado','perdida'],'Cancelado':['cancelada','cancelado'],'Expirado':'exp'};
     const sl=slMap[status];
     if(sl==='exp')ops=ops.filter(o=>isExpiredOp(o));
     else if(sl)ops=ops.filter(o=>sl.includes((o.pipeline_stage||'').toLowerCase()));
@@ -3786,6 +3786,8 @@ function renderOrc(){
 
   ops=ops.slice().sort((a,b)=>{
     let va=a[orcSortKey]||'', vb=b[orcSortKey]||'';
+    if(orcSortKey==='data_envio'){va=oppDataEnvio(a)||'';vb=oppDataEnvio(b)||'';}
+    if(orcSortKey==='data_fechamento'){va=oppDataFechamento(a)||'';vb=oppDataFechamento(b)||'';}
     if(orcSortKey==='valor_proposto'){va=oppValorTotal(a);vb=oppValorTotal(b);}
     if(orcSortKey==='valor_fechado'){
       va=isFechada(a)?oppValorFechado(a)+oppValorAdicionais(a,true):oppValorFechado(a);
@@ -3807,10 +3809,8 @@ function renderOrc(){
     const stLbl=stageLabel(o.pipeline_stage);
     const nucleos=[...new Set(o._produtos.map(p=>normNucleo(p.nucleo)))];
     const exp=isExpiredOp(o);
-    // 3F — data_envio e dias_envio do produto principal (maior valor)
-    const prodPrincipal=o._produtos.slice().sort((a,b)=>(+b.valor_proposto||0)-(+a.valor_proposto||0))[0];
-    const dataEnvio=prodPrincipal?.data_envio||null;
-    const diasEnvio=dataEnvio?diasDesde(dataEnvio):null;
+    const dataEnvio=oppDataEnvio(o);
+    const diasEnvio=oppDiasEnvio(o,dataEnvio);
     const _orcNeg=['negociacao','negociação'].includes((o.pipeline_stage||'').toLowerCase());
     const _orcFech=isFechada(o);
     const _orcCls=exp?' expired':_orcFech?' orc-fech':(_orcNeg||o.destaque)?' orc-neg':'';
@@ -3825,7 +3825,7 @@ function renderOrc(){
       <td style="font-weight:600;font-variant-numeric:lining-nums tabular-nums">${fmt(vProp)}</td>
       <td style="font-variant-numeric:lining-nums tabular-nums;color:var(--azul);font-size:10px" title="Valor efetivo EXP (exclui repasses/subs)">${fmt(oppValorEfetivo(o,false))}</td>
       <td style="font-weight:600;font-variant-numeric:lining-nums tabular-nums;color:${vFch?'var(--verde)':'inherit'}">${vFch?fmt(vFch):'—'}</td>
-      <td style="white-space:nowrap">${probDots(prodPrincipal?.prob)}</td>
+      <td class="dtag">${fmtD(oppDataFechamento(o))}</td>
       <td class="dtag">${diasEnvio!==null?diasEnvio+' d':'—'}</td>
       <td>${estagBadge(o.pipeline_stage)}</td>
     </tr>`;
@@ -4259,7 +4259,6 @@ async function garantirProdutosCalcMaterializados(oppId, contexto='operação'){
     valor_calculado: +it.valorCalc || 0,
     valor_proposto: it.valorProposto != null ? +it.valorProposto : (+it.valorCalc || 0),
     status: 'ativo',
-    prob: ['negociacao','negociação'].includes((op.pipeline_stage||'').toLowerCase()) ? 4 : 3,
     calc_id: op.proposta_calc_id || null,
     obs: [it.subLabel, it.desc, it.id ? `ref ${it.id}` : '', `calc item ${idx+1}`].filter(Boolean).join(' · ') || null,
     updated_at: new Date().toISOString(),
@@ -5118,7 +5117,6 @@ function abrirNovoProd(oppId){
   document.getElementById('prod-valor').value='';
   document.getElementById('prod-area').value='';
   document.getElementById('prod-status').value='ativo';
-  document.getElementById('prod-prob').value='3';
   document.getElementById('prod-data-envio').value='';
   document.getElementById('prod-data-prev').value='';
   document.getElementById('prod-obs').value='';
@@ -5139,7 +5137,6 @@ function editarProd(prodId){
   document.getElementById('prod-valor').value=p.valor_proposto||'';
   document.getElementById('prod-area').value=p.area||'';
   document.getElementById('prod-status').value=p.status||'ativo';
-  document.getElementById('prod-prob').value=p.prob||'3';
   document.getElementById('prod-data-envio').value=p.data_envio||'';
   document.getElementById('prod-data-prev').value=p.data_previsao||'';
   document.getElementById('prod-obs').value=p.obs||'';
@@ -5158,7 +5155,6 @@ async function salvarProd(){
     valor_proposto:parseFloat(document.getElementById('prod-valor').value)||null,
     area:parseFloat(document.getElementById('prod-area').value)||null,
     status:document.getElementById('prod-status').value,
-    prob:parseInt(document.getElementById('prod-prob').value)||null,
     data_envio:document.getElementById('prod-data-envio').value||null,
     data_previsao:document.getElementById('prod-data-prev').value||null,
     obs:document.getElementById('prod-obs').value.trim()||null,
@@ -5169,7 +5165,7 @@ async function salvarProd(){
   else{
     ({error}=await sb.from('produtos').insert(payload));
     if(!error){
-      // C8: ao adicionar produto, opp passa para "Orçamento ativo"
+      // C8: ao adicionar produto, opp passa para "Ativo"
       const op=allOps.find(o=>o.id===oppId);
       if(op&&['prospecção','prospeccao'].includes((op.pipeline_stage||'').toLowerCase())){
         await sb.from('oportunidades').update({pipeline_stage:'enviada',updated_at:new Date().toISOString()}).eq('id',oppId);
@@ -5242,7 +5238,7 @@ async function excluirOpp(){
 function abrirAcaoOpp(tipo){
   if(currentUser?.viewer_only){toast('Sem permissão.');return;}
   _acaoTipo=tipo;_acaoOppId=detailOppId;_acaoProdId=null;
-  const titles={prospeccao:'← Voltar para Prospecção',enviada:'Marcar como Orçamento ativo',negociacao:'Mover para Negociação',negada:'Registrar Negativa'};
+  const titles={prospeccao:'← Voltar para Prospecção',enviada:'Marcar como Ativo',negociacao:'Mover para Negociação',negada:'Registrar Negativa'};
   document.getElementById('acao-title').textContent=titles[tipo]||'Confirmar';
   let html='';
   if(tipo==='negada'){
@@ -5334,7 +5330,7 @@ async function reabrirProdutosNegados(oppId, novoStatus='ativo'){
   await sb.from('followups_produto').insert({
     oportunidade_id: oppId,
     tipo: 'outro',
-    obs: `Oportunidade reaberta (${novoStatus==='negociacao'?'Negociação':'Orçamento ativo'}) após negativa.`,
+    obs: `Oportunidade reaberta (${novoStatus==='negociacao'?'Negociação':'Ativo'}) após negativa.`,
     data: new Date().toISOString().slice(0,10),
     criado_por: currentUser?.id||null,
   });
@@ -6254,7 +6250,7 @@ async function salvarPesquisaSatisfacao(oppId){
     ({ error } = await sb.from('crm_pesquisa_satisfacao').insert(payload));
   }
   if(error){toast('Erro ao salvar pesquisa: '+error.message);return;}
-  toast('Pesquisa de satisfacao atualizada.');
+  toast('Pesquisa de satisfação atualizada.');
   await carregarDados();
   renderDash();
   abrirDetail(oppId);
@@ -6319,7 +6315,7 @@ function abrirDetail(oppId){
     // Botões neutros (brancos, preto ao passar o mouse); só Fechar e Negar têm cor
     const _pipeStages=[
       {key:'prospeccao',vals:['prospecção','prospeccao'],label:'← Lead',cls:'neutro'},
-      {key:'enviada',vals:['enviada','ativo'],label:'Orçamento ativo',cls:'neutro'},
+      {key:'enviada',vals:['enviada','ativo'],label:'Ativo',cls:'neutro'},
       {key:'negociacao',vals:['negociacao','negociação'],label:'Negociação',cls:'neutro'},
     ];
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
@@ -6335,7 +6331,7 @@ function abrirDetail(oppId){
   } else if(canEdit && isNegada(op)){
     html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--cinza2)">
       <span style="font-size:9px;color:#A9A59C;font-weight:600;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">Reabrir como:</span>
-      <button class="btn sm neutro" onclick="reabrirOpp('${escJsStr(oppId)}','enviada')">↺ Orçamento ativo</button>
+      <button class="btn sm neutro" onclick="reabrirOpp('${escJsStr(oppId)}','enviada')">↺ Ativo</button>
       <button class="btn sm neutro" onclick="reabrirOpp('${escJsStr(oppId)}','negociacao')">↺ Negociação</button>
     </div>`;
   }
@@ -6484,7 +6480,6 @@ function abrirDetail(oppId){
           ${p.valor_proposto?`<span>Proposta: <strong class="c-ink">${fmt(p.valor_proposto)}</strong></span>`:''}
           ${!_useCalc&&p.valor_fechado?`<span>Fechado: <strong class="c-verde">${fmt(p.valor_fechado)}</strong></span>`:''}
           ${!_useCalc&&p.data_fechamento?`<span>Fech.: ${fmtD(p.data_fechamento)}</span>`:''}
-          ${!_useCalc&&p.prob?`<span>${probDots(p.prob)}</span>`:''}
         </div>
         ${_useCalc&&p.subtipo==='PAIS_EXEC_PCT'&&p.custoObra?`<div class="t-sec mt-2">${(p.pctHonor??10).toFixed(1)}% sobre custo de obra estimado em ${fmt(p.custoObra)} · não entra no valor efetivo EXP</div>`:''}
         ${_useCalc&&p.subtipo==='PAIS_EXEC_ACOMP'&&p.valorEstimado?`<div class="t-sec mt-2">${p.periodicidade==='semanal'?'Semanal':'Diário'} — estimado ${fmt(p.valorEstimado)}${p.periodicidade==='semanal'?'/semana':'/dia'} · não entra no valor efetivo EXP</div>`:''}
@@ -6607,11 +6602,11 @@ function abrirDetail(oppId){
   const satResposta = pesquisa?.resposta_aberta || '';
   const satContato = pesquisa?.contato_referencia || op.resp_cliente_nome || '';
   const satEmail = pesquisa?.email_referencia || op.resp_cliente_email || '';
-  html+=`<div class="ms"><div class="ms-title">Pesquisa de satisfacao</div>`;
+  html+=`<div class="ms"><div class="ms-title">Pesquisa de satisfação</div>`;
   if(!pesquisaSatDisponivel){
     html+=`<div style="font-size:11px;color:#8A867E;padding:4px 0">Rode o SQL do DEV-19 para habilitar esta frente no CRM.</div>`;
   } else if(!elegivelPesquisa){
-    html+=`<div style="font-size:11px;color:#8A867E;padding:4px 0">Disponivel quando a oportunidade estiver fechada ou o projeto estiver concluido no financeiro.</div>`;
+    html+=`<div style="font-size:11px;color:#8A867E;padding:4px 0">Disponível quando a oportunidade estiver fechada ou o projeto estiver concluído no financeiro.</div>`;
   } else {
     html+=`
       <div class="dr"><div class="dk">Status</div><div class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${pesquisaSatBadge(satStatus)}${pesquisa?.respondido_em?`<span class="t-sec">respondida em ${fmtD(pesquisa.respondido_em)}</span>`:''}</div></div>
@@ -6638,11 +6633,11 @@ function abrirDetail(oppId){
       </div>
       <div class="fg fg2 mb8">
         <div class="fgroup">
-          <label>Contato de referencia</label>
+          <label>Contato de referência</label>
           <input type="text" id="sat-contato-${oppId}" value="${escAttr(satContato)}" ${canEdit?'':'disabled'}>
         </div>
         <div class="fgroup">
-          <label>E-mail de referencia</label>
+          <label>E-mail de referência</label>
           <input type="email" id="sat-email-${oppId}" value="${escAttr(satEmail)}" ${canEdit?'':'disabled'}>
         </div>
       </div>
@@ -6657,7 +6652,7 @@ function abrirDetail(oppId){
           <button class="btn sm ghost" onclick="marcarPesquisaSatisfacaoStatus('${escJsStr(oppId)}','dispensada')">Dispensar</button>
         `:''}
       </div>
-      <div style="font-size:10px;color:#8A867E;margin-top:8px">Leitura aberta, sem retroalimentacao automatica de outros dados.</div>
+      <div style="font-size:10px;color:#8A867E;margin-top:8px">Leitura aberta, sem retroalimentação automática de outros dados.</div>
     `;
   }
   html+=`</div>`;

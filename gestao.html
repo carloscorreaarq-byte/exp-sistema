@@ -4016,6 +4016,7 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         </div>
         <button class="btn verde" id="btn-rev-top" onclick="revFabAction()" style="margin-left:auto;white-space:nowrap">+ Solicitar revisão</button>
       </div>
+      <input type="search" class="cli-admin-busca" id="rev-busca" placeholder="Buscar por projeto, cliente ou etapa…" aria-label="Buscar revisões" oninput="filtrarRevisoes(this.value)" style="width:100%;margin-bottom:10px">
       <div id="rev-lista">
         <div class="loading-state">Carregando...</div>
       </div>
@@ -10265,7 +10266,19 @@ async function carregarRevisoes() {
   const grpLabel = (txt, n) =>
     `<div style="font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt-3);padding:8px 4px 4px">${txt} <span style="color:var(--txt-3)">(${n})</span></div>`;
 
-  const revsVisiveis = G._revMinhasOnly ? revs.filter(_isMinhaRev) : revs;
+  function _casaBusca(r) {
+    const termos = _revNormBusca(G._revBusca).split(/\s+/).filter(Boolean);
+    if (!termos.length) return true;
+    const prod = r.etapas?.produtos;
+    const opp  = prod?.oportunidades;
+    const alvo = _revNormBusca([opp?.projeto, opp?.clientes?.nome, prod?.nome, r.etapas?.nome].filter(Boolean).join(' '));
+    return termos.every(t => alvo.includes(t));
+  }
+
+  // Redesenha a lista sem buscar de novo no banco (a busca filtra a cada tecla)
+  G._revRenderLista = function () {
+  const buscando = !!_revNormBusca(G._revBusca).trim();
+  const revsVisiveis = (G._revMinhasOnly ? revs.filter(_isMinhaRev) : revs).filter(_casaBusca);
   const minhasAtivas = revsVisiveis.filter(r => !_isCompleta(r) && _isMinhaRev(r));
   const outrasAtivas = revsVisiveis.filter(r => !_isCompleta(r) && !_isMinhaRev(r));
   const finalizadas  = revsVisiveis.filter(r => _isCompleta(r));
@@ -10282,13 +10295,27 @@ async function carregarRevisoes() {
   if (finalizadas.length)
     html += grpLabel('Revisões finalizadas', finalizadas.length) + finalizadas.map(_revCard).join('');
   const hasContent = minhasAtivas.length || outrasAtivas.length || finalizadas.length;
-  if (!hasContent) html = addInlineBtn + (G._revMinhasOnly
+  if (!hasContent) html = addInlineBtn + (buscando
+    ? '<div class="empty-note">Nenhuma revisão encontrada para esta busca.</div>'
+    : G._revMinhasOnly
     ? '<div class="empty-note">Nenhuma revisão sua encontrada.</div>'
     : '<div class="empty-note">Nenhuma revisão encontrada.</div>');
 
   lista.innerHTML = html;
+  };
+
+  G._revRenderLista();
   G._revisoes = revs;
   _syncRevFiltroBtn();
+}
+
+function _revNormBusca(txt) {
+  return String(txt || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function filtrarRevisoes(txt) {
+  G._revBusca = txt;
+  G._revRenderLista?.();
 }
 
 function toggleFiltroMinhasRevisoes() {
@@ -21865,7 +21892,10 @@ function primeiroUltimo(nome) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 
-init();
+// Espera todos os scripts da página: se o banco responder antes de chat.js, exp-nav.js e
+// lists-panel.js terminarem de carregar, a montagem quebra e a tela fica sem as abas
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+else init();
 </script>
 
 <!-- EXP · Chat Widget -->
