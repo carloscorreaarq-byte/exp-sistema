@@ -463,6 +463,12 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const _linkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
 const LINK_COM_ERRO = !!(_linkParams.get('error_code') || _linkParams.get('error'));
 let emRecuperacao = !LINK_COM_ERRO && _linkParams.get('type') === 'recovery';
+// Link copiado na Gestão da Plataforma: o token só é usado ao salvar a nova senha
+let tokenNovaSenha = _linkParams.get('nova_senha');
+if (tokenNovaSenha) {
+  emRecuperacao = true;
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 function normalizeUsuario(usuario) {
@@ -671,7 +677,7 @@ async function init() {
 
   const { data: { session } } = await sb.auth.getSession();
 
-  if (LINK_COM_ERRO || (emRecuperacao && !session)) {
+  if (LINK_COM_ERRO || (emRecuperacao && !session && !tokenNovaSenha)) {
     // Link expirado, já usado ou inválido
     emRecuperacao = false;
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -817,6 +823,18 @@ async function salvarNovaSenha() {
   }
 
   setLoading('btn-ns', true);
+  if (tokenNovaSenha) {
+    const { error: erroLink } = await sb.auth.verifyOtp({ token_hash: tokenNovaSenha, type: 'recovery' });
+    tokenNovaSenha = null;
+    if (erroLink) {
+      setLoading('btn-ns', false);
+      emRecuperacao = false;
+      mostrarRecuperacao();
+      showErro('erro-rec', 'Este link expirou ou já foi usado. Peça um novo link.');
+      return;
+    }
+    sessionStorage.removeItem('exp_usuario');
+  }
   const { error } = await sb.auth.updateUser({ password: senha });
   setLoading('btn-ns', false);
 

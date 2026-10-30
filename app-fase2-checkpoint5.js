@@ -1145,7 +1145,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
       + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
       + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
       + '</select></div>'
-      + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + '</div>'
+      + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + (!currentSessionUsuario()?.is_platform_manager || isPlatformUserInactive(user) || !user.auth_id ? '' : '<button type="button" class="shell-btn" onclick="copiarLinkSenhaPlataforma(\'' + user.id + '\')">Copiar link de senha</button>') + '</div>'
       + '<div class="platform-inline"><button type="button" class="shell-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')" style="margin-right:6px">Ver dados</button><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
       + '</div>';
   }
@@ -1584,6 +1584,29 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
     setPlataformaDirty(false);
     setPlataformaStatus('Configuração de imagens de preset atualizada.');
+  };
+
+  window.copiarLinkSenhaPlataforma = async function copiarLinkSenhaPlataforma(userId) {
+    if (!currentSessionUsuario()?.is_platform_manager) {
+      setPlataformaStatus('Apenas o gestor da plataforma pode gerar este link.');
+      return;
+    }
+    if (!window.confirm('Gerar um link de nova senha para este usuário?\n\nQuem tiver o link pode criar a senha desta conta. Envie só para a própria pessoa e não abra no seu navegador.')) return;
+    setPlataformaStatus('Gerando link de nova senha...');
+    const { data, error } = await window.sb.functions.invoke('gerar-link-senha', { body: { usuario_id: userId } });
+    if (error || !data?.link) {
+      let motivo = data?.error || '';
+      try { motivo = motivo || (await error?.context?.json())?.error || ''; } catch (_) {}
+      setPlataformaStatus('Não foi possível gerar o link: ' + (motivo || error?.message || 'verifique se a função gerar-link-senha foi publicada.'));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(data.link);
+    } catch (_) {
+      // Navegador bloqueou a área de transferência: mostra o link para copiar à mão
+      window.prompt('Copie o link e envie para a pessoa:', data.link);
+    }
+    setPlataformaStatus('Link de nova senha de ' + (data.nome || 'usuário') + ' copiado. Envie só para a própria pessoa; ele vale uma vez e expira.');
   };
 
   window.verDadosUsuarioPlataforma = async function verDadosUsuarioPlataforma(userId) {
