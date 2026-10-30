@@ -459,6 +459,11 @@ body::after {
 const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
 
+// Lido antes de criar o cliente: o Supabase limpa o endereço ao processar o link do e-mail
+const _linkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+const LINK_COM_ERRO = !!(_linkParams.get('error_code') || _linkParams.get('error'));
+let emRecuperacao = !LINK_COM_ERRO && _linkParams.get('type') === 'recovery';
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 function normalizeUsuario(usuario) {
   if (!usuario) return null;
@@ -625,6 +630,13 @@ function mostrarRecuperacao() {
   document.getElementById('painel-logado').style.display    = 'none';
   setTimeout(() => document.getElementById('rec-email')?.focus(), 50);
 }
+function mostrarNovaSenha() {
+  document.getElementById('form-login').style.display       = 'none';
+  document.getElementById('rec-panel').style.display        = 'none';
+  document.getElementById('painel-logado').style.display    = 'none';
+  document.getElementById('nova-senha-panel').style.display = 'block';
+  setTimeout(() => document.getElementById('ns-senha')?.focus(), 50);
+}
 function voltarLogin() {
   document.getElementById('rec-panel').style.display   = 'none';
   document.getElementById('form-login').style.display  = 'block';
@@ -633,6 +645,21 @@ function voltarLogin() {
 
 // ── INIT ──────────────────────────────────────────────────
 async function init() {
+  // Precisa vir antes do primeiro await: o aviso PASSWORD_RECOVERY é disparado uma única vez
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_OUT') {
+      sessionStorage.removeItem('exp_usuario');
+      resetLoggedState();
+      showPanel('form-login');
+      return;
+    }
+    if (event === 'PASSWORD_RECOVERY') {
+      emRecuperacao = true;
+      mostrarNovaSenha();
+      return;
+    }
+  });
+
   // Verifica cliente e acesso básico à tabela `usuarios`
   try {
     const { error } = await sb.from('usuarios').select('id').limit(1);
@@ -642,27 +669,18 @@ async function init() {
     setConnectionStatus(false, 'Sem conexao');
   }
 
-  // Detecta link de recuperação de senha (Supabase envia #type=recovery na URL)
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_OUT') {
-      sessionStorage.removeItem('exp_usuario');
-      resetLoggedState();
-      showPanel('form-login');
-      return;
-    }
-    if (event === 'PASSWORD_RECOVERY') {
-      // Oculta tudo e mostra painel de nova senha
-      document.getElementById('form-login').style.display       = 'none';
-      document.getElementById('rec-panel').style.display        = 'none';
-      document.getElementById('painel-logado').style.display    = 'none';
-      document.getElementById('nova-senha-panel').style.display = 'block';
-      return;
-    }
-  });
-
-  // Verifica sessão ativa normal
   const { data: { session } } = await sb.auth.getSession();
-  if (session && !window.location.hash.includes('type=recovery')) {
+
+  if (LINK_COM_ERRO || (emRecuperacao && !session)) {
+    // Link expirado, já usado ou inválido
+    emRecuperacao = false;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    mostrarRecuperacao();
+    showErro('erro-rec', 'Este link expirou ou já foi usado. Peça um novo link abaixo.');
+  } else if (emRecuperacao) {
+    mostrarNovaSenha();
+  } else if (session) {
+    // Sessão ativa normal
     const ok = await mostrarLogado(session.user);
     if (!ok) return;
     return;
@@ -775,7 +793,7 @@ async function enviarRecuperacao() {
     return;
   }
 
-  okEl.textContent = 'Link enviado! Verifique sua caixa de entrada (e spam). O link expira em 24h.';
+  okEl.textContent = 'Link enviado! Verifique sua caixa de entrada (e spam) e use o link assim que receber, pois ele expira.';
   okEl.className = 'msg-ok show';
   document.getElementById('btn-rec').disabled = true;
 }

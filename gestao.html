@@ -9105,7 +9105,8 @@ async function editarCustoLancado(id) {
     if (tipo === 'sociedade') {
       const ex = todosEventosSoc.find(e => e.nome.toLowerCase() === n.toLowerCase());
       if (ex) return { socId: ex.id, evtId: null };
-      const { data } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+      const { data, error } = await sb.from('eventos_sociedade').insert({ tipo, nome: n, criado_por: G.usuario.id }).select('id').single();
+      if (error) toast('Evento não criado: ' + error.message);
       if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
       return null;
     } else {
@@ -13535,7 +13536,7 @@ async function abrirReclassificacaoCusto(id) {
     if (tipo === 'sociedade') {
       const ex = todosEventosSoc.find(e=>e.nome.toLowerCase()===n.toLowerCase());
       if (ex) return { socId: ex.id, evtId: null };
-      const { data, error: insErr } = await sb.from('eventos_sociedade').insert({ nome: n }).select('id').single();
+      const { data, error: insErr } = await sb.from('eventos_sociedade').insert({ tipo, nome: n, criado_por: G.usuario.id }).select('id').single();
       if (data) { todosEventosSoc.push({ id: data.id, nome: n }); return { socId: data.id, evtId: null }; }
       // Insert pode falhar por unique constraint — tenta buscar pelo nome no banco
       const { data: found } = await sb.from('eventos_sociedade').select('id').ilike('nome', n).maybeSingle();
