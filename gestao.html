@@ -15,7 +15,7 @@
 <script src="shared/fila-prioridades.js?v=2026-10-27a"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 
 <!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
@@ -5428,40 +5428,6 @@ document.addEventListener('click', e => {
     if (p) p.style.display = 'none';
   }
 }, true);
-// ── EXP ROOM PRESENCE ───────────────────────────────────────
-// Requer: CREATE TABLE exp_config (key text PRIMARY KEY, value text, updated_at timestamptz DEFAULT now(), updated_by text);
-async function checkExpRoomStatus() {
-  try {
-    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
-    const btn = document.getElementById('exp-room-link');
-    if (!btn) return;
-    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
-      btn.classList.add('active');
-      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
-      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
-    } else {
-      btn.classList.remove('active');
-      btn.removeAttribute('data-tooltip');
-    }
-  } catch(e) {}
-}
-async function registrarExpRoomClick(userId, userName) {
-  try {
-    await sb.from('exp_config').upsert({ key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' }, { onConflict:'key' });
-  } catch(e) {}
-}
-function initExpRoom(userId, userName) {
-  const btn = document.getElementById('exp-room-link');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    registrarExpRoomClick(userId, userName);
-    btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
-  });
-  checkExpRoomStatus();
-  setInterval(checkExpRoomStatus, 60000);
-}
 function initConnDot() {
   const dot = document.getElementById('conn-dot');
   if (!dot) return;
@@ -21875,7 +21841,7 @@ init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-10-27h"></script>
+<script src="chat.js?v=2026-10-30a"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js?v=2026-10-27a"></script>
 <style>
@@ -21888,6 +21854,6 @@ init();
 
 
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-27b"></script>
+<script src="shared/exp-nav.js?v=2026-10-30a"></script>
 </body>
 </html>

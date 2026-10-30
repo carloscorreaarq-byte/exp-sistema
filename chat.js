@@ -1926,7 +1926,7 @@
      O timer roda num Web Worker, que NÃO sofre throttling de aba em
      background; o dedup por id evita som/push duplicado com o realtime.
   ══════════════════════════════════════════════════════════════════ */
-  var POLL_INTERVAL_MS = 7000;
+  var POLL_INTERVAL_MS = 30000;
   var _lastPollTs = null;   /* definido por _initPollCursor (horário do servidor) */
   var _seenMsgIds = {};
   var _seenMsgOrder = [];
@@ -4811,7 +4811,8 @@
   }
 
   function fetchProjectHomeItems(uid) {
-    /* Projetos + conversas de revisão (estas abrem na página do chat, onde os itens viram tópicos) */
+    /* 3 consultas fixas, independente do nº de projetos (igual ao chat em tela cheia);
+       antes eram 2 por conversa. Projetos + conversas de revisão (estas abrem na página do chat). */
     function _q(sel, tipos) {
       return sb.from('chat_threads').select(sel).in('type', tipos).is('archived_at', null)
         .order('last_message_at', { ascending: false, nullsFirst: false });
@@ -4828,47 +4829,51 @@
         }
 
         var ids = projectThreads.map(function (t) { return t.id; });
-        return sb.from('chat_thread_reads')
-          .select('thread_id,last_read_at')
-          .eq('user_auth_id', uid)
-          .in('thread_id', ids)
-          .then(function (readsRes) {
-            var readMap = {};
-            (readsRes.data || []).forEach(function (row) { readMap[row.thread_id] = row.last_read_at; });
-            return Promise.all(projectThreads.map(function (thread) {
-              var lastRead = readMap[thread.id] || null;
-              return Promise.all([
-                sb.from('chat_thread_messages')
-                  .select('thread_id,content,created_at,sender_auth_id')
-                  .eq('thread_id', thread.id)
-                  .order('created_at', { ascending: false })
-                  .limit(1),
-                lastRead
-                  ? sb.from('chat_thread_messages')
-                      .select('id', { count: 'exact', head: true })
-                      .eq('thread_id', thread.id)
-                      .gt('created_at', lastRead)
-                      .neq('sender_auth_id', uid)
-                  : sb.from('chat_thread_messages')
-                      .select('id', { count: 'exact', head: true })
-                      .eq('thread_id', thread.id)
-                      .neq('sender_auth_id', uid)
-              ]).then(function (parts) {
-                var last = (parts[0].data || [])[0] || null;
-                var unreadCount = parts[1] && typeof parts[1].count === 'number' ? parts[1].count : 0;
-                var meta = buildProjectThreadMeta(
-                  thread.id,
-                  thread.title,
-                  last ? last.content : 'Chat do projeto',
-                  last ? last.created_at : thread.last_message_at,
-                  last ? last.sender_auth_id : null
-                );
-                meta.unread = unreadCount;
-                projectThreadMeta[meta.channel] = meta;
-                return meta;
-              });
-            }));
+        return Promise.all([
+          /* Última mensagem de cada conversa: pega as mais recentes e filtra aqui */
+          sb.from('chat_thread_messages')
+            .select('thread_id,content,created_at,sender_auth_id')
+            .in('thread_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(ids.length * 3),
+          /* O que eu já li em todas as conversas de uma vez */
+          sb.from('chat_thread_reads')
+            .select('thread_id,last_read_at')
+            .eq('user_auth_id', uid)
+            .in('thread_id', ids),
+          /* Mensagens dos outros, para contar as não lidas aqui */
+          sb.from('chat_thread_messages')
+            .select('thread_id,created_at')
+            .in('thread_id', ids)
+            .neq('sender_auth_id', uid)
+            .order('created_at', { ascending: false })
+            .limit(500)
+        ]).then(function (parts) {
+          var lastMsgMap = {};
+          (parts[0].data || []).forEach(function (m) {
+            if (!lastMsgMap[m.thread_id]) lastMsgMap[m.thread_id] = m;
           });
+          var readMap = {};
+          (parts[1].data || []).forEach(function (row) { readMap[row.thread_id] = row.last_read_at; });
+          var unreadMap = {};
+          (parts[2].data || []).forEach(function (m) {
+            var lr = readMap[m.thread_id] || null;
+            if (!lr || m.created_at > lr) unreadMap[m.thread_id] = (unreadMap[m.thread_id] || 0) + 1;
+          });
+          return projectThreads.map(function (thread) {
+            var last = lastMsgMap[thread.id] || null;
+            var meta = buildProjectThreadMeta(
+              thread.id,
+              thread.title,
+              last ? last.content : 'Chat do projeto',
+              last ? last.created_at : thread.last_message_at,
+              last ? last.sender_auth_id : null
+            );
+            meta.unread = unreadMap[thread.id] || 0;
+            projectThreadMeta[meta.channel] = meta;
+            return meta;
+          });
+        });
       });
   }
 

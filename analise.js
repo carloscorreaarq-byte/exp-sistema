@@ -53,7 +53,6 @@ async function analiseBootstrap() {
     if (!boot) return;
     analiseValidarAcesso();
     analiseRenderShell(boot.usuario);
-    analiseInitExpRoom(boot.usuario?.id, boot.usuario?.nome);
     analiseBindEventosBase();
     analiseRenderConfig();
     analiseRenderAbaAtiva();
@@ -2665,54 +2664,7 @@ async function enviarFeedbackAnalise() {
   setTimeout(fecharFeedbackPop, 1800);
 }
 
-// ─── EXP Room ────────────────────────────────────────────────────────────────
-
-let _analiseExpRoomInterval = null;
-
-async function analiseCheckExpRoomStatus() {
-  const btn = document.getElementById('exp-room-btn');
-  if (!btn) return;
-  try {
-    const sb = window.sb;
-    if (!sb) return;
-    const { data } = await sb
-      .from('exp_config')
-      .select('value')
-      .eq('key', 'exp_room_active')
-      .single();
-    const active = data?.value === 'true' || data?.value === true;
-    btn.classList.toggle('active', active);
-    btn.title = active ? 'EXP Room — Reunião em andamento' : 'EXP Room — Reunião online';
-  } catch {
-    /* silencioso */
-  }
-}
-
-async function analiseRegistrarExpRoomClick(userId, userName) {
-  try {
-    const sb = window.sb;
-    if (!sb || !userId) return;
-    await sb.from('exp_room_presenca').upsert(
-      { usuario_id: userId, usuario_nome: userName || null, ultimo_acesso: new Date().toISOString() },
-      { onConflict: 'usuario_id' }
-    );
-  } catch {
-    /* silencioso */
-  }
-}
-
-function analiseInitExpRoom(userId, userName) {
-  const btn = document.getElementById('exp-room-btn');
-  if (!btn) return;
-  analiseCheckExpRoomStatus();
-  _analiseExpRoomInterval = setInterval(analiseCheckExpRoomStatus, 60000);
-  btn.addEventListener('click', () => {
-    analiseRegistrarExpRoomClick(userId, userName);
-  });
-}
-
 // Overrides de estabilizacao da base do modulo
-analiseInitExpRoom = function analiseInitExpRoomStable() {};
 
 analiseRenderShell = function analiseRenderShellStable(usuario) {
   const subtitle = document.getElementById('analise-user-context');

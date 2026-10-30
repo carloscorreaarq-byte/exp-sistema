@@ -10,7 +10,7 @@
 <script src="shared/privacidade.js?v=2026-10-26c"></script>
 <script src="shared/nome-curto.js"></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-27b">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script>
@@ -5434,43 +5434,6 @@ async function sair() {
   window.location.href = 'index.html';
 }
 
-/* ── EXP ROOM ─────────────────────────────────────────────── */
-const EXP_ROOM_URL = 'https://meet.google.com/mqe-cgge-maz';
-async function checkExpRoomStatus() {
-  try {
-    const { data } = await sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle();
-    const btn = document.getElementById('exp-room-btn');
-    if (!btn) return;
-    if (data?.updated_at && (Date.now() - new Date(data.updated_at).getTime()) / 60000 <= 30) {
-      btn.classList.add('active');
-      const mins = Math.floor((Date.now() - new Date(data.updated_at).getTime()) / 60000);
-      const quem = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-      btn.setAttribute('data-tooltip', `${quem} · ${mins === 0 ? 'agora mesmo' : `há ${mins} min`}`);
-    } else {
-      btn.classList.remove('active');
-      btn.removeAttribute('data-tooltip');
-    }
-  } catch(e) {}
-}
-async function registrarExpRoomClick(userId, userName) {
-  try {
-    await sb.from('exp_config').upsert(
-      { key:'exp_room_active', value: userName||'true', updated_at: new Date().toISOString(), updated_by: userId||'' },
-      { onConflict:'key' }
-    );
-  } catch(e) {}
-}
-function initExpRoom(userId, userName) {
-  const btn = document.getElementById('exp-room-btn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    registrarExpRoomClick(userId, userName);
-    btn.classList.add('active');
-    btn.setAttribute('data-tooltip', `${userName||'Você'} · agora mesmo`);
-  });
-  checkExpRoomStatus();
-  setInterval(checkExpRoomStatus, 60000);
-}
 
 /* ── START ────────────────────────────────────────────────── */
 init();
@@ -5502,7 +5465,7 @@ async function _enviarLembrete() {
 }
 </script>
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
-<script src="shared/exp-nav.js?v=2026-10-27b"></script>
+<script src="shared/exp-nav.js?v=2026-10-30a"></script>
 <script src="timer.js?v=2026-10-27a"></script>
 <style>
   #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:30px!important;z-index:9998!important}

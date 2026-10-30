@@ -2220,7 +2220,7 @@
      Timer num Web Worker (não sofre throttling de aba em background);
      dedup por id evita som/push duplicado com o realtime.
   ═══════════════════════════════════════════════════════════════════ */
-  var POLL_INTERVAL_MS = 7000;
+  var POLL_INTERVAL_MS = 30000;
   var _lastPollTs = null;   /* definido por _initPollCursor (horário do servidor) */
   var _seenMsgIds = {};
   function _markSeen(id) { if (id != null) _seenMsgIds[String(id)] = true; }
@@ -4552,8 +4552,6 @@
     showPrioBanner, hidePrioBanner, openProjectOverlay, closeProjectOverlay,
     /* notificações */
     toggleNotifPanel, encerrarNotif,
-    /* EXP Room */
-    roomClick
   };
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -6423,66 +6421,6 @@
   function closeProjectOverlay() {
     var $overlay = document.getElementById('fp-proj-overlay');
     if ($overlay) $overlay.style.display = 'none';
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     EXP ROOM PRESENCE
-  ═══════════════════════════════════════════════════════════════════ */
-  var ROOM_BLINK_SECS = 120;   /* segundos que o ícone fica piscando após um clique */
-  var _roomBlinkTimer = null;  /* timer local para parar o blink no próprio dispositivo */
-
-  function initExpRoom() {
-    checkRoomStatus();
-    setInterval(checkRoomStatus, 15000);  /* atualiza a cada 15s para precisão dos 120s */
-  }
-
-  function checkRoomStatus() {
-    sb.from('exp_config')
-      .select('updated_at,value')
-      .eq('key', 'exp_room_active')
-      .maybeSingle()
-      .then(function(r) {
-        var btn = document.getElementById('fp-room-btn');
-        if (!btn) return;
-        var data = r.data;
-        if (data && data.updated_at) {
-          var secs = (Date.now() - new Date(data.updated_at).getTime()) / 1000;
-          if (secs <= ROOM_BLINK_SECS) {
-            btn.classList.add('active');
-            var quem   = (data.value && data.value !== 'true') ? data.value : 'Alguém';
-            var quando = secs < 60 ? 'agora mesmo' : 'há ' + Math.floor(secs / 60) + ' min';
-            btn.setAttribute('data-tooltip', quem + ' · ' + quando);
-            return;
-          }
-        }
-        btn.classList.remove('active');
-        btn.removeAttribute('data-tooltip');
-      }).catch(function() {});
-  }
-
-  function roomClick() {
-    var uid  = user.id || user.app_user_id;
-    var nome = (user.nome || '').split(' ')[0] || 'Alguém';
-    /* Registrar no banco */
-    sb.from('exp_config').upsert({
-      key: 'exp_room_active',
-      value: nome,
-      updated_at: new Date().toISOString(),
-      updated_by: String(uid || '')
-    }, { onConflict: 'key' }).then(function() {
-      var btn = document.getElementById('fp-room-btn');
-      if (btn) {
-        btn.classList.add('active');
-        btn.setAttribute('data-tooltip', nome + ' · agora mesmo');
-      }
-      /* parar o blink localmente após 120 s, sem esperar o próximo poll */
-      if (_roomBlinkTimer) clearTimeout(_roomBlinkTimer);
-      _roomBlinkTimer = setTimeout(function() {
-        var b = document.getElementById('fp-room-btn');
-        if (b) { b.classList.remove('active'); b.removeAttribute('data-tooltip'); }
-        _roomBlinkTimer = null;
-      }, ROOM_BLINK_SECS * 1000);
-    }).catch(function() {});
   }
 
   /* toggleTheme — troca o tema e re-aplica o tom de fonte para a paleta oposta */
