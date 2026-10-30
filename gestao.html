@@ -5644,6 +5644,8 @@ async function init() {
       nav.replaceChild(btn, oldBtn);
     }
 
+    /* membros para atribuição de tarefas: preenchido por carregarUsuarios (evita outra leitura) */
+    window._listsMembersCache = window._listsMembersCache || [];
     listsPanel.init({
       getSb: function() { return window.sb; },
       getUser: function() {
@@ -5653,9 +5655,6 @@ async function init() {
       escHtml: window.escHtml,
     });
 
-    /* pré-carrega membros para atribuição de tarefas */
-    sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
-      .then(function(r) { window._listsMembersCache = r.data || []; });
   })();
 
   // Agenda room link (calendário interno)
@@ -5993,10 +5992,11 @@ function usuarioPorId(id) {
 }
 
 async function carregarUsuarios() {
-  const [{ data }, { data: inativos }] = await Promise.all([
-    sb.from('usuarios').select('*').eq('ativo', true).order('nome'),
-    sb.from('usuarios').select('*').eq('ativo', false).order('nome'),
-  ]);
+  // Uma leitura só: separa ativos e inativos aqui
+  const { data: _todos } = await sb.from('usuarios').select('*').order('nome');
+  const data = (_todos || []).filter(u => u.ativo === true);
+  const inativos = (_todos || []).filter(u => u.ativo === false);
+  window._listsMembersCache = data.map(u => ({ id: u.id, nome: u.nome, iniciais: u.iniciais, cor: u.cor, apelido: u.apelido }));
   G.todosUsuarios = (data || []).map(u => ({ ...u, nome_completo: u.nome, nome: nomeCurto(u.nome) }));
   G.usuariosInativos = (inativos || []).map(u => ({ ...u, nome_completo: u.nome, nome: nomeCurto(u.nome), inativo: true }));
   if (G.usuario && G.usuario.nome) G.usuario.nome = nomeCurto(G.usuario.nome);
@@ -6058,6 +6058,14 @@ function normalizarNucleo(raw) {
 }
 
 async function carregarHorasGlobal() {
+  // Total por projeto somado no banco: uma linha por projeto, sem o limite de linhas da consulta
+  const { data: _tot, error: _totErr } = await sb.rpc('horas_por_produto');
+  if (!_totErr) {
+    G._horasPorProd = {};
+    (_tot || []).forEach(r => { if (r.produto_id) G._horasPorProd[r.produto_id] = Number(r.horas) || 0; });
+    return;
+  }
+  // SQL horas_por_produto.sql ainda não rodado: soma aqui (como antes)
   const { data } = await sb.from('horas_lancadas').select('produto_id, hora_inicio, hora_fim');
   G._horasPorProd = {};
   (data || []).forEach(l => {
@@ -6070,24 +6078,32 @@ async function carregarHorasGlobal() {
 async function carregarProdutos() {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
-  let { data: prodsGestao, error: _pgErr } = await sb.from('produtos')
-    .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
-    .order('created_at', { ascending: false });
-  if (_pgErr) {
+  const _buscarProdutos = async () => {
+    const { data, error } = await sb.from('produtos')
+      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
+      .order('created_at', { ascending: false });
+    if (!error) return data;
     const { data: _pgFallback } = await sb.from('produtos')
       .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
       .order('created_at', { ascending: false });
-    prodsGestao = _pgFallback;
-  }
+    return _pgFallback;
+  };
 
   // 2. Propostas fechadas do CRM (fonte de visualização)
   const STAGES_FECHADOS = [
     'fechado_ganho','Fechado/Ganho','fechado','Fechado',
     'ganho','Ganho','won','closed_won','Fechado/ganho'
   ];
-  const { data: proposals } = await sb.from('exp_proposals')
-    .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
-    .in('status', STAGES_FECHADOS);
+
+  // Produtos, propostas, etapas e desenvolvedores saem juntos (uma consulta não depende da outra)
+  const [prodsGestao, { data: proposals }, { data: etapas }, { data: devLinks }] = await Promise.all([
+    _buscarProdutos(),
+    sb.from('exp_proposals')
+      .select('proposal_id, parent_id, version, projeto, cliente, cidade, uf, main_nucleo, total, status')
+      .in('status', STAGES_FECHADOS),
+    sb.from('etapas').select('*').order('ordem'),
+    sb.from('etapa_desenvolvedores').select('etapa_id, usuario_id'),
+  ]);
 
   // 3. Para propostas CRM, mantém só versão mais recente de cada parent
   const byParent = {};
@@ -6155,11 +6171,9 @@ async function carregarProdutos() {
   G._prodsGestao = prodsAtivosFixed;
 
   // 7. Etapas
-  const { data: etapas } = await sb.from('etapas').select('*').order('ordem');
   G.todasEtapas = etapas || [];
 
   // 8. Devs por etapa
-  const { data: devLinks } = await sb.from('etapa_desenvolvedores').select('etapa_id, usuario_id');
   G.etapaDevs = {};
   (devLinks || []).forEach(d => {
     if (!G.etapaDevs[d.etapa_id]) G.etapaDevs[d.etapa_id] = [];
@@ -6212,9 +6226,9 @@ async function carregarDashboard() {
   const role = G.usuario.role;
 
   // "Em desenvolvimento" = etapas onde é membro (etapa_desenvolvedores)
-  const { data: devs } = await sb.from('etapa_desenvolvedores')
-    .select('etapas(produto_id)').eq('usuario_id', uid);
-  const devPids = [...new Set((devs || []).map(d => d.etapas?.produto_id).filter(Boolean))];
+  // (usa o que carregarProdutos já trouxe; toda recarga do dashboard vem depois dele)
+  const _minhasEtapas = new Set(Object.entries(G.etapaDevs).filter(([, uids]) => uids.includes(uid)).map(([eid]) => eid));
+  const devPids = [...new Set(G.todasEtapas.filter(e => _minhasEtapas.has(e.id)).map(e => e.produto_id).filter(Boolean))];
   const meusProdutos = G._prodsGestao.filter(p => devPids.includes(p.id) && p.status === 'ativo');
 
   // "Em coordenação" = produtos onde é coordenador_id
@@ -6245,19 +6259,7 @@ async function carregarDashboard() {
   const subV = document.getElementById('st-horas-sub-v'); if (subV) subV.textContent = 'de 40h';
 
   // S4-04: horas realizadas por produto (todos os lançamentos de todos os usuários)
-  const pidsAtivos = meusProdutos.map(p => p.id);
-  let horasPorProd = {};
-  if (pidsAtivos.length) {
-    const { data: hLanc } = await sb.from('horas_lancadas')
-      .select('produto_id, hora_inicio, hora_fim')
-      .in('produto_id', pidsAtivos);
-    (hLanc || []).forEach(l => {
-      if (!horasPorProd[l.produto_id]) horasPorProd[l.produto_id] = 0;
-      horasPorProd[l.produto_id] += diffHoras(l.hora_inicio, l.hora_fim);
-    });
-  }
-
-  renderDashProjetos(meusProdutos, horasPorProd);
+  renderDashProjetos(meusProdutos, G._horasPorProd || {});
   renderEntregasSemana();
 
   if (coordProds.length) {
