@@ -51,9 +51,6 @@ window.ExpNav = (() => {
   /* painéis flutuantes de busca */
   let _apoioPanelOpen = false, _apoioSearchTimer = null;
   let _contatosPanelOpen = false, _contatosSearchTimer = null;
-  /* EXP Room */
-  let _roomBlinkTimer = null;
-  const ROOM_BLINK_SECS = 180;
 
   /* ── Helpers ──────────────────────────────────────────────── */
   function _esc(s) {
@@ -219,7 +216,7 @@ window.ExpNav = (() => {
         '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
       '</a>' +
       '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
-      ' class="exp-nav-item" title="EXP Room" onclick="ExpNav.roomClick()">' + ico.room + '</a>' +
+      ' class="exp-nav-item" title="EXP Room">' + ico.room + '</a>' +
     '</div>' +
 
     '<button class="exp-nav-item" id="exp-nav-bell" title="Notificações"' +
@@ -851,49 +848,8 @@ window.ExpNav = (() => {
     localStorage.setItem('exp-theme', next);
   }
 
-  /* ── EXP Room ────────────────────────────────────────────── */
-  function roomClick() {
-    var sb = _sb(); if (!sb || !_user) return;
-    var nome = (_user.nome || '').split(' ')[0] || 'Alguém';
-    sb.from('exp_config').upsert({
-      key: 'exp_room_active', value: nome,
-      updated_at: new Date().toISOString(),
-      updated_by: String(_user.app_user_id || _user.id || '')
-    }, { onConflict: 'key' }).then(function() {
-      var btn = document.getElementById('exp-room-btn');
-      if (btn) { btn.classList.add('active'); btn.setAttribute('data-tooltip', nome + ' · agora mesmo'); }
-      /* apaga blink localmente após 120s exatos */
-      if (_roomBlinkTimer) clearTimeout(_roomBlinkTimer);
-      _roomBlinkTimer = setTimeout(function() {
-        var b = document.getElementById('exp-room-btn');
-        if (b) { b.classList.remove('active'); b.removeAttribute('data-tooltip'); }
-        _roomBlinkTimer = null;
-      }, ROOM_BLINK_SECS * 1000);
-    }).catch(function() {});
-  }
-
-  function _checkRoomStatus() {
-    var sb = _sb(); if (!sb) return;
-    sb.from('exp_config').select('updated_at,value').eq('key','exp_room_active').maybeSingle()
-      .then(function(r) {
-        var btn = document.getElementById('exp-room-btn');
-        if (!btn) return;
-        var d = r.data;
-        if (d && d.updated_at) {
-          var secs = (Date.now() - new Date(d.updated_at).getTime()) / 1000;
-          if (secs <= ROOM_BLINK_SECS) {
-            btn.classList.add('active');
-            var quem   = (d.value && d.value !== 'true') ? d.value : 'Alguém';
-            var quando = secs < 60 ? 'agora mesmo' : 'há ' + Math.floor(secs / 60) + ' min';
-            btn.setAttribute('data-tooltip', quem + ' · ' + quando);
-            return;
-          }
-        }
-        btn.classList.remove('active');
-        btn.removeAttribute('data-tooltip');
-      }).catch(function() {});
-  }
-
+  
+  
   /* ── Notificações ────────────────────────────────────────── */
   var _notifAutoCloseTimer = null;
   var _notifIniciando = false;
@@ -1565,10 +1521,6 @@ window.ExpNav = (() => {
       _bindNotifOutsideClick();
       _bindTarefasOutsideClick();
 
-      /* EXP Room */
-      _checkRoomStatus();
-      setInterval(_checkRoomStatus, 10000);
-
       /* Clima ativa — para todos os perfis */
       _checkClimaAtiva(user.id || user.app_user_id, _isSocio(role));
 
@@ -1610,7 +1562,6 @@ window.ExpNav = (() => {
     init,
     toggleTheme,
     toggleNotifPanel,
-    roomClick,
     showCalBanner,  hideCalBanner,
     showCrmBanner,  hideCrmBanner,
     showPrioBanner, hidePrioBanner, togglePrioBanner,
