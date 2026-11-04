@@ -2443,6 +2443,13 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-radar-add:hover { color:var(--grafite); border-color:var(--txt-3); }
 .fluxo-view-radar { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:10px 12px 10px; border-bottom:1px dashed var(--cinza2); }
 .fluxo-view-radar .rdr-chip { max-width:100%; }
+/* Radar encerrado: fica cinza até alguém tirar no X do Fluxo */
+.rdr-chip.fechado { font-weight:400; color:var(--txt-3); background:var(--off); border-color:var(--cinza); }
+.rdr-chip.fechado .rdr-obs-ico { background:var(--txt-4); }
+[data-theme="dark"] .rdr-chip.fechado { color:var(--txt-3); background:transparent; border-color:#3A3836; }
+.fluxo-radar-row.fechado { background:var(--off); border-color:var(--cinza); border-left-color:var(--txt-4); }
+[data-theme="dark"] .fluxo-radar-row.fechado { background:transparent; }
+.fluxo-radar-tag { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-3); white-space:nowrap; }
 .fluxo-view-radar .fluxo-radar-t { font-size:9px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt-3); }
 .fluxo-view-radar .fluxo-radar-chip { font-size:10px; color:var(--txt-2); background:var(--off); border-color:var(--cinza2); padding:1px 8px; white-space:nowrap; }
 .fluxo-prio-textarea { width:100%; font-size:10px; border:1px solid var(--cinza); border-radius:5px; padding:5px 7px; background:var(--branco); color:var(--txt-2); resize:vertical; outline:none; font-family:var(--font-ui); line-height:1.5; box-sizing:border-box; }
@@ -6988,7 +6995,8 @@ function _radarAtivos(lista) { return (lista || []).filter(p => !p.concluida && 
 function _radarChipHtml(rd, { fechar = false } = {}) {
   const abrir = rd.produto_id ? ` onclick="abrirProduto(${JSON.stringify(rd.produto_id).replace(/"/g, '&quot;')})"` : '';
   const obs = (rd.comentario || '').trim();
-  return `<span class="rdr-chip${rd.produto_id ? ' link' : ''}"${abrir}>
+  const fechado = rd.concluida ? ` title="Radar encerrado${rd.concluida_em ? ' em ' + fmtFluxoDate(String(rd.concluida_em).slice(0, 10)) : ''}"` : '';
+  return `<span class="rdr-chip${rd.produto_id ? ' link' : ''}${rd.concluida ? ' fechado' : ''}"${abrir}${fechado}>
     <span class="rdr-chip-nome">${_escN(_fluxoPrioNome(rd))}</span>
     ${obs ? `<span class="rdr-obs-ico" aria-hidden="true">i</span><span class="rdr-pop">${_escN(obs)}</span>` : ''}
     ${fechar ? `<button class="rdr-x" type="button" title="Encerrar radar" aria-label="Encerrar radar" onclick="event.stopPropagation();concluirRadar('${rd.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
@@ -14653,10 +14661,11 @@ function renderFluxoDetail(uid) {
     </div>`;
   }).join('');
 
-  const radarHtml = radar.filter(rd => !rd.concluida).map(rd => {
+  const radarHtml = radar.slice().sort((a, b) => (a.concluida ? 1 : 0) - (b.concluida ? 1 : 0)).map(rd => {
     const grupo = _radarGrupoDe(rd);
     const obs = (rd.comentario || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-    return `<div class="fluxo-radar-row">
+    return `<div class="fluxo-radar-row${rd.concluida ? ' fechado' : ''}">
+      ${rd.concluida ? '<span class="fluxo-radar-tag">Encerrado</span>' : ''}
       <select class="fluxo-prio-select fluxo-radar-grupo" title="Cliente ou sociedade" onchange="setRadarGrupo('${uid}','${rd.id}',this.value)">${_radarGrupoOpts(grupo, isSocio)}</select>
       <select class="fluxo-prio-select fluxo-radar-item" title="${grupo === 'soc' ? 'Tarefa' : 'Projeto'}" ${grupo ? '' : 'disabled'} onchange="setFluxoProduto('${uid}','${rd.id}',this.value)">${_radarItemOpts(grupo, rd)}</select>
       <input class="fluxo-radar-obs" type="text" value="${obs}" placeholder="Observação (aparece ao passar o mouse)"
@@ -14986,7 +14995,8 @@ function renderFluxoView(gridId = 'fluxo-view-grid') {
   }); });
   grid.innerHTML = users.map(u => {
     const filaU = _fluxoFila(u.id);
-    const radarU = _radarAtivos(_fluxoRadarData[u.id]);
+    const radarU = (_fluxoRadarData[u.id] || []).filter(_prioTemVinculo)
+      .sort((a, b) => (a.concluida ? 1 : 0) - (b.concluida ? 1 : 0));
     const prios = (_fluxoPriosData[u.id]||[]).filter(_prioTemVinculo);
     const slotsHtml = prios.length
       ? prios.map((pr, idx) => {
