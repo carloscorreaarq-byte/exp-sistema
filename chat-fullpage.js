@@ -799,6 +799,7 @@
     /* Clique no print com ferramenta de marcador ativa */
     var $mvCanvas = document.getElementById('fp-mv-canvas');
     if ($mvCanvas) $mvCanvas.addEventListener('click', mvCanvasClick);
+    _mvPrepararMarcacoes();
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
@@ -815,6 +816,8 @@
         _escFecharConversa(e);
       }
       if (!mediaViewerState) return;
+      var _foco = document.activeElement;
+      if (window.ExpMarcas && ExpMarcas.ehDesfazer(e) && !(_foco && /^(INPUT|TEXTAREA)$/.test(_foco.tagName))) { e.preventDefault(); mvDesfazer(); return; }
       if (e.key === 'ArrowLeft')  { e.preventDefault(); mvPrev(); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); mvNext(); }
     });
@@ -3381,14 +3384,57 @@
     seta_verde: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>'
   };
 
-  function mvSelectTool(tool) {
-    mvTool = (mvTool === tool) ? null : tool;
-    ['seta','alerta','x','circulo','nota'].forEach(function (t) {
+  /* Barra, lápis e borracha do desenho compartilhado (shared/marcacoes.js) */
+  function _mvPrepararMarcacoes() {
+    if (!window.ExpMarcas) return;
+    var bar = document.getElementById('fp-mv-toolbar');
+    if (bar && !bar._xm) {
+      bar._xm = true;
+      bar.innerHTML = ExpMarcas.barraHtml({
+        prefixo: 'fp-mv-tool-', classe: 'fp-mv-tool', chamada: 'fpChat.mvSelectTool', classeRotulo: 'fp-mv-tool-lbl',
+        ferramentas: ['seta', 'seta_verde', 'alerta', 'x', 'circulo', 'circulo_verde', 'nota', 'lapis', '|', 'apagar'],
+        rotulos: { seta: 'seta', seta_verde: 'seta', alerta: 'alerta', x: 'erro', circulo: 'área', circulo_verde: 'área', nota: 'nota', lapis: 'lápis', apagar: 'apagar' }
+      });
+    }
+    ExpMarcas.ligarLapis({
+      canvas: function () { return document.getElementById('fp-mv-canvas'); },
+      img: function () { return document.getElementById('fp-mv-img'); },
+      marcas: function () { return document.getElementById('fp-mv-marks'); },
+      ativo: function () { return mvTool === 'lapis' && !!mediaViewerState; },
+      fim: function (pts, cor) {
+        var cur = _mvCurrentMedia();
+        if (!cur || !cur.media) return;
+        cur.media.marcadores = (cur.media.marcadores || []).concat([ExpMarcas.novoTraco(pts, cor, {
+          id: newUuid(), ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+          uid: user.auth_id, ts: new Date().toISOString()
+        })]);
+        mvDirtyKeys[mediaViewerState.keys[mediaViewerState.idx]] = true;
+        renderMvMarkers();
+        _saveMvMarkers(cur.msg, cur.media.marcadores);
+      }
+    });
+  }
+  /* Desfazer (Cmd/Ctrl+Z): tira a última marcação sua deste print */
+  function mvDesfazer() {
+    var cur = _mvCurrentMedia();
+    if (!cur || !cur.media || !window.ExpMarcas) return;
+    var ult = ExpMarcas.ultimaMinha(cur.media.marcadores, function (mk) { return mk.uid === user.auth_id; });
+    if (ult) mvRemoveMark(ult.id);
+  }
+
+  function mvSelectTool(tool, manter) {
+    mvTool = (mvTool === tool && !manter) ? null : tool;
+    ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota','lapis','apagar'].forEach(function (t) {
       var btn = document.getElementById('fp-mv-tool-' + t);
       if (btn) btn.classList.toggle('active', mvTool === t);
     });
     var $canvas = document.getElementById('fp-mv-canvas');
-    if ($canvas) $canvas.classList.toggle('tool-active', !!mvTool);
+    if ($canvas) {
+      $canvas.classList.toggle('tool-active', !!mvTool && mvTool !== 'apagar');
+      $canvas.classList.toggle('xm-desenhando', mvTool === 'lapis');
+    }
+    var $mk = document.getElementById('fp-mv-marks');
+    if ($mk) $mk.classList.toggle('xm-apagar', mvTool === 'apagar');
     if (!mvTool) _cancelNota();
   }
 
@@ -3403,7 +3449,9 @@
     if (!$marks) return;
     var cur = _mvCurrentMedia();
     var list = (cur && cur.media && cur.media.marcadores) || [];
-    $marks.innerHTML = list.map(function (mk) {
+    var X = window.ExpMarcas;
+    var ehMeu = function (mk) { return mk.uid === user.auth_id; };
+    $marks.innerHTML = (X ? X.tracosSvg(list, ehMeu) : '') + list.filter(function (mk) { return mk.t !== 'traco'; }).map(function (mk) {
       var own = mk.uid === user.auth_id;
       var dbl = own ? ' ondblclick="fpChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')"' : '';
       var style = 'left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%';
@@ -3412,12 +3460,14 @@
         var tip = mk.texto
           ? '<span class="fp-mark-nota-tip">' + escHtml(mk.texto) + '</span>'
           : '';
-        return '<div class="fp-mark" style="' + style + '"' + dbl + '>' +
+        return '<div class="fp-mark" style="' + style + '" data-xm-id="' + escHtml(String(mk.id)) + '" data-xm-own="' + (own ? 1 : 0) + '"' + dbl + '>' +
+          (own && X ? X.botaoApagar('fpChat.mvRemoveMark', mk.id) : '') +
           '<div class="fp-mark-nota">' + escHtml(String(mk.n || '?')) + '</div>' +
           tip + '</div>';
       }
 
       /* cada marcação mantém a cor em que foi criada (azul ou verde), igual ao widget */
+      if (X) return X.marcaHtml(mk, { classe: 'fp-mark', ehMeu: ehMeu, remover: 'fpChat.mvRemoveMark' });
       var t = mk.t;
       var svg = MV_MARK_SVGS[t] || '';
       var authorTitle = escHtml((mk.ini || '?') + (own ? ' · duplo-clique para remover' : ''));
@@ -3465,7 +3515,12 @@
   }
 
   function mvCanvasClick(e) {
-    if (!mvTool || !mediaViewerState) return;
+    if (!mvTool || !mediaViewerState || mvTool === 'lapis') return;
+    if (mvTool === 'apagar') {
+      var alvo = window.ExpMarcas && ExpMarcas.alvoApagavel(e);
+      if (alvo) mvRemoveMark(alvo);
+      return;
+    }
     var $img = document.getElementById('fp-mv-img');
     if (!$img || !$img.src) return;
     var cur = _mvCurrentMedia();
@@ -3488,8 +3543,7 @@
 
     var mk = {
       id:  newUuid(),
-      /* "área" é verde nesta tela: grava como circulo_verde (o widget desenha igual) */
-      t:   mvTool === 'circulo' ? 'circulo_verde' : mvTool,
+      t:   mvTool,
       x:   Math.round(x * 100) / 100,
       y:   Math.round(y * 100) / 100,
       ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),

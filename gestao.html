@@ -14,6 +14,7 @@
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/horas-creditos.js?v=2026-10-26c"></script>
 <script src="shared/fila-prioridades.js?v=2026-10-27a"></script>
+<script src="shared/marcacoes.js?v=2026-11-05a"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
@@ -1893,16 +1894,20 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .tmv-corpo{flex:1;display:flex;min-height:0}
 .tmv-tools{padding:12px 10px !important;align-self:stretch !important;border-right:1px solid var(--cinza2)}
 .tmv-sep{height:1px;background:var(--cinza2);margin:4px 2px}
+.tmv-tools .gm-mv-tool{width:34px;height:34px}
+.xm-limpar{margin-top:6px;border:none;background:none;padding:2px 0;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-3);cursor:pointer}
+.xm-limpar:hover{color:var(--terracota)}
 #tmv-limpar{color:var(--txt-3)}
 #tmv-limpar:hover{color:var(--terracota);border-color:var(--terracota)}
-.tmv-stage{flex:1;min-height:0 !important;border:none !important;border-radius:0 !important;background:#2B2A27 !important;position:relative;user-select:none}
+.tmv-stage{flex:1;min-height:0 !important;border:none !important;border-radius:0 !important;background:repeating-linear-gradient(-45deg,#FFFFFF 0 11px,#F4F3EF 11px 12px) !important;position:relative;user-select:none}
+[data-theme="dark"] .tmv-stage{background:repeating-linear-gradient(-45deg,#1C1C1A 0 11px,#222220 11px 12px) !important}
 .tmv-stage.zoom{cursor:grab}
 .tmv-stage.zoom:active{cursor:grabbing}
 .tmv-stage .gm-mv-canvas{transform-origin:center center;transition:transform .06s linear;will-change:transform}
-.tmv-stage img{max-width:calc(100% - 96px) !important;max-height:calc(100vh - 200px) !important;margin:0 auto}
-.tmv-vazio{font-size:11px;color:rgba(255,255,255,.55)}
-.tmv-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:36px;height:56px;border:none;border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-size:26px;cursor:pointer}
-.tmv-nav:hover{background:rgba(255,255,255,.22)}
+.tmv-stage img{max-width:calc(100% - 96px) !important;max-height:calc(100vh - 200px) !important;margin:0 auto;box-shadow:0 0 0 1px var(--cinza2),0 2px 10px rgba(0,0,0,.06)}
+.tmv-vazio{font-size:11px;color:var(--txt-3)}
+.tmv-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:36px;height:56px;border:1px solid var(--cinza2);border-radius:8px;background:var(--branco);color:var(--txt-2);font-size:26px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tmv-nav:hover{border-color:var(--cinza);color:var(--grafite)}
 .tmv-nav:disabled{opacity:.25;cursor:default}
 .tmv-nav.prev{left:10px}.tmv-nav.next{right:10px}
 .tmv-dica{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);z-index:3;background:rgba(17,17,16,.78);color:#fff;font-size:11px;padding:6px 12px;border-radius:999px;white-space:nowrap;pointer-events:none;display:none}
@@ -5159,12 +5164,14 @@ span.tarefa-prio { display: inline-block; cursor: default; }
       </div>
     </div>
     <div class="tmv-corpo">
-      <div class="gm-mv-toolbar tmv-tools">
-        <button class="gm-mv-tool" id="gm-mv-tool-seta" onclick="gmMvSelectTool('seta')" title="Seta azul: clique na imagem para marcar" aria-label="Seta azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-seta_verde" onclick="gmMvSelectTool('seta_verde')" title="Seta verde: clique na imagem para marcar" aria-label="Seta verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-alerta" onclick="gmMvSelectTool('alerta')" title="Alerta: clique na imagem para marcar" aria-label="Alerta"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#E2B141" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-x" onclick="gmMvSelectTool('x')" title="Marcar com X: clique na imagem para marcar" aria-label="Marcar com X"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#BC6143" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-circulo" onclick="gmMvSelectTool('circulo')" title="Círculo azul: clique na imagem para marcar" aria-label="Círculo azul"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button><button class="gm-mv-tool" id="gm-mv-tool-circulo_verde" onclick="gmMvSelectTool('circulo_verde')" title="Círculo verde: clique na imagem para marcar" aria-label="Círculo verde"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg></button>
-        <button class="gm-mv-tool" id="gm-mv-tool-nota" onclick="gmMvSelectTool('nota')" title="Nota numerada: clique na imagem e escreva" aria-label="Nota numerada"><span class="tmv-nota-ico">1</span></button>
-        <div class="tmv-sep"></div>
-        <button class="gm-mv-tool" id="tmv-limpar" type="button" onclick="gmMvLimparMinhas()" title="Limpar minhas marcações nesta imagem" aria-label="Limpar minhas marcações"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20H8l-5-5 10-10 7 7-5 5"/><line x1="10" y1="10" x2="15" y2="15"/></svg></button>
+      <div class="gm-mv-toolbar tmv-tools" id="tmv-tools">
+        <button class="xm-limpar" id="tmv-limpar" type="button" onclick="gmMvLimparMinhas()" title="Remover todas as suas marcações nesta imagem">Limpar</button>
       </div>
+      <script>(function () {
+        var b = document.getElementById('tmv-tools');
+        if (b && window.ExpMarcas) b.insertAdjacentHTML('afterbegin', ExpMarcas.barraHtml({ prefixo: 'gm-mv-tool-', classe: 'gm-mv-tool', chamada: 'gmMvSelectTool',
+          ferramentas: ['seta', 'seta_verde', 'alerta', 'x', 'circulo', 'circulo_verde', 'nota', 'lapis', '|', 'apagar'] }));
+      })();</script>
       <div class="tm-view-stage tmv-stage" id="tmv-stage">
         <button class="tmv-nav prev" type="button" id="tm-prev-btn" onclick="moverTempMediaViewer(-1)" aria-label="Imagem anterior (←)">‹</button>
         <div class="gm-mv-canvas" id="tm-view-canvas" style="display:none" onclick="gmMvCanvasClick(event)">
@@ -15653,7 +15660,7 @@ async function renderTempMediaViewer() {
 //   vivem e morrem com a imagem. Posições em % da imagem.
 // ═════════════════════════════════════════════════════════════
 let gmMvTool = null;
-const GM_MARK_SVGS = {
+const GM_MARK_SVGS = window.ExpMarcas ? ['seta','seta_verde','alerta','x','circulo','circulo_verde'].reduce((o, k) => (o[k] = ExpMarcas.ponto(k), o), {}) : {
   seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
   seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
   alerta:        '<svg width="26" height="26" viewBox="0 0 24 24" fill="#FBF3E8" stroke="#E2B141" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
@@ -15663,20 +15670,34 @@ const GM_MARK_SVGS = {
 };
 const GM_MARK_TOOLS = ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota'];
 
-function gmMvSelectTool(tool) {
-  gmMvTool = (gmMvTool === tool) ? null : tool;
-  GM_MARK_TOOLS.forEach(t => {
+function gmMvSelectTool(tool, manter) {
+  gmMvTool = (gmMvTool === tool && !manter) ? null : tool;
+  GM_MARK_TOOLS.concat(['lapis', 'apagar']).forEach(t => {
     const btn = document.getElementById('gm-mv-tool-' + t);
     if (btn) btn.classList.toggle('active', gmMvTool === t);
   });
   const canvas = document.getElementById('tm-view-canvas');
-  if (canvas) canvas.classList.toggle('tool-active', !!gmMvTool);
+  if (canvas) {
+    canvas.classList.toggle('tool-active', !!gmMvTool && gmMvTool !== 'apagar');
+    canvas.classList.toggle('xm-desenhando', gmMvTool === 'lapis');
+  }
+  document.getElementById('tm-view-marks')?.classList.toggle('xm-apagar', gmMvTool === 'apagar');
   const dica = document.getElementById('tmv-dica');
   if (dica) {
-    const nome = { seta:'Seta azul', seta_verde:'Seta verde', alerta:'Alerta', x:'X', circulo:'Círculo azul', circulo_verde:'Círculo verde', nota:'Nota numerada' }[gmMvTool];
-    dica.textContent = nome ? `${nome}: clique na imagem para marcar · clique duplo numa marcação sua para remover` : '';
-    dica.style.display = nome ? '' : 'none';
+    const txt = !gmMvTool ? ''
+      : gmMvTool === 'lapis' ? 'Lápis: segure o botão e desenhe · Cmd+Z desfaz'
+      : gmMvTool === 'apagar' ? 'Apagar: clique numa marcação sua para removê-la'
+      : `${window.ExpMarcas ? ExpMarcas.nomes[gmMvTool] : gmMvTool}: clique na imagem para marcar · passe o mouse numa marcação sua e use o × para apagar`;
+    dica.textContent = txt;
+    dica.style.display = txt ? '' : 'none';
   }
+}
+/* Desfazer (Cmd/Ctrl+Z): tira a última marcação sua desta imagem */
+function gmMvDesfazer() {
+  const v = G._tempMediaViewer, item = v?.items?.[v.index];
+  if (!item || !window.ExpMarcas) return;
+  const ult = ExpMarcas.ultimaMinha(item.marcadores, mk => mk.uid === G.usuario?.id);
+  if (ult) gmMvRemoveMark(ult.id);
 }
 
 /* Remove as marcações do próprio usuário na imagem atual */
@@ -15734,7 +15755,7 @@ function tmvZoom(fator, cx, cy) {
   let arr = null;
   document.addEventListener('mousedown', e => {
     const s = st();
-    if (!G._tempMediaViewer || !s || !s.contains(e.target) || e.button !== 0 || G._tmvZ.s <= 1) return;
+    if (!G._tempMediaViewer || !s || !s.contains(e.target) || e.button !== 0 || G._tmvZ.s <= 1 || gmMvTool === 'lapis') return;
     if (e.target.closest('.tmv-nav')) return;
     arr = { x: e.clientX, y: e.clientY, ox: G._tmvZ.x, oy: G._tmvZ.y, moveu: false };
   });
@@ -15749,7 +15770,8 @@ function tmvZoom(fator, cx, cy) {
     const ativo = document.activeElement;
     if (ativo && /^(INPUT|TEXTAREA|SELECT)$/.test(ativo.tagName)) return;
     if (G._tempMediaViewer) {
-      if (e.key === 'Escape' && G._gmNotaPend) { e.preventDefault(); gmMvCancelarNota(); }
+      if (window.ExpMarcas && ExpMarcas.ehDesfazer(e)) { e.preventDefault(); gmMvDesfazer(); }
+      else if (e.key === 'Escape' && G._gmNotaPend) { e.preventDefault(); gmMvCancelarNota(); }
       else if (e.key === 'Escape') { e.preventDefault(); fecharTempMediaViewer(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); moverTempMediaViewer(-1); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); moverTempMediaViewer(1); }
@@ -15761,14 +15783,17 @@ function tmvZoom(fator, cx, cy) {
 })();
 
 function gmMarksHtml(list, ownerCheck) {
-  return (list || []).map(mk => {
+  const X = window.ExpMarcas;
+  return (X ? X.tracosSvg(list, ownerCheck) : '') + (list || []).filter(mk => mk.t !== 'traco').map(mk => {
     if (mk.t === 'nota') {   // nota numerada (mesmo formato do chat): número na imagem, texto ao passar o mouse
       const removable = ownerCheck(mk);
-      return `<div class="gm-mv-mark gm-mv-nota-mk" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%"` +
+      return `<div class="gm-mv-mark gm-mv-nota-mk" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%" data-xm-id="${String(mk.id).replace(/[<>&"']/g,'')}" data-xm-own="${removable ? 1 : 0}"` +
         (removable ? ` ondblclick="${ownerCheck.removeCall}('${String(mk.id)}')"` : '') + `>` +
+        (removable && X ? X.botaoApagar(ownerCheck.removeCall, mk.id) : '') +
         `<span class="gm-mv-nota-n">${String(mk.n || '?').replace(/[<>&"]/g,'')}</span>` +
         (mk.texto ? `<span class="gm-mv-nota-tip">${String(mk.texto).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]))}</span>` : '') + `</div>`;
     }
+    if (X) return X.marcaHtml(mk, { classe: 'gm-mv-mark', ehMeu: ownerCheck, remover: ownerCheck.removeCall });
     const svg = GM_MARK_SVGS[mk.t] || '';
     const removable = ownerCheck(mk);
     return `<div class="gm-mv-mark" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%"` +
@@ -15803,7 +15828,12 @@ function _gmMvRenderNotas(item) {
 }
 
 function gmMvCanvasClick(e) {
-  if (!gmMvTool || !G._tempMediaViewer || G._tmvArrastou) return;
+  if (!gmMvTool || !G._tempMediaViewer || G._tmvArrastou || gmMvTool === 'lapis') return;
+  if (gmMvTool === 'apagar') {
+    const id = window.ExpMarcas && ExpMarcas.alvoApagavel(e);
+    if (id) gmMvRemoveMark(id);
+    return;
+  }
   const img = document.getElementById('tm-view-image');
   if (!img || !img.src) return;
   const viewer = G._tempMediaViewer;
@@ -15840,6 +15870,25 @@ function gmMvCanvasClick(e) {
   gmMvRenderMarks();
   gmMvSaveMarks(item);
 }
+
+/* Lápis: traço livre salvo como lista de pontos em % da imagem */
+if (window.ExpMarcas) ExpMarcas.ligarLapis({
+  canvas: () => document.getElementById('tm-view-canvas'),
+  img: () => document.getElementById('tm-view-image'),
+  marcas: () => document.getElementById('tm-view-marks'),
+  ativo: () => gmMvTool === 'lapis' && !!G._tempMediaViewer,
+  fim: (pts, cor) => {
+    const v = G._tempMediaViewer, item = v?.items?.[v.index];
+    if (!item) return;
+    item.marcadores = (item.marcadores || []).concat([ExpMarcas.novoTraco(pts, cor, {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+      ini: G.usuario?.iniciais || (G.usuario?.nome || '').substring(0, 2).toUpperCase(),
+      uid: G.usuario?.id, ts: new Date().toISOString()
+    })]);
+    gmMvRenderMarks();
+    gmMvSaveMarks(item);
+  }
+});
 
 function gmMvCancelarNota() {
   G._gmNotaPend = null;
@@ -20467,7 +20516,7 @@ function _preItemVerImagem(si, ii) {
   const toolbar = document.createElement('div');
   toolbar.className = 'gm-mv-toolbar';
   toolbar.style.cssText = 'background:rgba(255,255,255,.94);border-radius:12px;padding:10px 8px';
-  toolbar.innerHTML = GM_MARK_TOOLS.map(t => {
+  toolbar.innerHTML = GM_MARK_TOOLS.filter(t => t !== 'nota').map(t => {
     const btn = document.createElement('div');
     const svgs = {
       seta:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
@@ -20477,7 +20526,7 @@ function _preItemVerImagem(si, ii) {
       circulo:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5981CC" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>',
       circulo_verde:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4D865C" stroke-width="2.4"><circle cx="12" cy="12" r="8"/></svg>'
     };
-    return `<button class="gm-mv-tool" data-pretool="${t}">${svgs[t]}</button>`;
+    return `<button class="gm-mv-tool" data-pretool="${t}" title="${window.ExpMarcas ? ExpMarcas.nomes[t] : t}">${window.ExpMarcas ? ExpMarcas.icone(t) : svgs[t]}</button>`;
   }).join('');
 
   /* Canvas: imagem + overlay de marcadores */
@@ -20493,10 +20542,11 @@ function _preItemVerImagem(si, ii) {
   canvas.appendChild(marks);
 
   function renderPreMarks() {
-    marks.innerHTML = (it.marcadores || []).map(mk =>
-      `<div class="gm-mv-mark" data-markid="${String(mk.id)}" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%" title="Clique duplo para remover">` +
-      (GM_MARK_SVGS[mk.t] || '') +
-      `<span class="gm-mv-mark-ini">${(mk.ini || '?').replace(/[<>&"]/g,'')}</span></div>`
+    marks.innerHTML = (it.marcadores || []).map(mk => window.ExpMarcas
+      ? ExpMarcas.marcaHtml(mk, { classe: 'gm-mv-mark', ehMeu: () => true }).replace('data-xm-id=', `data-markid="${String(mk.id).replace(/[<>&"']/g,'')}" title="Clique duplo para remover" data-xm-id=`)
+      : `<div class="gm-mv-mark" data-markid="${String(mk.id)}" style="left:${Number(mk.x)}%;top:${Number(mk.y)}%" title="Clique duplo para remover">` +
+        (GM_MARK_SVGS[mk.t] || '') +
+        `<span class="gm-mv-mark-ini">${(mk.ini || '?').replace(/[<>&"]/g,'')}</span></div>`
     ).join('');
   }
 
@@ -21909,7 +21959,7 @@ else init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-10-30a"></script>
+<script src="chat.js?v=2026-11-05a"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js?v=2026-10-27a"></script>
 <style>

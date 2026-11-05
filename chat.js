@@ -754,6 +754,7 @@
     /* Clique no print com ferramenta de marcador ativa */
     var _mvCanvas = document.getElementById('exp-chat-mv-canvas');
     if (_mvCanvas) _mvCanvas.addEventListener('click', mvCanvasClick);
+    _mvPrepararMarcacoes();
 
     document.addEventListener('click', function (e) {
       var viewer = document.getElementById('exp-chat-media-viewer');
@@ -766,6 +767,12 @@
 
     document.addEventListener('keydown', function (event) {
       if (!mediaViewerState) return;
+      var _foco = document.activeElement;
+      if (window.ExpMarcas && ExpMarcas.ehDesfazer(event) && !(_foco && /^(INPUT|TEXTAREA)$/.test(_foco.tagName))) {
+        event.preventDefault();
+        mvDesfazer();
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         closeMediaViewer();
@@ -4435,6 +4442,57 @@
      vivem e morrem com a imagem. Posições em % — acompanham o zoom.
   ══════════════════════════════════════════════════════════════════ */
   var mvTool = null;
+  /* Desenho compartilhado das marcações (shared/marcacoes.js), carregado ao lado deste arquivo */
+  var _mvScriptBase = (document.currentScript && document.currentScript.src) || '';
+  function _mvCarregarMarcacoes(pronto) {
+    if (window.ExpMarcas) { pronto(); return; }
+    var s = document.getElementById('xm-script');
+    if (!s) {
+      s = document.createElement('script');
+      s.id = 'xm-script';
+      try { s.src = new URL('shared/marcacoes.js?v=2026-11-05a', _mvScriptBase || location.href).href; }
+      catch (e) { s.src = 'shared/marcacoes.js?v=2026-11-05a'; }
+      document.head.appendChild(s);
+    }
+    s.addEventListener('load', pronto);
+  }
+  function _mvPrepararMarcacoes() {
+    _mvCarregarMarcacoes(function () {
+      var bar = document.querySelector('#exp-chat-media-viewer .chat-mv-toolbar');
+      if (bar && !bar._xm) {
+        bar._xm = true;
+        bar.innerHTML = ExpMarcas.barraHtml({
+          prefixo: 'exp-chat-mv-tool-', classe: 'chat-mv-tool', chamada: 'expChat.mvSelectTool', classeRotulo: 'chat-mv-tool-lbl',
+          ferramentas: ['seta', 'seta_verde', 'alerta', 'x', 'circulo', 'circulo_verde', 'nota', 'lapis', '|', 'apagar'],
+          rotulos: { seta: 'seta', seta_verde: 'seta', alerta: 'alerta', x: 'erro', circulo: 'área', circulo_verde: 'área', nota: 'nota', lapis: 'lápis', apagar: 'apagar' }
+        });
+      }
+      ExpMarcas.ligarLapis({
+        canvas: function () { return document.getElementById('exp-chat-mv-canvas'); },
+        img: function () { return document.getElementById('exp-chat-media-viewer-img'); },
+        marcas: function () { return document.getElementById('exp-chat-mv-marks'); },
+        ativo: function () { return mvTool === 'lapis' && !!mediaViewerState; },
+        fim: function (pts, cor) {
+          var cur = _mvCurrentMedia();
+          if (!cur) return;
+          cur.media.marcadores = (cur.media.marcadores || []).concat([ExpMarcas.novoTraco(pts, cor, {
+            id: newUuid(), ini: user.iniciais || (user.nome || '').substring(0, 2).toUpperCase(),
+            uid: user.auth_id, ts: new Date().toISOString()
+          })]);
+          renderViewerMarkers();
+          _saveMvMarkers(cur.msg, cur.media.marcadores);
+        }
+      });
+      renderViewerMarkers();
+    });
+  }
+  /* Desfazer (Cmd/Ctrl+Z): tira a última marcação sua deste print */
+  function mvDesfazer() {
+    var cur = _mvCurrentMedia();
+    if (!cur || !window.ExpMarcas) return;
+    var ult = ExpMarcas.ultimaMinha(cur.media.marcadores, function (mk) { return mk.uid === user.auth_id; });
+    if (ult) mvRemoveMark(ult.id);
+  }
   var MV_MARK_SVGS = {
     seta:          '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D4FA0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     seta_verde:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="5" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
@@ -4444,14 +4502,19 @@
     circulo_verde: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1D6A4A" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg>'
   };
 
-  function mvSelectTool(tool) {
-    mvTool = (mvTool === tool) ? null : tool;
-    ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota'].forEach(function (t) {
+  function mvSelectTool(tool, manter) {
+    mvTool = (mvTool === tool && !manter) ? null : tool;
+    ['seta','seta_verde','alerta','x','circulo','circulo_verde','nota','lapis','apagar'].forEach(function (t) {
       var btn = document.getElementById('exp-chat-mv-tool-' + t);
       if (btn) btn.classList.toggle('active', mvTool === t);
     });
     var canvas = document.getElementById('exp-chat-mv-canvas');
-    if (canvas) canvas.classList.toggle('tool-active', !!mvTool);
+    if (canvas) {
+      canvas.classList.toggle('tool-active', !!mvTool && mvTool !== 'apagar');
+      canvas.classList.toggle('xm-desenhando', mvTool === 'lapis');
+    }
+    var marksEl = document.getElementById('exp-chat-mv-marks');
+    if (marksEl) marksEl.classList.toggle('xm-apagar', mvTool === 'apagar');
     if (!mvTool) _cancelNota();
   }
 
@@ -4467,16 +4530,20 @@
     if (!marks) return;
     var cur = _mvCurrentMedia();
     var list = (cur && cur.media && cur.media.marcadores) || [];
-    marks.innerHTML = list.map(function (mk) {
+    var X = window.ExpMarcas;
+    var ehMeu = function (mk) { return mk.uid === user.auth_id; };
+    marks.innerHTML = (X ? X.tracosSvg(list, ehMeu) : '') + list.filter(function (mk) { return mk.t !== 'traco'; }).map(function (mk) {
       var own = mk.uid === user.auth_id;
       /* Nota numerada (mesmo formato da página inteira): número na imagem, texto ao passar o mouse */
       if (mk.t === 'nota') {
-        return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
+        return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%" data-xm-id="' + escHtml(String(mk.id)) + '" data-xm-own="' + (own ? 1 : 0) + '"' +
           (own ? ' ondblclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')"' : '') + '>' +
+          (own && X ? X.botaoApagar('expChat.mvRemoveMark', mk.id) : '') +
           '<div class="chat-mv-nota">' + escHtml(String(mk.n || '?')) + '</div>' +
           (mk.texto ? '<span class="chat-mv-nota-tip">' + escHtml(mk.texto) + '</span>' : '') +
           '</div>';
       }
+      if (X) return X.marcaHtml(mk, { classe: 'chat-mv-mark', ehMeu: ehMeu, remover: 'expChat.mvRemoveMark' });
       var svg = MV_MARK_SVGS[mk.t] || '';
       return '<div class="chat-mv-mark" style="left:' + Number(mk.x) + '%;top:' + Number(mk.y) + '%"' +
         (own ? ' ondblclick="expChat.mvRemoveMark(\'' + escHtml(String(mk.id)) + '\')" title="Clique duplo para remover"' : '') + '>' +
@@ -4565,7 +4632,12 @@
   }
 
   function mvCanvasClick(e) {
-    if (!mvTool || !mediaViewerState) return;
+    if (!mvTool || !mediaViewerState || mvTool === 'lapis') return;
+    if (mvTool === 'apagar') {
+      var alvo = window.ExpMarcas && ExpMarcas.alvoApagavel(e);
+      if (alvo) mvRemoveMark(alvo);
+      return;
+    }
     var img = document.getElementById('exp-chat-media-viewer-img');
     if (!img || !img.src) return;
     var cur = _mvCurrentMedia();
