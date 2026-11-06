@@ -4450,8 +4450,8 @@
     if (!s) {
       s = document.createElement('script');
       s.id = 'xm-script';
-      try { s.src = new URL('shared/marcacoes.js?v=2026-11-05a', _mvScriptBase || location.href).href; }
-      catch (e) { s.src = 'shared/marcacoes.js?v=2026-11-05a'; }
+      try { s.src = new URL('shared/marcacoes.js?v=2026-11-06a', _mvScriptBase || location.href).href; }
+      catch (e) { s.src = 'shared/marcacoes.js?v=2026-11-06a'; }
       document.head.appendChild(s);
     }
     s.addEventListener('load', pronto);

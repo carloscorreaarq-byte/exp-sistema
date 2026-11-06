@@ -2553,7 +2553,7 @@
     });
   }
   function handleKey(e) { if(_mentionNavKey(e)) return; if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } }
-  function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+  function autoResize(el) { el.style.height='auto'; var borda=el.offsetHeight-el.clientHeight; el.style.height=Math.min(el.scrollHeight+borda,120)+'px'; }
 
   /* ═══════════════════════════════════════════════════════════════════
      REAÇÕES
@@ -2664,6 +2664,11 @@
 
       /* Mensagem automática de anotações — renderiza como faixa-sistema central */
       if (isAnnotSentinel(msg.content)) {
+        /* Mesma imagem revisada de novo: mostra só a faixa mais recente */
+        var _maisNova = messages.some(function (m) {
+          return m !== msg && !m.deleted_at && m.content === msg.content && (m.created_at || '') > (msg.created_at || '');
+        });
+        if (_maisNova) return;
         html += renderAnnotMessageHtml(msg);
         prevSender=null; prevTime=dt;
         return;
@@ -3305,8 +3310,13 @@
     _cancelNota();
     /* Imagens que ganharam marcas nesta sessão → 1 mensagem automática cada.
        Capturado ANTES de zerar o estado (vale também ao trocar de canal). */
+    var _vistos = {};
     var dirtyPrints = mediaViewerState
-      ? Object.keys(mvDirtyKeys).map(getMessageByMediaKey).filter(Boolean)
+      ? Object.keys(mvDirtyKeys).map(getMessageByMediaKey).filter(function (m) {
+          if (!m || _vistos[m.id]) return false;   /* uma faixa por imagem, mesmo com chaves repetidas */
+          _vistos[m.id] = true;
+          return true;
+        })
       : [];
     mvDirtyKeys={};
     mediaViewerState=null; mvZoom=1; mvSelectTool(null);
@@ -3323,6 +3333,10 @@
     if (!printMsg || !printMsg.id) return;
     var channel = printMsg.channel || currentChannel;
     var content = '[anotacoes:' + printMsg.id + ']';
+    /* Se a última mensagem da conversa já é a faixa desta imagem, não repete */
+    var doCanal = messages.filter(function (m) { return (m.channel || currentChannel) === channel && !m.deleted_at; });
+    var ultima = doCanal[doCanal.length - 1];
+    if (ultima && String(ultima.content || '').trim() === content) return;
     var pm = buildPendingMessage(content, { channel: channel });
     upsertMessage(pm);
     if (currentChannel === channel) { renderMessages(); scrollBottom(); }
@@ -4415,9 +4429,9 @@
       : '';
     return '<div class="fp-annot-row">'+
       '<button type="button" class="fp-annot-pill" title="Ver imagem anotada" onclick="event.stopPropagation();fpChat.openAnnotatedPrint(\''+escHtml(String(printId))+'\')">'+
-        '<span class="fp-annot-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>'+
+        '<span class="fp-annot-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>'+
         escHtml(fn)+' revisou uma imagem'+escHtml(notaStr)+
-        '<svg class="fp-annot-eye" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+
+        '<svg class="fp-annot-eye" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'+
       '</button>'+
     '</div>';
   }
