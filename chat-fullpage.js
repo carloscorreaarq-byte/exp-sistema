@@ -144,7 +144,7 @@
     togglePin(channel);
     if (typeof updateHeaderPinBtn === 'function') updateHeaderPinBtn();
     if (typeof updateSidebarPinBtn === 'function') updateSidebarPinBtn();
-    renderConvList();
+    renderConvList(true);
   }
 
   /* ── Pin: DMs fixadas pelo usuário ── */
@@ -152,7 +152,7 @@
     if (pinnedChannels.has(channel)) pinnedChannels.delete(channel);
     else pinnedChannels.add(channel);
     try { localStorage.setItem(PINNED_KEY, JSON.stringify(Array.from(pinnedChannels))); } catch(e) {}
-    renderConvList();
+    renderConvList(true);
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -177,7 +177,7 @@
     ch = ch || currentChannel; if (!ch) return;
     mutedChannels = _loadSet(MUTE_KEY);
     if (mutedChannels.has(ch)) mutedChannels.delete(ch); else mutedChannels.add(ch);
-    _saveSet(MUTE_KEY, mutedChannels); updateConvHeaderButtons(); renderConvList();
+    _saveSet(MUTE_KEY, mutedChannels); updateConvHeaderButtons(); renderConvList(true);
   }
 
   /* Estilos dos recursos novos (resposta, participantes, digitando, visto…) ficam em chat-fullpage.html */
@@ -1153,7 +1153,7 @@
     var bf = document.getElementById('fp-toggle-flagged');
     if (bu) bu.classList.toggle('active', showOnlyUnread);
     if (bf) bf.classList.remove('active');
-    renderConvList();
+    renderConvList(true);
   }
 
   function toggleFlagged() {
@@ -1163,7 +1163,7 @@
     var bf = document.getElementById('fp-toggle-flagged');
     if (bf) bf.classList.toggle('active', showOnlyFlagged);
     if (bu) bu.classList.remove('active');
-    renderConvList();
+    renderConvList(true);
 
     /* Se ativou e há conversa aberta: rolar até a primeira mensagem sinalizada */
     if (showOnlyFlagged && currentChannel && messages.length) {
@@ -1180,19 +1180,44 @@
   /* ═══════════════════════════════════════════════════════════════════
      LISTA DE CONVERSAS
   ═══════════════════════════════════════════════════════════════════ */
-  function renderConvList() {
-    var $list = document.getElementById('fp-conv-list');
-    if (!$list) return;
-
-    var uid   = user.auth_id;
-    var q     = (filterQuery||'').toLowerCase().trim();
-
+  /* Lista de conversas: a busca no servidor fica separada do desenho.
+     - renderConvList(true): só redesenha com o que já está carregado (sem pedidos);
+     - renderConvList(): redesenha na hora e agenda UMA busca; chamadas em sequência
+       dentro de 1,5s viram uma só (antes cada chamada fazia ~8 pedidos). */
+  var _convCache = null, _convTimer = null, _convBuscando = false, _convPendente = false;
+  function _agendarConvBusca(espera) {
+    if (_convTimer) return;
+    if (_convBuscando) { _convPendente = true; return; }
+    _convTimer = setTimeout(_buscarConvList, espera);
+  }
+  function _buscarConvList() {
+    _convTimer = null; _convBuscando = true;
+    var uid = user.auth_id;
     Promise.all([
       fetchConversationHeads(),
       fetchProjectHomeItems(uid),
       loadChannelNames(),
       loadGroupMembers()
-    ]).then(function(res) {
+    ]).then(function(res) { _convCache = res; _desenharConvList(res); })
+      .catch(function(){})
+      .then(function() {
+        _convBuscando = false;
+        if (_convPendente) { _convPendente = false; _agendarConvBusca(1500); }
+      });
+  }
+  function renderConvList(soLocal) {
+    if (!document.getElementById('fp-conv-list')) return;
+    if (_convCache) _desenharConvList(_convCache);
+    if (soLocal === true && _convCache) return;
+    _agendarConvBusca(_convCache ? 1500 : 0);
+  }
+
+  function _desenharConvList(res) {
+    var $list = document.getElementById('fp-conv-list');
+    if (!$list) return;
+    var uid   = user.auth_id;
+    var q     = (filterQuery||'').toLowerCase().trim();
+    {
       var msgs         = (res[0].data||[]);
       var projectItems = res[1]||[];
       var chanRows     = res[2]||[];
@@ -1354,7 +1379,7 @@
       if (!html) html = '<div class="fp-empty fp-vazio">Nenhuma conversa encontrada.</div>';
       $list.innerHTML = html;
       setActiveConvItem(currentChannel);
-    });
+    }
   }
 
   function buildConvItemHtml(channel, label, iniciais, avatarUrl, cor, previewText, lastMsg, unread, avVariant, presenceStatus, members, pinned) {
@@ -1518,14 +1543,14 @@
     filterQuery = String(value||'');
     if (filterTimer) clearTimeout(filterTimer);
     /* Para queries curtas, renderiza imediatamente (filtro local) */
-    if (filterQuery.length < 2) { renderConvList(); return; }
+    if (filterQuery.length < 2) { renderConvList(true); return; }
     /* Para queries mais longas, debounce + busca no banco */
     filterTimer = setTimeout(function() { renderConvListWithSearch(filterQuery); }, 350);
   }
 
   function renderConvListWithSearch(q) {
     /* Primeiro renderiza o filtro local (instantâneo) */
-    renderConvList();
+    renderConvList(true);
     if (!q || q.length < 2) return;
 
     var uid   = user.auth_id;
@@ -1693,7 +1718,7 @@
       });
   }
 
-  function toggleProjectSection() { projectSectionCollapsed = !projectSectionCollapsed; renderConvList(); }
+  function toggleProjectSection() { projectSectionCollapsed = !projectSectionCollapsed; renderConvList(true); }
 
   /* ═══════════════════════════════════════════════════════════════════
      ABRIR CANAL
@@ -2024,7 +2049,7 @@
           state[k].forEach(function(p){ if(p.user_id) onlinePresence[p.user_id]=p; });
         });
         updateChannelSubtitle();
-        renderConvList();
+        renderConvList(true); /* presença: só repinta as bolinhas, sem buscar a lista de novo */
         renderPresenceBar();
       })
       .subscribe(function(s){ if(s==='SUBSCRIBED') presenceCh.track(presencePayload(userStatus)); });
@@ -2254,14 +2279,28 @@
     if (!isAttn) _sendChatPush(msg);
   }
 
+  /* Novas mensagens desde um instante: 1 pedido (função chat_novas_desde no banco).
+     Se a função ainda não existir, volta às 2 consultas de antes e não tenta mais. */
+  var _semRpcNovas = false;
+  function _buscarNovasDesde(since) {
+    function _duas() {
+      return Promise.all([
+        sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
+        sb.from('chat_thread_messages').select('*').gt('created_at', since).order('created_at')
+      ]);
+    }
+    if (_semRpcNovas) return _duas();
+    return sb.rpc('chat_novas_desde', { p_desde: since }).then(function (r) {
+      if (r.error || !r.data) { _semRpcNovas = true; return _duas(); }
+      return [{ data: r.data.msgs || [] }, { data: r.data.threads || [] }];
+    });
+  }
+
   function _pollMissed() {
     if (!sb || !user || !user.auth_id) return;
     if (!_lastPollTs) { _initPollCursor(); return; }
     var since = _lastPollTs;
-    Promise.all([
-      sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
-      sb.from('chat_thread_messages').select('*').gt('created_at', since).order('created_at')
-    ]).then(function (res) {
+    _buscarNovasDesde(since).then(function (res) {
       (res[0].data || []).forEach(function (m) {
         if (m.created_at > _lastPollTs) _lastPollTs = m.created_at;
         if (_wasSeen(m.id)) return;
@@ -2586,7 +2625,7 @@
   function flagMessage(msgId) {
     toggleFlag(msgId);
     renderMessages();
-    if (showOnlyFlagged) renderConvList();
+    if (showOnlyFlagged) renderConvList(true);
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -3875,7 +3914,7 @@
         allMembers=all;
         _buildMentionRe();
         teamMembers=all.filter(function(m){ return m.ativo!==false&&m.auth_id!==user.auth_id&&m.id!==user.id; });
-        renderConvList();
+        renderConvList(true);
         renderPresenceBar();
         applyInitialRouteChannel();
       });
@@ -3969,7 +4008,7 @@
           q.order('created_at', { ascending:false }).limit(Math.min(unreadMap[ch], 50)).then(function(r2){
             if (r2.error) return;
             var tem = (r2.data || []).some(function(m){ return m.sender_auth_id !== uid && _mentionsMe(m.content); });
-            if (tem && !mentionChannels[ch]) { mentionChannels[ch] = true; renderConvList(); }
+            if (tem && !mentionChannels[ch]) { mentionChannels[ch] = true; renderConvList(true); }
           });
         });
       });

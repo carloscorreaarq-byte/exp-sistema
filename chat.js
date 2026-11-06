@@ -1981,14 +1981,28 @@
     if (!isAttn) _sendChatPush(msg);
   }
 
+  /* Novas mensagens desde um instante: 1 pedido (função chat_novas_desde no banco).
+     Se a função ainda não existir, volta às 2 consultas de antes e não tenta mais. */
+  var _semRpcNovas = false;
+  function _buscarNovasDesde(since) {
+    function _duas() {
+      return Promise.all([
+        sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
+        sb.from('chat_thread_messages').select('*').gt('created_at', since).order('created_at')
+      ]);
+    }
+    if (_semRpcNovas) return _duas();
+    return sb.rpc('chat_novas_desde', { p_desde: since }).then(function (r) {
+      if (r.error || !r.data) { _semRpcNovas = true; return _duas(); }
+      return [{ data: r.data.msgs || [] }, { data: r.data.threads || [] }];
+    });
+  }
+
   function _pollMissed() {
     if (!sb || !user || !user.auth_id) return;
     if (!_lastPollTs) { _initPollCursor(); return; }
     var since = _lastPollTs;
-    Promise.all([
-      sb.from('chat_messages').select('*').gt('created_at', since).order('created_at'),
-      sb.from('chat_thread_messages').select('*').gt('created_at', since).order('created_at')
-    ]).then(function (res) {
+    _buscarNovasDesde(since).then(function (res) {
       (res[0].data || []).forEach(function (m) {
         if (m.created_at > _lastPollTs) _lastPollTs = m.created_at;
         if (_wasSeen(m.id)) return;
