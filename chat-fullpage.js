@@ -1254,22 +1254,48 @@
 
       var html = '';
 
+      /* ── Novas conversas: as não lidas sobem para o topo, separadas por uma linha.
+         Só na lista normal (sem busca e sem filtros); silenciadas ficam no lugar. ── */
+      var agruparNovas = !q && !showOnlyUnread && !showOnlyFlagged;
+      var ehNova = {}, novas = [];
+      if (agruparNovas) {
+        var _fixos = [['general', 'geral', 'hash-verde', 'Toda a equipe'], ['bim', 'BIM', 'hash-azul', 'Toda a equipe']];
+        if (isSocioLikeRole(user.role)) _fixos.push(['socios', 'sócios', 'hash-ouro', 'Canal privado']);
+        _fixos.forEach(function(f) {
+          if (!(channelUnread[f[0]]||0) || isMuted(f[0])) return;
+          var ult = msgs.find(function(m){ return m.channel===f[0]; });
+          ehNova[f[0]] = true;
+          novas.push({ ts: new Date(ult && ult.created_at || 0).getTime(), tipo: 'fixo', f: f, ult: ult });
+        });
+        projectItems.forEach(function(i) {
+          if (!(channelUnread[i.channel]||i.unread||0) || isMuted(i.channel)) return;
+          ehNova[i.channel] = true;
+          novas.push({ ts: new Date(i.lastCreatedAt || 0).getTime(), tipo: 'proj', item: i });
+        });
+        dmList.forEach(function(dm) {
+          if (!(channelUnread[dm.channel]||0) || isMuted(dm.channel)) return;
+          ehNova[dm.channel] = true;
+          novas.push({ ts: new Date(dm.created_at || 0).getTime(), tipo: 'dm', dm: dm });
+        });
+        novas.sort(function(a,b){ return b.ts - a.ts; });
+      }
+
       /* ── Canais fixos ── */
       var genShow = !q || 'geral'.indexOf(q)!==-1;
       var bimShow = !q || 'bim'.indexOf(q)!==-1;
       var socShow = isSocioLikeRole(user.role) && (!q || 'sócios'.indexOf(q)!==-1 || 'socios'.indexOf(q)!==-1);
 
-      if (genShow && !(showOnlyUnread && !(channelUnread['general']||0)) && !(showOnlyFlagged)) {
+      if (genShow && !ehNova['general'] && !(showOnlyUnread && !(channelUnread['general']||0)) && !(showOnlyFlagged)) {
         html += buildConvItemHtml('general', 'geral', '#', null, null, 'Toda a equipe',
           msgs.find(function(m){return m.channel==='general';}),
           channelUnread['general']||0, 'hash-verde');
       }
-      if (bimShow && !(showOnlyUnread && !(channelUnread['bim']||0)) && !(showOnlyFlagged)) {
+      if (bimShow && !ehNova['bim'] && !(showOnlyUnread && !(channelUnread['bim']||0)) && !(showOnlyFlagged)) {
         html += buildConvItemHtml('bim', 'BIM', '#', null, null, 'Toda a equipe',
           msgs.find(function(m){return m.channel==='bim';}),
           channelUnread['bim']||0, 'hash-azul');
       }
-      if (socShow && !(showOnlyUnread && !(channelUnread['socios']||0)) && !(showOnlyFlagged)) {
+      if (socShow && !ehNova['socios'] && !(showOnlyUnread && !(channelUnread['socios']||0)) && !(showOnlyFlagged)) {
         html += buildConvItemHtml('socios', 'sócios', '#', null, null, 'Canal privado',
           msgs.find(function(m){return m.channel==='socios';}),
           channelUnread['socios']||0, 'hash-ouro');
@@ -1281,7 +1307,7 @@
         if (ud) return ud;
         return new Date(b.lastCreatedAt||0)-new Date(a.lastCreatedAt||0);
       });
-      var projFiltered = sortedP.filter(function(i){ return !q || i.label.toLowerCase().indexOf(q)!==-1; });
+      var projFiltered = sortedP.filter(function(i){ return !ehNova[i.channel] && (!q || i.label.toLowerCase().indexOf(q)!==-1); });
       /* projectItems já vem pré-filtrado pelos toggles (showOnlyFlagged / showOnlyUnread) */
       var pinnedFiltered   = projFiltered.filter(function(i){ return isPinned(i.channel); });
       var unpinnedFiltered = projFiltered.filter(function(i){ return !isPinned(i.channel); });
@@ -1297,6 +1323,7 @@
 
       /* ── DMs / Grupos ── */
       var dmFiltered = dmList.filter(function(dm){
+        if (ehNova[dm.channel]) return false;
         if (!q) return true;
         /* Busca pelo nome da conversa E pelo nome de qualquer participante */
         return channelSearchText(dm.channel, getConversationMeta(dm,uid).label).indexOf(q)!==-1;
@@ -1374,6 +1401,22 @@
           html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
             item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, false);
         });
+      }
+
+      if (novas.length) {
+        var novasHtml = '<div class="fp-section-hdr fp-novas-hdr"><span>Novas conversas</span></div>';
+        novas.forEach(function(n) {
+          if (n.tipo === 'fixo') {
+            novasHtml += buildConvItemHtml(n.f[0], n.f[1], '#', null, null, n.f[3], n.ult, channelUnread[n.f[0]]||0, n.f[2]);
+          } else if (n.tipo === 'proj') {
+            var it = n.item;
+            novasHtml += buildConvItemHtml(it.channel, it.label, it.iniciais, null, it.cor,
+              it.preview, null, channelUnread[it.channel]||it.unread||0, '', '', null, isPinned(it.channel));
+          } else {
+            novasHtml += buildDmRow(n.dm);
+          }
+        });
+        html = novasHtml + (html ? '<div class="fp-novas-fim"></div>' : '') + html;
       }
 
       if (!html) html = '<div class="fp-empty fp-vazio">Nenhuma conversa encontrada.</div>';

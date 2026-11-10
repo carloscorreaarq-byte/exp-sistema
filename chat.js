@@ -128,6 +128,9 @@
     '.chat-conv-section-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 4px;border:none;background:none;cursor:pointer;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9);text-align:left}',
     '.chat-conv-section-btn:hover{color:var(--grafite,#111110)}',
     '.chat-conv-section-chev{font-size:11px;line-height:1;color:inherit}',
+    '.chat-novas-hdr{display:flex;align-items:center;gap:8px;padding:8px 10px 4px;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--grafite,#111110)}',
+    '.chat-novas-hdr::after{content:"";flex:1;height:1px;background:currentColor;opacity:.35}',
+    '.chat-novas-fim{border-top:1px solid var(--cinza,#D0CFC9);margin:6px 10px 2px}',
     '.chat-conv-av-hash{width:28px;height:28px;border-radius:50%;background:var(--verde-bg,#EAF5EE);color:var(--verde,#1D6A4A);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
     '.chat-conv-info{flex:1;min-width:0}',
     '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -432,6 +435,8 @@
     '[data-theme="dark"] .chat-conv-preview{color:#8C8A85}',
     '[data-theme="dark"] .chat-conv-section{color:#8C8A85}',
     '[data-theme="dark"] .chat-conv-section-btn{color:#8C8A85}',
+    '[data-theme="dark"] .chat-novas-hdr{color:#F0EDE6}',
+    '[data-theme="dark"] .chat-novas-fim{border-top-color:#2E2D2A}',
     '[data-theme="dark"] .chat-conv-section-btn:hover{color:#F0EDE6}',
     '[data-theme="dark"] .chat-search-wrap{background:#1C1C1B;border-bottom-color:#2E2D2B}',
     '[data-theme="dark"] .chat-search-input{background:#252523;border-color:#2E2D2B;color:#F0EDE6}',
@@ -1323,33 +1328,46 @@
           '</div>';
       }
 
-      /* Linha #geral */
-      var genU = channelUnread['general'] || 0;
-      html += '<div class="chat-conv-item' + _mentionCls('general') + '" onclick="expChat.openChannel(\'general\',\'# geral\')">' +
-        '<div class="chat-conv-av-hash">#</div>' +
-        '<div class="chat-conv-info"><div class="chat-conv-name">geral</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
-        (genU > 0 ? '<div class="chat-conv-badge">' + genU + '</div>' : '') +
-        '</div>';
+      /* Novas conversas: as não lidas sobem para o topo, separadas por uma linha
+         (silenciadas ficam no lugar) */
+      var ehNova = {}, novas = [];
+      function _ehNovaCh(ch, extra) { return (channelUnread[ch] || extra || 0) > 0 && !isMuted(ch); }
 
-      /* Linha #BIM — canal aberto a toda a equipe, sempre visível */
-      var bimU = channelUnread['bim'] || 0;
-      html += '<div class="chat-conv-item' + _mentionCls('bim') + '" onclick="expChat.openChannel(\'bim\',\'# BIM\')">' +
-        '<div class="chat-conv-av-hash" style="background:#EAF0FB;color:#5981CC">#</div>' +
-        '<div class="chat-conv-info"><div class="chat-conv-name">BIM</div><div class="chat-conv-preview">Toda a equipe</div></div>' +
-        (bimU > 0 ? '<div class="chat-conv-badge">' + bimU + '</div>' : '') +
-        '</div>';
-
-      /* Linha #sócios (apenas para role socio) */
-      if (isSocioLikeRole(user.role)) {
-        var socU = channelUnread['socios'] || 0;
-        html += '<div class="chat-conv-item' + _mentionCls('socios') + '" onclick="expChat.openChannel(\'socios\',\'# s\u00F3cios\')">' +
-          '<div class="chat-conv-av-hash" style="background:#FBF3E8;color:#B98A22">#</div>' +
-          '<div class="chat-conv-info"><div class="chat-conv-name">s\u00F3cios</div><div class="chat-conv-preview">Canal privado</div></div>' +
-          (socU > 0 ? '<div class="chat-conv-badge">' + socU + '</div>' : '') +
+      /* Canais fixos: #geral, #BIM e #sócios (este só para sócios) */
+      var fixos = [
+        { ch: 'general', nome: 'geral', titulo: '# geral', estilo: '', pv: 'Toda a equipe' },
+        { ch: 'bim', nome: 'BIM', titulo: '# BIM', estilo: 'background:#EAF0FB;color:#5981CC', pv: 'Toda a equipe' }
+      ];
+      if (isSocioLikeRole(user.role)) fixos.push({ ch: 'socios', nome: 's\u00F3cios', titulo: '# s\u00F3cios', estilo: 'background:#FBF3E8;color:#B98A22', pv: 'Canal privado' });
+      function buildFixoRow(f) {
+        var u = channelUnread[f.ch] || 0;
+        return '<div class="chat-conv-item' + _mentionCls(f.ch) + '" onclick="expChat.openChannel(\'' + f.ch + '\',\'' + attrJsStr(f.titulo) + '\')">' +
+          '<div class="chat-conv-av-hash"' + (f.estilo ? ' style="' + f.estilo + '"' : '') + '>#</div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">' + f.nome + '</div><div class="chat-conv-preview">' + f.pv + '</div></div>' +
+          (u > 0 ? '<div class="chat-conv-badge">' + u + '</div>' : '') +
           '</div>';
       }
+      fixos.forEach(function (f) {
+        if (!_ehNovaCh(f.ch)) return;
+        var ult = msgs.find(function (m) { return m.channel === f.ch; });
+        ehNova[f.ch] = true;
+        novas.push({ ts: new Date(ult && ult.created_at || 0).getTime(), html: function () { return buildFixoRow(f); } });
+      });
+      (projectItems || []).forEach(function (item) {
+        if (!_ehNovaCh(item.channel, item.unread)) return;
+        ehNova[item.channel] = true;
+        novas.push({ ts: new Date(item.lastCreatedAt || 0).getTime(), html: function () { return buildProjectHomeRow(item); } });
+      });
+      dmList.forEach(function (dm) {
+        if (!_ehNovaCh(dm.channel)) return;
+        ehNova[dm.channel] = true;
+        novas.push({ ts: new Date(dm.created_at || 0).getTime(), html: function () { return buildDmRow(dm); } });
+      });
+      novas.sort(function (x, y) { return y.ts - x.ts; });
 
-      var sortedProjectItems = (projectItems || []).slice().sort(function (a, b) {
+      fixos.forEach(function (f) { if (!ehNova[f.ch]) html += buildFixoRow(f); });
+
+      var sortedProjectItems = (projectItems || []).filter(function (item) { return !ehNova[item.channel]; }).sort(function (a, b) {
         var unreadDiff = (b.unread || 0) - (a.unread || 0);
         if (unreadDiff) return unreadDiff;
         return new Date(b.lastCreatedAt || 0) - new Date(a.lastCreatedAt || 0);
@@ -1369,8 +1387,8 @@
       });
 
       /* Linhas de DMs e grupos — fixadas primeiro */
-      var pinnedDms = dmList.filter(function (dm) { return pinnedChannels.has(dm.channel); });
-      var regularDms = dmList.filter(function (dm) { return !pinnedChannels.has(dm.channel); });
+      var pinnedDms = dmList.filter(function (dm) { return !ehNova[dm.channel] && pinnedChannels.has(dm.channel); });
+      var regularDms = dmList.filter(function (dm) { return !ehNova[dm.channel] && !pinnedChannels.has(dm.channel); });
 
       function buildDmRow(dm) {
         var meta     = getConversationMeta(dm, uid);
@@ -1409,6 +1427,11 @@
 
 
       html += projectHtml;
+      if (novas.length) {
+        html = '<div class="chat-novas-hdr"><span>Novas conversas</span></div>' +
+          novas.map(function (n) { return n.html(); }).join('') +
+          '<div class="chat-novas-fim"></div>' + html;
+      }
       $list.innerHTML = html;
     });
   }
