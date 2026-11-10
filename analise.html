@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
 <link rel="stylesheet" href="analise.css">
+<link rel="stylesheet" href="analise-v2.css?v=2026-11-10a">
 <script>
   (function () {
     var saved = localStorage.getItem('exp-theme');
@@ -95,158 +96,24 @@
         <!-- Topbar: título + contexto + ações -->
         <div id="analise-topbar">
           <div class="analise-bv">
-            <h1 class="analise-title">Análise de Eficiência</h1>
+            <h1 class="analise-title">Análise</h1>
             <div class="analise-subtitle" id="analise-user-context">Carregando contexto do módulo…</div>
           </div>
           <div class="analise-hd-actions">
             <button class="btn sm" id="analise-btn-reload" type="button">Atualizar</button>
-            <button class="btn sm" id="analise-btn-config" type="button" hidden>Configurar</button>
           </div>
         </div>
 
         <!-- Corpo rolável -->
         <div id="analise-body">
 
-          <!-- Painel de configuração (inline reveal) -->
-          <div class="analise-config-panel" id="analise-config-panel">
-            <div class="analise-config-grid">
-              <div class="fgroup">
-                <label for="analise-threshold">Threshold de margem (%)</label>
-                <input id="analise-threshold" type="number" min="0" max="100">
-              </div>
-              <div class="fgroup">
-                <label for="analise-atencao">Faixa de atenção (%)</label>
-                <input id="analise-atencao" type="number" min="0" max="20">
-              </div>
-            </div>
-            <div class="analise-config-preview" id="analise-config-preview"></div>
-            <div class="analise-config-actions">
-              <button class="btn sm" id="analise-btn-fechar-config" type="button">Cancelar</button>
-              <button class="btn sm filled" id="analise-btn-salvar-config" type="button">Salvar</button>
+          <!-- Nova Análise (analise-v2.js): abas e conteúdo montados pelo script -->
+          <div class="analise-shell-card">
+            <div class="analise-tabs-bar" id="analise-tabs-bar"></div>
+            <div class="av-painel" id="analise-panels">
+              <div class="loading-state">Carregando…</div>
             </div>
           </div>
-
-          <!-- Card de abas -->
-          <div class="analise-shell-card">
-            <div class="analise-tabs-bar" id="analise-tabs-bar">
-              <!-- abas operacionais -->
-              <button class="analise-tab active" type="button" data-aba="acumulado">Acumulado</button>
-              <button class="analise-tab" type="button" data-aba="desenvolvimento">Em Desenvolvimento</button>
-              <button class="analise-tab" type="button" data-aba="encerrados">Encerrados</button>
-              <button class="analise-tab" type="button" data-aba="pessoas">Por Pessoa</button>
-              <!-- separador visual -->
-              <div class="analise-tabs-sep"></div>
-              <!-- abas analíticas — placeholder (em breve) -->
-              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="tendencia" title="Em desenvolvimento">
-                Tendência
-                <span class="analise-tab-badge">em breve</span>
-              </button>
-              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="comparativo" title="Em desenvolvimento">
-                Comparativo
-                <span class="analise-tab-badge">em breve</span>
-              </button>
-              <button class="analise-tab analise-tab-placeholder" type="button" data-aba="distribuicao" title="Em desenvolvimento">
-                Distribuição
-                <span class="analise-tab-badge">em breve</span>
-              </button>
-            </div>
-
-            <div class="analise-tabs-bar" id="analise-subtema-bar" style="margin-top:10px;border-top:1px solid var(--analise-border, rgba(0,0,0,.08));padding-top:10px">
-              <button class="analise-tab active" type="button" data-subtema="resumo">Resumo</button>
-              <button class="analise-tab" type="button" data-subtema="rentabilidade">Rentabilidade</button>
-              <button class="analise-tab" type="button" data-subtema="risco">Risco</button>
-              <button class="analise-tab" type="button" data-subtema="carga">Carga</button>
-            </div>
-
-            <div class="analise-panels" id="analise-panels">
-              <!-- painéis operacionais -->
-              <section class="analise-panel active" id="anp-acumulado">
-                <div class="loading-state">Inicializando módulo de análise…</div>
-              </section>
-              <section class="analise-panel" id="anp-desenvolvimento">
-                <div class="loading-state">Inicializando módulo de análise…</div>
-              </section>
-              <section class="analise-panel" id="anp-encerrados">
-                <div class="loading-state">Inicializando módulo de análise…</div>
-              </section>
-              <section class="analise-panel" id="anp-pessoas">
-                <div class="loading-state">Inicializando módulo de análise…</div>
-              </section>
-
-              <!-- painéis analíticos — placeholder -->
-              <section class="analise-panel" id="anp-tendencia">
-                <div class="analise-placeholder-panel">
-                  <div class="analise-placeholder-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                  </div>
-                  <div class="analise-placeholder-title">Tendência de Margem</div>
-                  <div class="analise-placeholder-copy">Evolução da margem bruta ao longo do tempo por projeto, sócio e categoria. Visualização de curvas de tendência, sazonalidade e alertas preditivos de desvio.</div>
-                  <div class="analise-placeholder-charts">
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Margem por trimestre</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Projeção vs. realizado</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot analise-chart-slot-wide">
-                      <div class="analise-chart-slot-label">Série histórica de eficiência</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="analise-panel" id="anp-comparativo">
-                <div class="analise-placeholder-panel">
-                  <div class="analise-placeholder-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                  </div>
-                  <div class="analise-placeholder-title">Comparativo por Período</div>
-                  <div class="analise-placeholder-copy">Comparação de métricas entre períodos selecionados: horas, margem, custo e eficiência. Permite identificar variações de desempenho entre meses, trimestres e anos.</div>
-                  <div class="analise-placeholder-charts">
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Período A</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Período B</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot analise-chart-slot-wide">
-                      <div class="analise-chart-slot-label">Variação percentual por indicador</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="analise-panel" id="anp-distribuicao">
-                <div class="analise-placeholder-panel">
-                  <div class="analise-placeholder-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 6.88 17.26"/><path d="M12 2v10l6.88 7.26"/></svg>
-                  </div>
-                  <div class="analise-placeholder-title">Distribuição de Horas e Custos</div>
-                  <div class="analise-placeholder-copy">Breakdown da alocação de horas e custos por projeto, sócio, tipo de serviço e fase. Gráficos de composição para leitura rápida de onde o esforço está concentrado.</div>
-                  <div class="analise-placeholder-charts">
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Distribuição por sócio</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot">
-                      <div class="analise-chart-slot-label">Distribuição por tipo</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                    <div class="analise-chart-slot analise-chart-slot-wide">
-                      <div class="analise-chart-slot-label">Heatmap de alocação mensal</div>
-                      <div class="analise-chart-slot-area"></div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div><!-- /#analise-panels -->
-          </div><!-- /.analise-shell-card -->
 
         </div><!-- /#analise-body -->
       </div><!-- /#analise-main -->
@@ -267,25 +134,6 @@
   <script src="shared/app-notif.js?v=2026-10-25"></script>
   <script src="shared/lists-panel.js?v=2026-10-25"></script>
   <script src="shared/exp-nav.js?v=2026-10-30a"></script>
-  <script src="analise.js?v=2026-10-30a"></script>
-  <script src="analise-subtematica.js"></script>
-  <script src="analise-modal-refine.js"></script>
-  <script>
-    /* Placeholder tabs — bloquear clique, apenas visual */
-    document.querySelectorAll('.analise-tab-placeholder').forEach(function(btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        /* toggle painel para mostrar o wireframe */
-        var aba = btn.dataset.aba;
-        if (!aba) return;
-        document.querySelectorAll('.analise-tab').forEach(function(t) { t.classList.remove('active'); });
-        document.querySelectorAll('.analise-panel').forEach(function(p) { p.classList.remove('active'); });
-        btn.classList.add('active');
-        var panel = document.getElementById('anp-' + aba);
-        if (panel) panel.classList.add('active');
-      });
-    });
-  </script>
+  <script src="analise-v2.js?v=2026-11-10a"></script>
 </body>
 </html>

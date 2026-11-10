@@ -5581,9 +5581,11 @@ const STATUS_PROD = {
   pausado:   { cls: 'b-am',  label: 'Pausado'   },
   encerrado: { cls: 'b-tc',  label: 'Encerrado' },
 };
+// Etapas sugeridas para projetos novos (preset: dá para excluir, renomear e adicionar).
+// São os 10 tipos padrão usados na Análise; etapas com outros nomes contam como "fora do padrão".
 const ETAPAS_PRESET = [
-  'Briefing','Estudo Conceitual','Estudo Preliminar',
-  'Estudo Ajustado','Anteprojeto','Projeto Executivo','Liberado para Obra'
+  'Start + Briefing','Estudo Conceitual','Estudo Preliminar','Estudo Ajustado','Anteprojeto',
+  'Pré-executivo','Projeto Executivo','Detalhamento','Liberado Obra','Ajustes Remanescentes'
 ];
 // ── Migração Horas/Custos → Apontamentos (plano-migracao-horas-apontamentos.md) ──
 // Fase 8: false = convivência (aba funciona + aviso). true = troca (só aviso com link).
@@ -5818,7 +5820,12 @@ async function init() {
   // Link direto para um projeto: gestao.html?produto=ID (usado pelo chat)
   try {
     const _prodParam = new URLSearchParams(location.search).get('produto');
-    if (_prodParam) setTimeout(() => abrirProduto(_prodParam), 300);
+    if (_prodParam) setTimeout(() => {
+      abrirProduto(_prodParam);
+      // gestao.html?produto=ID&aba=resultado (links da Análise): abre direto na aba Resultado
+      if (new URLSearchParams(location.search).get('aba') === 'resultado')
+        setTimeout(() => document.getElementById('mp-tab-resultado')?.click(), 400);
+    }, 300);
     // gestao.html?revisao=ID: abre a revisão (link "ver na prancha" do chat)
     const _revParam = new URLSearchParams(location.search).get('revisao');
     if (_revParam) setTimeout(() => {
