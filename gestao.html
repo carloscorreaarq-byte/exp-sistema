@@ -2474,6 +2474,8 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 .fluxo-prio-select:focus, .fluxo-prio-date-inline:focus, .fluxo-blocos-in:focus { border-color:var(--grafite) !important; outline:none; }
 .fluxo-x { background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px; display:inline-flex; flex-shrink:0; }
 .fluxo-x:hover { color:var(--terracota); }
+.fluxo-dup { background:none; border:none; cursor:pointer; color:var(--txt-4); padding:2px; display:inline-flex; flex-shrink:0; }
+.fluxo-dup:hover { color:var(--grafite); }
 .fluxo-prio-quando { display:flex; align-items:center; flex-wrap:wrap; gap:6px 18px; padding-left:42px; }
 .fluxo-campo { display:inline-flex; align-items:center; gap:6px; }
 .fluxo-campo > span { font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--txt-3); }
@@ -10765,7 +10767,7 @@ async function selecionarRevisao(id) {
 
   // Quem revisa (abriu a revisão) e sócios: nota final e marca de re-revisar
   G._podeRevisar = isSocioRole(G.usuario.role) || rev.aberta_por === G.usuario.id;
-  // Coordenador (do projeto ou da etapa): já tem câmera, editar e excluir — sem "responder" e "re-revisar" para não acumular botões
+  // Coordenador (do projeto ou da etapa): sem "re-revisar"; "responder" aparece para todos os envolvidos (13/11/2026)
   G._ehCoordRev = prod?.coordenador_id === G.usuario.id || etapa?.coordenador_id === G.usuario.id;
   G._revNotaFinal = rev.nota_final || '';
   const _nReRev = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao || []).filter(t => t.re_revisar).length, 0);
@@ -10877,7 +10879,7 @@ function renderPrancha(pr, isSocioOrCoord) {
       ${_rcContadorHtml(t.id)}
       <div class="tarefa-item-tools">
         ${G._podeRevisar && !G._ehCoordRev ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
-        ${G._ehCoordRev ? '' : `<button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>`}
+        ${`<button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>`}
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">${GI.camera}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">${GI.edit}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act tc" type="button" title="Excluir tarefa" onclick="excluirTarefaRevisao('${t.id}', '${prId}')">${GI.x}</button>` : ''}
@@ -14730,6 +14732,7 @@ function renderFluxoDetail(uid) {
         ${etapaSel}
         <span class="fluxo-conc-tag ${conc?'done':''}"
           onclick="toggleFluxoPrio('${uid}','${pr.id}')">${conc?GI.check+' Concluída':'Pendente'}</span>
+        <button class="fluxo-dup" onclick="event.stopPropagation();duplicarFluxoPrio('${uid}','${pr.id}')" title="Duplicar (cria uma cópia logo abaixo)" aria-label="Duplicar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
         <button class="fluxo-x" onclick="event.stopPropagation();limparFluxoPrio('${uid}','${pr.id}')" title="Remover" aria-label="Remover">${X}</button>
       </div>
       <div class="fluxo-prio-quando">
@@ -14865,6 +14868,49 @@ async function adicionarFluxoPrio(uid) {
   _fluxoPriosData[uid].push(data);
   renderFluxoDetail(uid);
   renderFluxoUserList();
+}
+
+/* Duplicar prioridade (16/11/2026): cópia logo abaixo, com cliente, projeto, etapa, liberação,
+   previsão e observação (inclusive o que ainda não foi salvo). Nasce pendente. */
+async function duplicarFluxoPrio(uid, recId) {
+  const lista = _fluxoPriosData[uid] || [];
+  const orig = lista.find(p => p.id === recId);
+  if (!orig) return;
+  if (lista.length >= 10) { toast('Limite de 10 prioridades atingido.', 3000); return; }
+  const copia = {
+    usuario_id: uid,
+    produto_id: orig.produto_id || null,
+    cliente_id: orig.cliente_id || null,
+    categoria_societaria: orig.categoria_societaria || null,
+    etapa_id: orig.etapa_id || null,
+    data_inicio: orig.data_inicio || null,
+    prazo_texto: orig.prazo_texto || null,
+    comentario: orig.comentario || null,
+    blocos_previstos: orig.blocos_previstos || null,
+    tipo: 'prioridade',
+    ordem: Math.max(...lista.map(p => p.ordem || 0)) + 1,
+    concluida: false,
+    definida_por: G.usuario.id,
+  };
+  let { data, error } = await sb.from('prioridades_usuario').insert(copia).select().single();
+  if (error && /cliente_id|column/i.test(error.message || '')) {   // banco sem a coluna cliente_id: grava sem ela
+    delete copia.cliente_id;
+    ({ data, error } = await sb.from('prioridades_usuario').insert(copia).select().single());
+  }
+  if (error) { console.error('[fluxo] duplicar', error); toast('Não foi possível duplicar: ' + error.message, 4000); return; }
+  // Leva junto o que está na tela (edições ainda não salvas) e põe logo abaixo do original
+  const nova = { ...data, produto_id: orig.produto_id || null, cliente_id: orig.cliente_id || null,
+    categoria_societaria: orig.categoria_societaria || null, etapa_id: orig.etapa_id || null,
+    data_inicio: orig.data_inicio || null, prazo_texto: orig.prazo_texto || null, comentario: orig.comentario || null,
+    blocos_previstos: orig.blocos_previstos || null, produtos: orig.produtos, etapa_alvo: orig.etapa_alvo,
+    cliente: orig.cliente, concluida: false, concluida_em: null, inicio_fila: null };
+  lista.splice(lista.indexOf(orig) + 1, 0, nova);
+  lista.forEach((p, i) => { p.ordem = i + 1; });
+  _fluxoPriosData[uid] = lista;
+  _fluxoMarkDirty(uid);   // a nova posição vai para o banco ao clicar em "Salvar"
+  renderFluxoDetail(uid);
+  renderFluxoUserList();
+  toast('Prioridade duplicada. Clique em Salvar para fixar a ordem.', 3000);
 }
 
 // ── Edições locais (só vão pro banco ao clicar em "Salvar") ──────────────────
@@ -22045,7 +22091,7 @@ else init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-11-10b"></script>
+<script src="chat.js?v=2026-11-13c"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js?v=2026-10-27a"></script>
 <style>

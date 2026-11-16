@@ -20,7 +20,6 @@
   var PINNED_KEY  = 'exp_chat_pinned';
   var COLOR_KEY   = 'exp_chat_color';   // tema de cor — mesma chave do chat full
   var FLAGS_KEY   = 'exp_chat_flags';   // mensagens sinalizadas — mesma chave do chat full
-  var MAX_KEY     = 'exp_chat_maximized'; // painel ampliado na própria janela lateral
 
   var STATUS_COLORS = {
     online:  '#1D6A4A',
@@ -67,8 +66,9 @@
     /* ── FAB toggle ── */
     '.chat-toggle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .3s,transform .15s;user-select:none;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.22)}',
     '.chat-toggle:hover{transform:scale(1.06)}.chat-toggle:active{transform:scale(.94)}',
-    '.chat-badge{position:absolute;top:-3px;right:-3px;background:var(--terracota,#BC6143);color:#fff;font-size:10px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:18px;height:18px;border-radius:999px;display:none;align-items:center;justify-content:center;gap:1px;padding:0 5px;border:1.5px solid var(--off,#F7F6F3);line-height:1;box-sizing:border-box}',
+    '.chat-badge{position:absolute;top:-3px;right:-3px;background:#5F5B54;color:#fff;font-size:10px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:18px;height:18px;border-radius:999px;display:none;align-items:center;justify-content:center;gap:1px;padding:0 5px;border:1.5px solid var(--off,#F7F6F3);line-height:1;box-sizing:border-box}',
     '.chat-badge-at{font-size:10px;font-weight:700}',
+    '[data-theme="dark"] .chat-badge{background:#B9B5AD;color:#1A1A18}',
     /* ── Person button (aparece quando aberto) ── */
     '.chat-person-btn{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #1D6A4A;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .3s,color .3s,box-shadow .15s;color:#1D6A4A;flex-shrink:0}',
     '.chat-person-btn:hover{box-shadow:0 2px 10px rgba(0,0,0,.14)}',
@@ -101,8 +101,6 @@
     '.chat-member-check.sel::after{content:"";width:5px;height:5px;border-radius:50%;background:#fff}',
     /* ── Panel ── */
     '.chat-panel{position:absolute;bottom:58px;right:0;width:min(360px,calc(100vw - 24px));height:min(540px,calc(100vh - 90px));background:#fff;border-radius:var(--radius-shell,14px);box-shadow:0 8px 40px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;animation:chatOpen .18s ease-out;border:1px solid var(--cinza2,#ECEAE4);transition:width .2s ease,height .2s ease}',
-    /* Maximizado — amplia na própria janela lateral, sobre os módulos */
-    '.chat-panel.maximized{width:min(520px,calc(100vw - 40px));height:min(82vh,820px)}',
     '@keyframes chatOpen{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}',
     /* ── Views ── */
     '.chat-view{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}',
@@ -137,14 +135,41 @@
     '.chat-conv-preview{font-size:10px;color:#8A867E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}',
     '.chat-conv-badge{background:var(--verde,#4D865C);color:#fff;font-size:9px;font-weight:700;font-family:var(--font-mono);min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
     /* Quadro semi-transparente atrás da conversa quando há menção não lida a mim */
-    '.chat-conv-item.has-mention{background:rgba(184,76,58,.10);box-shadow:inset 0 0 0 1px rgba(184,76,58,.28)}',
-    '.chat-conv-item.has-mention:hover{background:rgba(184,76,58,.16)}',
-    '[data-theme="dark"] .chat-conv-item.has-mention{background:rgba(184,76,58,.20);box-shadow:inset 0 0 0 1px rgba(184,76,58,.42)}',
-    '[data-theme="dark"] .chat-conv-item.has-mention:hover{background:rgba(184,76,58,.26)}',
+    /* Menção: fundo cinza neutro, conforme o tema (13/11/2026) */
+    '.chat-conv-item.has-mention{background:rgba(17,17,16,.05);box-shadow:inset 0 0 0 1px rgba(17,17,16,.14)}',
+    '.chat-conv-item.has-mention:hover{background:rgba(17,17,16,.08)}',
+    '[data-theme="dark"] .chat-conv-item.has-mention{background:rgba(240,237,230,.07);box-shadow:inset 0 0 0 1px rgba(240,237,230,.16)}',
+    '[data-theme="dark"] .chat-conv-item.has-mention:hover{background:rgba(240,237,230,.10)}',
+    '.chat-conv-at{font-size:12px;font-weight:700;line-height:16px;color:var(--grafite,#111110);flex-shrink:0;margin-right:4px}',
+    '[data-theme="dark"] .chat-conv-at{color:#F0EDE6}',
+    '.chat-mencao-aviso{position:absolute;right:0;bottom:58px;width:min(300px,calc(100vw - 24px));display:none;z-index:10001}',
+    '.chat-mencao-card{display:flex;align-items:center;gap:9px;background:var(--branco,#fff);border:1px solid var(--cinza2,#ECEAE4);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:9px 10px;cursor:pointer}',
+    '.chat-mencao-card + .chat-mencao-card{margin-top:6px}',
+    '.chat-mencao-at{width:24px;height:24px;border-radius:50%;background:rgba(17,17,16,.07);color:var(--grafite,#111110);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}',
+    '.chat-mencao-tx{min-width:0;flex:1;font-size:10px;color:#666;line-height:1.35}',
+    '.chat-mencao-tx b{display:block;font-size:10px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-mencao-tx span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+    '.chat-mencao-x{background:none;border:0;color:#999;cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;flex-shrink:0}',
+    '[data-theme="dark"] .chat-mencao-card{background:#252523;border-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-mencao-at{background:rgba(240,237,230,.10);color:#F0EDE6}',
+    '[data-theme="dark"] .chat-mencao-tx{color:#8C8A85}',
+    '[data-theme="dark"] .chat-mencao-tx b{color:#F0EDE6}',
     '.chat-conv-pin-btn{display:none;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:3px;color:var(--cinza,#D0CFC9);border-radius:var(--radius-badge,4px);flex-shrink:0;transition:color .15s}',
     '.chat-conv-pin-btn:hover{color:var(--verde,#1D6A4A)}',
     '.chat-conv-pin-btn.is-pinned{display:flex;color:var(--verde,#1D6A4A)}',
     '.chat-conv-item:hover .chat-conv-pin-btn{display:flex}',
+    '.chat-conv-nl-btn{display:none;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;padding:3px;color:var(--cinza,#D0CFC9);border-radius:var(--radius-badge,4px);flex-shrink:0;transition:color .15s}',
+    '.chat-conv-nl-btn:hover{color:var(--grafite,#111110)}',
+    '.chat-conv-item:hover .chat-conv-nl-btn{display:flex}',
+    '[data-theme="dark"] .chat-conv-nl-btn{color:#6B6762}',
+    '[data-theme="dark"] .chat-conv-nl-btn:hover{color:#F0EDE6}',
+    /* Grupo "Projetos" */
+    '.chat-proj-grupo .chat-proj-ico{background:rgba(17,17,16,.06);color:var(--grafite,#111110)}',
+    '.chat-proj-chev{display:flex;color:#8A867E;margin-left:4px;transition:transform .15s;flex-shrink:0}',
+    '.chat-proj-grupo.aberto .chat-proj-chev{transform:rotate(90deg)}',
+    '.chat-proj-lista{margin:0 0 6px 23px;padding-left:6px;border-left:1px solid var(--cinza2,#ECEAE4)}',
+    '[data-theme="dark"] .chat-proj-grupo .chat-proj-ico{background:rgba(240,237,230,.08);color:#F0EDE6}',
+    '[data-theme="dark"] .chat-proj-lista{border-left-color:#2E2D2B}',
     '.chat-search-wrap{padding:10px;border-bottom:1px solid var(--cinza2,#ECEAE4);background:#fff}',
     '.chat-search-input{width:100%;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);padding:8px 10px;font-family:var(--font-ui);font-size:12px;background:var(--off,#F7F6F3);color:var(--preto,#111110);outline:none}',
     '.chat-search-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
@@ -155,6 +180,8 @@
     '.chat-search-body{flex:1;min-width:0}',
     '.chat-search-title{font-size:11px;font-weight:700;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-search-meta{font-size:9px;color:#999;margin-top:2px}',
+    '.exp-busca-mark{background:rgba(226,177,65,.35);color:inherit;border-radius:2px;padding:0 1px}',
+    '[data-theme="dark"] .exp-busca-mark{background:rgba(226,177,65,.28)}',
     '.chat-search-snippet{font-size:10px;color:#666;line-height:1.45;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
     '.chat-alert-stack{position:absolute;right:0;bottom:610px;width:min(360px,calc(100vw - 24px));display:none;flex-direction:column;gap:8px;z-index:10001}',
     '.chat-alert-card{background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);box-shadow:0 8px 28px rgba(0,0,0,.14);padding:9px 10px;cursor:pointer;transition:transform .12s,box-shadow .12s}',
@@ -162,7 +189,7 @@
     '.chat-alert-top{display:flex;align-items:center;gap:8px}',
     '.chat-alert-title{font-size:10px;font-weight:700;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-alert-preview{font-size:10px;color:#666;line-height:1.35;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
-    '.chat-alert-chip{margin-left:auto;font-size:8px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE);border-radius:999px;padding:3px 7px}',
+    '.chat-alert-chip{margin-left:auto;font-size:8px;font-weight:700;letter-spacing:.45px;text-transform:uppercase;color:var(--grafite,#111110);background:rgba(17,17,16,.07);border-radius:999px;padding:3px 7px}',
     /* ── Messages ── */
     '.chat-messages{flex:1;overflow-y:auto;padding:8px 8px 4px;display:flex;flex-direction:column;gap:0;scroll-behavior:smooth;background:var(--chat-msgs-bg,transparent)}',
     '.chat-messages::-webkit-scrollbar{width:3px}',
@@ -284,11 +311,12 @@
     /* faixa "Online": avatares lado a lado */
     '.chat-online{display:flex;align-items:center;gap:8px;padding:8px 14px 9px;border-bottom:1px solid var(--cinza2,#ECEAE4)}',
     '.chat-online[hidden]{display:none}',
-    '.chat-online-lbl{font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8A867E;flex-shrink:0}',
     '.chat-online-avs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 2px 0}',
     '.chat-online-avs::-webkit-scrollbar{display:none}',
     '.chat-online-av{border:0;background:none;padding:0;cursor:pointer;border-radius:50%;transition:transform .1s}',
     '.chat-online-av:hover{transform:translateY(-1px)}',
+    '.chat-online-av.off{filter:grayscale(1);opacity:.38;transition:opacity .12s,filter .12s,transform .1s}',
+    '.chat-online-av.off:hover{filter:none;opacity:1}',
     '[data-theme="dark"] .chat-online{border-bottom-color:#2E2D2B}',
     '.chat-presence-dot.offline{background:var(--cinza,#D0CFC9)}',
     /* ── Input ── */
@@ -563,7 +591,8 @@
   var projectThreads   = [];
   var projectThreadMeta = {};
   var recentConversationAlerts = [];
-  var projectSectionCollapsed = true;
+  var projectSectionCollapsed = (function () { try { return localStorage.getItem('exp_chat_proj_aberto') !== '1'; } catch (e) { return true; } })();
+  var _naoLidaPausa = null;   /* conversa marcada como não lida: não volta a "lida" sozinha até ser aberta de novo */
   var pendingMessageSeq = 0;
   var reactionLocks = {};
   var editingMessageId = null;
@@ -608,7 +637,7 @@
   /* ── Personalização visual ── */
   var chatColor    = localStorage.getItem(COLOR_KEY) || 'verde';
   var colorPopOpen = false;
-  var chatMaximized = localStorage.getItem(MAX_KEY) === '1';
+  try { localStorage.removeItem('exp_chat_maximized'); } catch (e) {}   /* modo maximizado removido (13/11/2026) */
   var soundPopOpen = false;
   /* ── Mensagens sinalizadas (salvas) ── */
   var flaggedMessages = (function () {
@@ -668,7 +697,6 @@
     injectCSS();
     injectHTML();
     cacheRefs();
-    applyMaximize();
     applyChatColor(chatColor, false);
     applyStatus(userStatus, false);
     _renderSoundBtn();
@@ -855,6 +883,7 @@
     var fn = firstName(user.nome);
     return (
       '<div class="chat-alert-stack" id="exp-chat-alerts" style="display:none"></div>' +
+      '<div class="chat-mencao-aviso" id="exp-chat-mencao"></div>' +
       /* ── Painel ── */
       '<div class="chat-panel" id="exp-chat-panel" style="display:none">' +
 
@@ -875,8 +904,6 @@
                 '</div>' +
               '</span>' +
               '<button class="chat-icon-btn" onclick="expChat.openSearch()" title="Pesquisar">' + icoSearch() + '</button>' +
-              '<button class="chat-icon-btn" onclick="expChat.startDM()" title="Nova mensagem">' + icoPencil() + '</button>' +
-              '<button class="chat-icon-btn chat-maxbtn" onclick="expChat.toggleMaximize(event)" title="' + (chatMaximized ? 'Restaurar tamanho' : 'Maximizar') + '">' + icoMaxBtn() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
@@ -915,7 +942,6 @@
               '<button class="chat-icon-btn" id="exp-chat-attn-btn" onclick="expChat.chamarAtencao()" title="Chamar a atenção" style="display:none">' + icoAttention() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-flagfilter-btn" onclick="expChat.toggleFlaggedFilter()" title="Mostrar só sinalizadas">' + icoFlag() + '</button>' +
-              '<button class="chat-icon-btn chat-maxbtn" onclick="expChat.toggleMaximize(event)" title="' + (chatMaximized ? 'Restaurar tamanho' : 'Maximizar') + '">' + icoMaxBtn() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
@@ -1101,9 +1127,6 @@
   function icoSearch()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/></svg>'; }
   function icoEmoji()    { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>'; }
   function icoAttention(){ return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="6.5" x2="12" y2="13"/><line x1="12" y1="16.6" x2="12" y2="16.7"/><path d="M7.2 8.4a6 6 0 0 0 0 7.2"/><path d="M4.4 5.8a10 10 0 0 0 0 12.4"/><path d="M16.8 8.4a6 6 0 0 1 0 7.2"/><path d="M19.6 5.8a10 10 0 0 1 0 12.4"/></svg>'; }
-  function icoExpand()   { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
-  function icoCompress() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>'; }
-  function icoMaxBtn()   { return chatMaximized ? icoCompress() : icoExpand(); }
   function icoImage()   { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 14 16 10 5 21"/></svg>'; }
   function icoAttach()  { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-8.49 8.49a5.5 5.5 0 0 1-7.78-7.78l8.49-8.49a3.5 3.5 0 0 1 4.95 4.95l-8.5 8.49a1.5 1.5 0 0 1-2.12-2.12l7.78-7.78"/></svg>'; }
   function icoMic()     { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'; }
@@ -1199,6 +1222,7 @@
   function open() {
     if (!$panel) return;
     isOpen = true;
+    _renderAvisosMencao();
     $panel.style.display    = 'flex';
     if ($personBtn) $personBtn.style.display = 'flex';
     if ($statusInd) $statusInd.style.display = 'none';
@@ -1247,19 +1271,25 @@
       d.className = 'chat-presence-dot ' + _statusDe(d.getAttribute('data-pres'));
     });
   }
+  /* Faixa de pessoas (13/11/2026): todos da equipe; online primeiro, offline em preto e branco
+     e semitransparente. Clicar na pessoa abre a conversa (substitui o botão "Nova mensagem"). */
   function renderOnline() {
     var $o = document.getElementById('exp-chat-online');
     if (!$o) return;
-    var rot = { online: 'Online', foco: 'Foco', ausente: 'Ausente' };
-    var lista = (teamMembers || []).filter(function (m) { return m.auth_id && onlinePresence[m.auth_id]; });
+    var rot = { online: 'Online', foco: 'Foco', ausente: 'Ausente', offline: 'Offline' };
+    var ordem = { online: 0, foco: 1, ausente: 2, offline: 3 };
+    var lista = (teamMembers || []).filter(function (m) { return m.auth_id && m.auth_id !== user.auth_id && m.ativo !== false; });
     if (!lista.length) { $o.hidden = true; $o.innerHTML = ''; return; }
-    lista.sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
-    $o.innerHTML = '<span class="chat-online-lbl">Online</span><div class="chat-online-avs">' +
+    lista.sort(function (a, b) {
+      return (ordem[_statusDe(a.auth_id)] - ordem[_statusDe(b.auth_id)]) ||
+        String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    });
+    $o.innerHTML = '<div class="chat-online-avs">' +
       lista.map(function (m) {
         var st = _statusDe(m.auth_id);
         var nome = firstName(m.nome || '');
         var ch = dmChannel(user.auth_id, m.auth_id);
-        return '<button type="button" class="chat-online-av" title="' + escHtml((m.nome || '') + ' · ' + (rot[st] || 'Online')) + '" ' +
+        return '<button type="button" class="chat-online-av' + (st === 'offline' ? ' off' : '') + '" title="' + escHtml((m.nome || '') + ' · ' + rot[st]) + '" ' +
           'onclick="expChat.openChannel(\'' + attrJsStr(ch) + '\',\'' + attrJsStr(nome) + '\')">' +
           '<span class="chat-av-st">' +
             avHtml(m.iniciais || String(m.nome || '?').substring(0, 2).toUpperCase(), m.cor || '#4D865C', m.avatar_url, 'width:26px;height:26px;font-size:9px') +
@@ -1324,6 +1354,8 @@
             '<div class="chat-conv-name">' + labelEsc + '</div>' +
             '<div class="chat-conv-preview">' + preview + '</div>' +
           '</div>' +
+          (unread > 0 && mentionChannels[item.channel] ? '<div class="chat-conv-at" title="Você foi mencionado">@</div>' : '') +
+          (unread > 0 ? '' : '<button class="chat-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();expChat.marcarNaoLida(\'' + attrJsStr(item.channel) + '\')"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>') +
           (unread > 0 ? '<div class="chat-conv-badge">' + unread + '</div>' : '') +
           '</div>';
       }
@@ -1344,6 +1376,8 @@
         return '<div class="chat-conv-item' + _mentionCls(f.ch) + '" onclick="expChat.openChannel(\'' + f.ch + '\',\'' + attrJsStr(f.titulo) + '\')">' +
           '<div class="chat-conv-av-hash"' + (f.estilo ? ' style="' + f.estilo + '"' : '') + '>#</div>' +
           '<div class="chat-conv-info"><div class="chat-conv-name">' + f.nome + '</div><div class="chat-conv-preview">' + f.pv + '</div></div>' +
+          (u > 0 && mentionChannels[f.ch] ? '<div class="chat-conv-at" title="Você foi mencionado">@</div>' : '') +
+          (u > 0 ? '' : '<button class="chat-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();expChat.marcarNaoLida(\'' + attrJsStr(f.ch) + '\')"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>') +
           (u > 0 ? '<div class="chat-conv-badge">' + u + '</div>' : '') +
           '</div>';
       }
@@ -1372,19 +1406,23 @@
         if (unreadDiff) return unreadDiff;
         return new Date(b.lastCreatedAt || 0) - new Date(a.lastCreatedAt || 0);
       });
-      var highlightedProjectItems = projectSectionCollapsed
-        ? sortedProjectItems.filter(function (item) { return (channelUnread[item.channel] || item.unread || 0) > 0; }).slice(0, 3)
-        : [];
-
+      /* Grupo "Projetos" (13/11/2026): linha com ícone, quantidade e novidades; abre/fecha e é lembrado */
       if (sortedProjectItems.length) {
-        projectHtml += '<button class="chat-conv-section-btn" onclick="expChat.toggleProjectSection()">' +
-          '<span>Projetos</span>' +
-          '<span class="chat-conv-section-chev">' + (projectSectionCollapsed ? '&#9656;' : '&#9662;') + '</span>' +
-          '</button>';
+        var nProj = sortedProjectItems.length;
+        var nProjNL = sortedProjectItems.filter(function (item) { return (channelUnread[item.channel] || item.unread || 0) > 0; }).length;
+        projectHtml += '<div class="chat-conv-item chat-proj-grupo' + (projectSectionCollapsed ? '' : ' aberto') + '" onclick="expChat.toggleProjectSection()" title="' + (projectSectionCollapsed ? 'Mostrar' : 'Recolher') + ' as conversas de projeto">' +
+          '<div class="chat-conv-av-hash chat-proj-ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>' +
+          '<div class="chat-conv-info"><div class="chat-conv-name">Projetos</div>' +
+            '<div class="chat-conv-preview">' + nProj + (nProj === 1 ? ' conversa de projeto' : ' conversas de projeto') + (nProjNL ? ' · ' + nProjNL + ' com novidade' : '') + '</div></div>' +
+          (nProjNL && projectSectionCollapsed ? '<div class="chat-conv-badge">' + nProjNL + '</div>' : '') +
+          '<span class="chat-proj-chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
+          '</div>';
+        if (!projectSectionCollapsed) {
+          projectHtml += '<div class="chat-proj-lista">';
+          sortedProjectItems.forEach(function (item) { projectHtml += buildProjectHomeRow(item); });
+          projectHtml += '</div>';
+        }
       }
-      if (!projectSectionCollapsed) sortedProjectItems.forEach(function (item) {
-        projectHtml += buildProjectHomeRow(item);
-      });
 
       /* Linhas de DMs e grupos — fixadas primeiro */
       var pinnedDms = dmList.filter(function (dm) { return !ehNova[dm.channel] && pinnedChannels.has(dm.channel); });
@@ -1413,6 +1451,8 @@
             '<div class="chat-conv-name">' + nameEsc + (isMuted(dm.channel) ? ' <span class="chat-conv-state" title="Silenciada">🔕</span>' : '') + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
           '</div>' +
+          (dmU > 0 && mentionChannels[dm.channel] ? '<div class="chat-conv-at" title="Você foi mencionado">@</div>' : '') +
+          (dmU > 0 ? '' : '<button class="chat-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();expChat.marcarNaoLida(\'' + attrJsStr(dm.channel) + '\')"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>') +
           (dmU > 0 ? '<div class="chat-conv-badge">' + dmU + '</div>' : '') +
           pinBtn +
           '</div>';
@@ -1421,9 +1461,6 @@
       pinnedDms.forEach(function (dm) { html += buildDmRow(dm); });
       regularDms.forEach(function (dm) { html += buildDmRow(dm); });
 
-      highlightedProjectItems.forEach(function (item) {
-        html += buildProjectHomeRow(item);
-      });
 
 
       html += projectHtml;
@@ -1438,6 +1475,7 @@
 
   function toggleProjectSection() {
     projectSectionCollapsed = !projectSectionCollapsed;
+    try { localStorage.setItem('exp_chat_proj_aberto', projectSectionCollapsed ? '0' : '1'); } catch (e) {}
     if (isOpen && currentView === 'home') renderHome();
   }
 
@@ -1447,6 +1485,38 @@
       var inp = document.getElementById('exp-chat-search-input');
       if (inp) inp.focus();
     }, 60);
+  }
+
+
+  /* ── Busca e menção sem acento (13/11/2026): "julia" acha "Júlia", termo grifado ── */
+  function _semAc(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function _temTermo(txt, q) { return _semAc(txt).indexOf(_semAc(q).trim()) !== -1; }
+  /* Padrão do ilike tolerante a acento: vogais e "c" viram "_" (qualquer letra); o filtro fino vem depois */
+  function _ilikeSemAc(q) {
+    return String(q || '').replace(/[,()*%_\\]/g, ' ').trim().replace(/[aeioucà-ÿ]/gi, '_');
+  }
+  function _grifar(txt, q, cls) {
+    txt = String(txt == null ? '' : txt);
+    var nq = _semAc(q).trim();
+    if (!nq) return escHtml(txt);
+    var dobra = '', idx = [];
+    for (var i = 0; i < txt.length; i++) { var f = _semAc(txt[i]); for (var k = 0; k < f.length; k++) { dobra += f[k]; idx.push(i); } }
+    var out = '', ult = 0, p = dobra.indexOf(nq);
+    while (p !== -1) {
+      var a = idx[p], b = idx[p + nq.length - 1] + 1;
+      out += escHtml(txt.slice(ult, a)) + '<mark class="' + (cls || 'exp-busca-mark') + '">' + escHtml(txt.slice(a, b)) + '</mark>';
+      ult = b; p = dobra.indexOf(nq, p + nq.length);
+    }
+    return out + escHtml(txt.slice(ult));
+  }
+  /* Trecho da mensagem em volta do termo (para o termo aparecer no resultado) */
+  function _trecho(txt, q, max) {
+    txt = String(txt || '').replace(/\s+/g, ' ').trim(); max = max || 140;
+    var p = _semAc(txt).indexOf(_semAc(q).trim());
+    if (txt.length <= max) return txt;
+    if (p < 0) return txt.slice(0, max) + '…';
+    var ini = Math.max(0, p - 40);
+    return (ini > 0 ? '…' : '') + txt.slice(ini, ini + max) + (ini + max < txt.length ? '…' : '');
   }
 
   function searchInput(value) {
@@ -1478,7 +1548,7 @@
           return '<div class="chat-search-item" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + labelArg + '\')">' +
             softAvHtml(item.iniciais, item.cor, item.avatarUrl || null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
             '<div class="chat-search-body">' +
-              '<div class="chat-search-title">' + labelEsc + '</div>' +
+              '<div class="chat-search-title">' + _grifar(item.label, term) + '</div>' +
               '<div class="chat-search-meta">' + escHtml(item.kind || 'Conversa') + '</div>' +
             '</div>' +
           '</div>';
@@ -1495,7 +1565,7 @@
             '<div class="chat-search-body">' +
               '<div class="chat-search-title">' + labelEsc + '</div>' +
               '<div class="chat-search-meta">' + escHtml(item.author || 'Equipe') + ' &middot; ' + escHtml(item.when || '') + '</div>' +
-              '<div class="chat-search-snippet">' + escHtml(item.snippet || '') + '</div>' +
+              '<div class="chat-search-snippet">' + _grifar(item.snippet || '', term) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -1515,6 +1585,8 @@
     var _tid = String(channel || '').indexOf('project:') === 0 ? String(channel).slice(8) : '';
     if (_tid && _revThreads[_tid]) { window.location.href = 'chat-fullpage.html?thread=' + encodeURIComponent(_tid); return; }
     removeConversationAlert(channel);
+    if (_naoLidaPausa === channel) _naoLidaPausa = null;
+    if (_avisosMencao.length) _fecharAvisoMencao(channel);
     closeMediaViewer();
     clearMessageMediaCache();
     setComposerStatus('', '', false);
@@ -1826,7 +1898,7 @@
           if (isFileSentinel(msg.content)) setTimeout(function () { loadArquivosFor([msg]); }, 1200);
         } else if (!isOwn) {
           channelUnread[ch] = (channelUnread[ch] || 0) + 1;
-          if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
+          if (_mentionsMe(msg.content)) { mentionChannels[ch] = true; if (!isOpen) _avisoMencao(msg, ch); }
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
@@ -1862,7 +1934,7 @@
           if (!isOwn) { markRead(); _notificarConversaAberta(msg, ch, false); }
         } else if (!isOwn) {
           channelUnread[ch] = (channelUnread[ch] || 0) + 1;
-          if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
+          if (_mentionsMe(msg.content)) { mentionChannels[ch] = true; if (!isOpen) _avisoMencao(msg, ch); }
           updateBadge();
           if (isOpen && currentView === 'channel') addConversationAlert(msg);
           if (isOpen && currentView === 'home') renderHome();
@@ -1996,7 +2068,7 @@
       return;
     }
     channelUnread[ch] = (channelUnread[ch] || 0) + 1;
-    if (_mentionsMe(msg.content)) mentionChannels[ch] = true;
+    if (_mentionsMe(msg.content)) { mentionChannels[ch] = true; if (!isOpen) _avisoMencao(msg, ch); }
     updateBadge();
     if (isOpen && currentView === 'channel') addConversationAlert(msg);
     if (isOpen && currentView === 'home') renderHome();
@@ -2295,8 +2367,35 @@
       });
   }
 
+  /* Marcar como não lida (13/11/2026): volta o "lido até" para antes da última mensagem de outra pessoa.
+     Vale em todos os aparelhos e no chat em tela cheia (mesma tabela de leitura). */
+  function marcarNaoLida(ch) {
+    if (!ch) return;
+    var uid = user.auth_id, proj = isProjectChannel(ch);
+    var q = proj
+      ? sb.from('chat_thread_messages').select('created_at').eq('thread_id', projectThreadIdFromChannel(ch)).neq('sender_auth_id', uid).order('created_at', { ascending: false }).limit(1)
+      : sb.from('chat_messages').select('created_at').eq('channel', ch).neq('sender_id', uid).order('created_at', { ascending: false }).limit(1);
+    q.then(function (r) {
+      var ult = r && r.data && r.data[0] && r.data[0].created_at;
+      if (!ult) return;
+      var antes = new Date(new Date(ult).getTime() - 1000).toISOString();
+      var up = proj
+        ? sb.from('chat_thread_reads').upsert({ user_auth_id: uid, thread_id: projectThreadIdFromChannel(ch), last_read_at: antes })
+        : sb.from('chat_read_status').upsert({ user_id: uid, channel: ch, last_read_at: antes });
+      up.then(function (r2) {
+        if (r2 && r2.error) return;
+        _naoLidaPausa = ch;
+        channelUnread[ch] = Math.max(1, channelUnread[ch] || 0);
+        if (proj && projectThreadMeta[ch]) projectThreadMeta[ch].unread = channelUnread[ch];
+        updateBadge();
+        if (isOpen && currentView === 'home') renderHome();
+      });
+    });
+  }
+
   function markRead() {
     var channel = currentChannel;
+    if (channel && channel === _naoLidaPausa) return;
     if (isProjectChannel(channel)) {
       sb.from('chat_thread_reads').upsert({
         user_auth_id: user.auth_id,
@@ -3770,11 +3869,47 @@
       iniciais: meta.iniciais,
       cor: meta.cor,
       preview: meta.preview,
+      mencao: _mentionsMe(msg.content),
       ts: msg.created_at || new Date().toISOString()
     });
     recentConversationAlerts.sort(function (a, b) { return new Date(b.ts) - new Date(a.ts); });
     recentConversationAlerts = recentConversationAlerts.slice(0, 3);
     renderConversationAlerts();
+  }
+
+  /* Menção com o chat fechado: cartão "Fulano mencionou você" acima do botão do chat (13/11/2026) */
+  var _avisosMencao = [];
+  function _avisoMencao(msg, ch) {
+    var meta = buildAlertMetaForMessage(msg);
+    var autor = firstName(msg.sender_name || msg.sender_nome || '') || 'Alguém';
+    _avisosMencao = _avisosMencao.filter(function (a) { return a.channel !== meta.channel; });
+    _avisosMencao.unshift({ channel: meta.channel, label: meta.label, autor: autor, preview: meta.preview });
+    _avisosMencao = _avisosMencao.slice(0, 2);
+    _renderAvisosMencao();
+  }
+  function _fecharAvisoMencao(channel) {
+    _avisosMencao = channel ? _avisosMencao.filter(function (a) { return a.channel !== channel; }) : [];
+    _renderAvisosMencao();
+  }
+  function _renderAvisosMencao() {
+    var wrap = document.getElementById('exp-chat-mencao');
+    if (!wrap) return;
+    if (isOpen || !_avisosMencao.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+    wrap.style.display = 'block';
+    wrap.innerHTML = _avisosMencao.map(function (a) {
+      var chanArg = attrJsStr(a.channel), labelArg = attrJsStr(a.label);
+      var onde = String(a.channel).indexOf('dm:') === 0 ? '' : ' em ' + a.label;
+      return '<div class="chat-mencao-card" onclick="expChat._abrirMencao(\'' + chanArg + '\',\'' + labelArg + '\')">' +
+        '<div class="chat-mencao-at">@</div>' +
+        '<div class="chat-mencao-tx"><b>' + escHtml(a.autor) + ' mencionou você' + escHtml(onde) + '</b><span>' + escHtml(a.preview || '') + '</span></div>' +
+        '<button class="chat-mencao-x" type="button" title="Dispensar" onclick="event.stopPropagation();expChat._fecharAvisoMencao(\'' + chanArg + '\')">&times;</button>' +
+      '</div>';
+    }).join('');
+  }
+  function _abrirMencao(channel, label) {
+    _fecharAvisoMencao(channel);
+    if (!isOpen) toggle();
+    openChannel(channel, label);
   }
 
   function removeConversationAlert(channel) {
@@ -3799,7 +3934,7 @@
         '<div class="chat-alert-top">' +
           softAvHtml(item.iniciais, item.cor, null, 'width:24px;height:24px;font-size:9px;flex-shrink:0') +
           '<div class="chat-conv-info"><div class="chat-alert-title">' + labelEsc + '</div></div>' +
-          '<span class="chat-alert-chip">Nova</span>' +
+          '<span class="chat-alert-chip">' + (item.mencao ? '@ Menção' : 'Nova') + '</span>' +
         '</div>' +
         '<div class="chat-alert-preview">' + escHtml(item.preview) + '</div>' +
       '</div>';
@@ -3966,7 +4101,7 @@
     var q = val.slice(at + 1, pos).toLowerCase();
     _mPos = at;
     var hits = (allMembers || []).filter(function (m) {
-      return m.ativo !== false && m.auth_id !== user.auth_id && (m.nome || '').toLowerCase().indexOf(q) !== -1;
+      return m.ativo !== false && m.auth_id !== user.auth_id && _temTermo(m.nome || '', q);
     }).slice(0, 6);
     if (!hits.length) { _closeMentionDD(); return; }
     _openMentionDD(ta, hits);
@@ -5044,19 +5179,20 @@
 
   function searchInConversations(items, termLower) {
     return (items || []).filter(function (item) {
-      return String(item.searchText || item.label || '').toLowerCase().indexOf(termLower) !== -1;
+      return _temTermo(item.searchText || item.label || '', termLower);
     }).slice(0, 12);
   }
 
   function searchLegacyMessages(term, uid) {
-    var tSafe = String(term || '').replace(/[,()*%]/g, ' ').trim();
+    var tSafe = _ilikeSemAc(term);
     return sb.from('chat_messages')
       .select('id,channel,content,created_at,sender_name,sender_iniciais,sender_cor,sender_id')
       .or('content.ilike.%' + tSafe + '%,sender_name.ilike.%' + tSafe + '%')
       .order('created_at', { ascending: false })
-      .limit(40)
+      .limit(120)
       .then(function (r) {
         return (r.data || []).filter(function (msg) {
+          if (!_temTermo(msg.content, term) && !_temTermo(msg.sender_name, term)) return false;
           if (isOpenChannel(msg.channel)) return true;
           if (msg.channel === 'socios') return isSocioLikeRole(user.role);
           return isDynamicChannel(msg.channel) && channelHasUser(msg.channel, uid);
@@ -5076,20 +5212,20 @@
             avatarUrl: meta.avatarUrl || null,
             author: firstName(msg.sender_name || 'Equipe'),
             when: fmtTime(new Date(msg.created_at)),
-            snippet: previewFirstLine(msg.content)
+            snippet: _trecho(normalizePreviewText(String(msg.content || '')), term)
           };
-        });
+        }).slice(0, 40);
       });
   }
 
   function searchProjectMessages(term) {
     return sb.from('chat_thread_messages')
       .select('id,thread_id,content,created_at,sender_nome,sender_iniciais,sender_cor,sender_auth_id')
-      .ilike('content', '%' + term + '%')
+      .ilike('content', '%' + _ilikeSemAc(term) + '%')
       .order('created_at', { ascending: false })
-      .limit(40)
+      .limit(120)
       .then(function (r) {
-        return (r.data || []).map(function (msg) {
+        return (r.data || []).filter(function (msg) { return _temTermo(msg.content, term); }).slice(0, 40).map(function (msg) {
           var channel = projectChannel(msg.thread_id);
           var meta = projectThreadMeta[channel] || buildProjectThreadMeta(msg.thread_id, null, msg.content, msg.created_at, msg.sender_auth_id);
           return {
@@ -5100,7 +5236,7 @@
             avatarUrl: null,
             author: firstName(msg.sender_nome || 'Equipe'),
             when: fmtTime(new Date(msg.created_at)),
-            snippet: previewFirstLine(msg.content)
+            snippet: _trecho(normalizePreviewText(String(msg.content || '')), term)
           };
         });
       });
@@ -5335,25 +5471,6 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     MAXIMIZAR — amplia o painel na própria janela lateral (não vai pro full page)
-  ══════════════════════════════════════════════════════════════════ */
-  function applyMaximize() {
-    var panel = document.getElementById('exp-chat-panel');
-    if (panel) panel.classList.toggle('maximized', chatMaximized);
-    document.querySelectorAll('.chat-maxbtn').forEach(function (b) {
-      b.innerHTML = icoMaxBtn();
-      b.title = chatMaximized ? 'Restaurar tamanho' : 'Maximizar';
-    });
-  }
-  function toggleMaximize(event) {
-    if (event) event.stopPropagation();
-    chatMaximized = !chatMaximized;
-    try { localStorage.setItem(MAX_KEY, chatMaximized ? '1' : '0'); } catch (e) {}
-    applyMaximize();
-    if (currentView === 'channel') scrollBottom();
-  }
-
-  /* ══════════════════════════════════════════════════════════════════
      EMOJIS — insere no texto da mensagem
   ══════════════════════════════════════════════════════════════════ */
   var emojiPopOpen = false;
@@ -5585,6 +5702,9 @@
     goHome:          goHome,
     openSearch:      openSearch,
     searchInput:     searchInput,
+    _abrirMencao:    _abrirMencao,
+    marcarNaoLida:   marcarNaoLida,
+    _fecharAvisoMencao: _fecharAvisoMencao,
     pickMedia:       pickMedia,
     handleMediaInput: handleMediaInput,
     removeAttachment: removePendingAttachment,
@@ -5624,7 +5744,6 @@
     togglePin:       togglePin,
     setChatColor:    setChatColor,
     toggleColorPop:  toggleColorPop,
-    toggleMaximize:  toggleMaximize,
     toggleEmojiPop:  toggleEmojiPop,
     insertEmoji:     insertEmoji,
     chamarAtencao:   chamarAtencao,

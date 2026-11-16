@@ -12,6 +12,7 @@
 <script src="shared/nome-curto.js"></script>
 <script src="shared/horas-creditos.js?v=2026-10-26c"></script>
 <script src="shared/fila-prioridades.js?v=2026-10-27a"></script>
+<script src="shared/tarefa-fotos.js?v=2026-11-13a"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
@@ -412,6 +413,15 @@ body {
 .dash-task-act svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .dash-task-act:hover { background: var(--off); color: var(--grafite); }
 .dash-task-act-del:hover { background: rgba(217,79,61,.12); color: var(--terracota); }
+/* Fotos da tarefa: contador sempre visível quando há foto */
+.dash-task-fotos {
+  display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; margin-top: 1px;
+  height: 20px; padding: 0 6px; border: 1px solid var(--cinza); border-radius: 6px;
+  background: var(--off); color: var(--txt-2, #5F5B54); cursor: pointer;
+  font-family: var(--font-ui); font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.dash-task-fotos svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 2; }
+.dash-task-fotos:hover { border-color: var(--grafite); color: var(--grafite); }
 [data-theme="dark"] .dash-task-act:hover { background: rgba(255,255,255,.06); color: var(--grafite); }
 
 /* ── Popup "recentes" — histórico de tarefas e lixeira ── */
@@ -3792,6 +3802,7 @@ function renderHoursWidget(horasSemana, credito = 0, jornada = 40) {
 
 function _renderTaskItem(t, showAtrib) {
   const vencida = _isVencida(t.data_limite);
+  const fotoN = (window._tarefaFotosN || {})[t.id] || 0;   // fotos anexadas (shared/tarefa-fotos.js)
   const meta = [
     t.produto_nome,
     t.data_limite
@@ -3813,7 +3824,11 @@ function _renderTaskItem(t, showAtrib) {
         ${meta ? `<div class="dash-task-meta">${meta}</div>` : ''}
         ${atribLine}
       </div>
+      ${fotoN && !t.concluida ? `<button class="dash-task-fotos" type="button" data-task-act="foto" title="Ver fotos da tarefa"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/></svg>${fotoN}</button>` : ''}
       <div class="dash-task-actions">
+        ${t.concluida ? '' : `<button class="dash-task-act" data-task-act="foto" title="Adicionar foto (some quando a tarefa for concluída)">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>`}
         <button class="dash-task-act dash-task-act-edit" data-task-act="edit" title="Editar tarefa">
           <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
         </button>
@@ -3822,6 +3837,26 @@ function _renderTaskItem(t, showAtrib) {
         </button>
       </div>
     </div>`;
+}
+
+/* ── Fotos nas tarefas (13/11/2026) — shared/tarefa-fotos.js ── */
+function _dashTasksRedesenhar() {
+  const d = window._dashData, el = document.getElementById('dash-tasks-list');
+  if (!d || !el) return;
+  el.innerHTML = _renderAllTasks((d.tarefas || []).filter(t => !t.concluida), _filtrarAtribuidas(d.tarefasAtribuidas || []));
+}
+async function _tarefaFotosAtualizar() {
+  if (!window.ExpTarefaFotos || !window._dashData) return;
+  const d = window._dashData;
+  const ids = [...(d.tarefas || []), ...(d.tarefasAtribuidas || [])].filter(t => !t.concluida).map(t => t.id);
+  try { window._tarefaFotosN = await window.ExpTarefaFotos.contar(ids); } catch (e) { return; }
+  _dashTasksRedesenhar();
+  window.ExpTarefaFotos.faxina();
+}
+function _abrirFotosTarefa(id) {
+  if (!window.ExpTarefaFotos) return;
+  const t = _dashFindTask(id);
+  window.ExpTarefaFotos.abrir(id, t ? t.descricao : 'Tarefa', { aoMudar: _tarefaFotosAtualizar });
 }
 
 /* Filtra tarefas delegadas: pendentes + concluídas nos últimos 7 dias */
@@ -4307,7 +4342,7 @@ function wireDashboardDom() {
       return;
     }
 
-    const actBtn = event.target.closest('.dash-task-act[data-task-act]');
+    const actBtn = event.target.closest('.dash-task-act[data-task-act], .dash-task-fotos[data-task-act]');
     if (actBtn && dash.contains(actBtn)) {
       event.preventDefault();
       event.stopPropagation();
@@ -4315,6 +4350,7 @@ function wireDashboardDom() {
       if (!id) return;
       if (actBtn.dataset.taskAct === 'edit') abrirEditarTarefaDash(id);
       else if (actBtn.dataset.taskAct === 'del') confirmarExcluirTarefaDash(id);
+      else if (actBtn.dataset.taskAct === 'foto') _abrirFotosTarefa(id);
       return;
     }
 
@@ -4537,6 +4573,7 @@ async function loadDashboard(usuario) {
   };
   renderDashboard(window._dashData);
   _carregarFilaHub(usuario);
+  _tarefaFotosAtualizar();
 }
 
 /* Fila das prioridades: créditos (feriados, ausências, banco) e horas já lançadas na prioridade atual */
@@ -4630,6 +4667,7 @@ async function toggleDashTask(id, concluida) {
     concluida: nova, concluida_em: nova ? new Date().toISOString() : null
   }).eq('id', id);
   if (error) return;
+  if (nova && window.ExpTarefaFotos) { window.ExpTarefaFotos.apagar([id]); if (window._tarefaFotosN) delete window._tarefaFotosN[id]; }
   // Atualiza em memória e re-renderiza a lista completa
   const d = window._dashData;
   d.tarefas = d.tarefas.map(t => t.id === id ? { ...t, concluida: nova } : t);
@@ -4766,6 +4804,7 @@ function confirmarExcluirTarefaDash(id) {
     'A tarefa será removida. Você pode restaurá-la em ↺ recentes.',
     async () => {
       if (t) _taskHistSalvar(t, 'excluida');
+      if (window.ExpTarefaFotos) await window.ExpTarefaFotos.apagar([id], 'context_deleted');
       const { error } = await sb.from('tarefas_livres').delete().eq('id', id);
       if (error) { toast('Erro ao excluir: ' + error.message); return; }
       if (_dashUsuario) await loadDashboard(_dashUsuario);
@@ -5561,7 +5600,7 @@ init().then(() => {
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <!-- EXP · Chat Widget -->
 <script src="app-fase2-checkpoint5.js?v=2026-11-06b" charset="UTF-8"></script>
-<script src="chat.js?v=2026-11-10b"></script>
+<script src="chat.js?v=2026-11-13c"></script>
 <!-- EXP · Nav compartilhada -->
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>

@@ -55,7 +55,7 @@
   var allMembers        = [];
   var projectThreads    = [];
   var projectThreadMeta = {};
-  var projectSectionCollapsed = true;
+  var projectSectionCollapsed = (function(){ try { return localStorage.getItem('exp_chat_proj_aberto') !== '1'; } catch (e) { return true; } })();
   var pendingMessageSeq = 0;
   var reactionLocks     = {};
   var editingMessageId  = null;
@@ -468,7 +468,7 @@
   /* Texto pesquisável de uma conversa: nome + nome completo de cada participante */
   function channelSearchText(ch, label) {
     var names = channelMembers(ch, null).map(function(m){ return m.nome || ''; });
-    return [label || '', channelCustomName(ch)].concat(names).join(' ').toLowerCase();
+    return _semAc([label || '', channelCustomName(ch)].concat(names).join(' '));
   }
   /* Conversa nova com nome: id único, mesmo que já exista outra com as mesmas pessoas */
   function newNamedChannel(uids) {
@@ -1216,7 +1216,7 @@
     var $list = document.getElementById('fp-conv-list');
     if (!$list) return;
     var uid   = user.auth_id;
-    var q     = (filterQuery||'').toLowerCase().trim();
+    var q     = _semAc(filterQuery||'').trim();
     {
       var msgs         = (res[0].data||[]);
       var projectItems = res[1]||[];
@@ -1307,7 +1307,7 @@
         if (ud) return ud;
         return new Date(b.lastCreatedAt||0)-new Date(a.lastCreatedAt||0);
       });
-      var projFiltered = sortedP.filter(function(i){ return !ehNova[i.channel] && (!q || i.label.toLowerCase().indexOf(q)!==-1); });
+      var projFiltered = sortedP.filter(function(i){ return !ehNova[i.channel] && (!q || _semAc(i.label).indexOf(q)!==-1); });
       /* projectItems já vem pré-filtrado pelos toggles (showOnlyFlagged / showOnlyUnread) */
       var pinnedFiltered   = projFiltered.filter(function(i){ return isPinned(i.channel); });
       var unpinnedFiltered = projFiltered.filter(function(i){ return !isPinned(i.channel); });
@@ -1373,7 +1373,7 @@
         var dmComConversa = {};
         dmFiltered.forEach(function(dm){ if (dm.channel.indexOf('dm:')===0) dmComConversa[dm.channel]=true; });
         var pessoas = teamMembers.filter(function(m){
-          return String(m.nome||'').toLowerCase().indexOf(q)!==-1 && !dmComConversa[dmChannel(uid, m.auth_id)];
+          return _semAc(m.nome||'').indexOf(q)!==-1 && !dmComConversa[dmChannel(uid, m.auth_id)];
         });
         if (pessoas.length) {
           html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Pessoas</button>';
@@ -1387,20 +1387,26 @@
 
       /* ── Projetos (não fixados) ── */
       if (unpinnedFiltered.length) {
-        if (!q && !showOnlyUnread && !showOnlyFlagged) {
-          html += '<button class="fp-section-hdr" onclick="fpChat.toggleProjectSection()">' +
-            '<span>Projetos</span>' +
-            '<span>' + (projectSectionCollapsed?'▶':'▾') + '</span>' +
-            '</button>';
+        /* Grupo "Projetos" (13/11/2026): linha com ícone, quantidade e novidades; abre/fecha e é lembrado */
+        var _agrupaProj = !q && !showOnlyUnread && !showOnlyFlagged;
+        if (_agrupaProj) {
+          var nProj = unpinnedFiltered.length;
+          var nProjNL = unpinnedFiltered.filter(function(i){ return (channelUnread[i.channel]||i.unread||0) > 0; }).length;
+          html += '<div class="fp-conv-item fp-proj-grupo' + (projectSectionCollapsed ? '' : ' aberto') + '" onclick="fpChat.toggleProjectSection()" title="' + (projectSectionCollapsed ? 'Mostrar' : 'Recolher') + ' as conversas de projeto">' +
+            '<div class="fp-conv-av-wrap"><div class="fp-av-hash fp-proj-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div></div>' +
+            '<div class="fp-conv-body"><div class="fp-conv-top"><span class="fp-conv-name">Projetos</span></div>' +
+              '<div class="fp-conv-preview">' + nProj + (nProj === 1 ? ' conversa de projeto' : ' conversas de projeto') + (nProjNL ? ' · ' + nProjNL + ' com novidade' : '') + '</div></div>' +
+            (nProjNL && projectSectionCollapsed ? '<div class="fp-conv-badge">' + nProjNL + '</div>' : '') +
+            '<span class="fp-proj-chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
+            '</div>';
         }
-        var toShow = (q||showOnlyUnread||showOnlyFlagged) ? unpinnedFiltered :
-          (projectSectionCollapsed
-            ? unpinnedFiltered.filter(function(i){return (channelUnread[i.channel]||i.unread||0)>0;}).slice(0,4)
-            : unpinnedFiltered);
+        var toShow = !_agrupaProj ? unpinnedFiltered : (projectSectionCollapsed ? [] : unpinnedFiltered);
+        if (_agrupaProj && toShow.length) html += '<div class="fp-proj-lista">';
         toShow.forEach(function(item) {
           html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
             item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, false);
         });
+        if (_agrupaProj && toShow.length) html += '</div>';
       }
 
       if (novas.length) {
@@ -1421,6 +1427,13 @@
 
       if (!html) html = '<div class="fp-empty fp-vazio">Nenhuma conversa encontrada.</div>';
       $list.innerHTML = html;
+      if (q) $list.querySelectorAll('.fp-conv-name').forEach(function (el) {
+        /* só os textos (os ícones de estado ao lado do nome ficam intactos) */
+        Array.prototype.slice.call(el.childNodes).forEach(function (n) {
+          if (n.nodeType !== 3 || !_temTermo(n.nodeValue, filterQuery)) return;
+          var sp = document.createElement('span'); sp.innerHTML = _grifar(n.nodeValue, filterQuery, 'fp-busca-mark'); n.replaceWith(sp);
+        });
+      });
       setActiveConvItem(currentChannel);
     }
   }
@@ -1511,6 +1524,7 @@
             '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
           '</button>'
         : pinIco) +
+      (unread > 0 ? '' : '<button class="fp-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();fpChat.marcarNaoLida(\'' + chanJson + '\')"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>') +
       (unread > 0 && mentionChannels[channel] ? '<div class="fp-conv-at" title="Você foi mencionado">@</div>' : '') +
       (unread > 0 ? '<div class="fp-conv-badge">' + unread + '</div>' : '') +
       '</div>';
@@ -1582,6 +1596,38 @@
   }
 
   var filterTimer = null;
+
+  /* ── Busca e menção sem acento (13/11/2026): "julia" acha "Júlia", termo grifado ── */
+  function _semAc(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function _temTermo(txt, q) { return _semAc(txt).indexOf(_semAc(q).trim()) !== -1; }
+  /* Padrão do ilike tolerante a acento: vogais e "c" viram "_" (qualquer letra); o filtro fino vem depois */
+  function _ilikeSemAc(q) {
+    return String(q || '').replace(/[,()*%_\\]/g, ' ').trim().replace(/[aeioucà-ÿ]/gi, '_');
+  }
+  function _grifar(txt, q, cls) {
+    txt = String(txt == null ? '' : txt);
+    var nq = _semAc(q).trim();
+    if (!nq) return escHtml(txt);
+    var dobra = '', idx = [];
+    for (var i = 0; i < txt.length; i++) { var f = _semAc(txt[i]); for (var k = 0; k < f.length; k++) { dobra += f[k]; idx.push(i); } }
+    var out = '', ult = 0, p = dobra.indexOf(nq);
+    while (p !== -1) {
+      var a = idx[p], b = idx[p + nq.length - 1] + 1;
+      out += escHtml(txt.slice(ult, a)) + '<mark class="' + (cls || 'exp-busca-mark') + '">' + escHtml(txt.slice(a, b)) + '</mark>';
+      ult = b; p = dobra.indexOf(nq, p + nq.length);
+    }
+    return out + escHtml(txt.slice(ult));
+  }
+  /* Trecho da mensagem em volta do termo (para o termo aparecer no resultado) */
+  function _trecho(txt, q, max) {
+    txt = String(txt || '').replace(/\s+/g, ' ').trim(); max = max || 140;
+    var p = _semAc(txt).indexOf(_semAc(q).trim());
+    if (txt.length <= max) return txt;
+    if (p < 0) return txt.slice(0, max) + '…';
+    var ini = Math.max(0, p - 40);
+    return (ini > 0 ? '…' : '') + txt.slice(ini, ini + max) + (ini + max < txt.length ? '…' : '');
+  }
+
   function filterConvs(value) {
     filterQuery = String(value||'');
     if (filterTimer) clearTimeout(filterTimer);
@@ -1597,27 +1643,28 @@
     if (!q || q.length < 2) return;
 
     var uid   = user.auth_id;
-    var qSafe = q.replace(/[,()*%]/g, ' ').trim();
-    var reQ   = new RegExp(escHtml(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');
-    var marca = function(t){ return escHtml(String(t||'')).replace(reQ, function(x){ return '<mark class="fp-busca-mark">'+x+'</mark>'; }); };
+    var qSafe = _ilikeSemAc(q);
+    var marca = function(t){ return _grifar(_trecho(t, q, 160), q, 'fp-busca-mark'); };
 
     Promise.all([
       sb.from('chat_messages').select('id,channel,sender_name,content,created_at,sender_id,sender_iniciais,sender_cor')
         .or('content.ilike.%' + qSafe + '%,sender_name.ilike.%' + qSafe + '%')
-        .order('created_at', { ascending: false }).limit(60),
+        .order('created_at', { ascending: false }).limit(150),
       sb.from('chat_thread_messages').select('id,thread_id,sender_nome,content,created_at')
         .ilike('content', '%' + qSafe + '%')
-        .order('created_at', { ascending: false }).limit(30),
+        .order('created_at', { ascending: false }).limit(80),
     ]).then(function(res) {
       if (filterQuery !== q) return; /* query mudou enquanto esperava */
       var porCanal = {}, results = [];
       (res[0].data || []).forEach(function(m) {
+        if (!_temTermo(m.content, q) && !_temTermo(m.sender_name, q)) return;
         var ch = m.channel;
         if (!isOpenChannel(ch) && !(ch === 'socios' && isSocioLikeRole(user.role)) && !channelHasUser(ch, uid)) return;
         if ((porCanal[ch] = (porCanal[ch] || 0) + 1) > 3) return;   /* até 3 por conversa */
         results.push(m);
       });
       (res[1].data || []).forEach(function(m) {
+        if (!_temTermo(m.content, q)) return;
         var ch = 'project:' + m.thread_id;
         if ((porCanal[ch] = (porCanal[ch] || 0) + 1) > 3) return;
         results.push({ id: m.id, channel: ch, sender_name: m.sender_nome, content: m.content, created_at: m.created_at });
@@ -1761,7 +1808,37 @@
       });
   }
 
-  function toggleProjectSection() { projectSectionCollapsed = !projectSectionCollapsed; renderConvList(true); }
+  function toggleProjectSection() {
+    projectSectionCollapsed = !projectSectionCollapsed;
+    try { localStorage.setItem('exp_chat_proj_aberto', projectSectionCollapsed ? '0' : '1'); } catch (e) {}
+    renderConvList(true);
+  }
+
+  /* Marcar como não lida (13/11/2026): volta o "lido até" para antes da última mensagem de outra pessoa.
+     Mesma tabela de leitura do chat lateral, então vale nos dois e em todos os aparelhos. */
+  function marcarNaoLida(ch) {
+    if (!ch) return;
+    var uid = user.auth_id, proj = isProjectChannel(ch);
+    var q = proj
+      ? sb.from('chat_thread_messages').select('created_at').eq('thread_id', projectThreadIdFromChannel(ch)).neq('sender_auth_id', uid).order('created_at', { ascending: false }).limit(1)
+      : sb.from('chat_messages').select('created_at').eq('channel', ch).neq('sender_id', uid).order('created_at', { ascending: false }).limit(1);
+    q.then(function(r){
+      var ult = r && r.data && r.data[0] && r.data[0].created_at;
+      if (!ult) return;
+      var antes = new Date(new Date(ult).getTime() - 1000).toISOString();
+      if (ch === currentChannel) fecharConversa();   /* aberta ela voltaria a ficar lida */
+      var up = proj
+        ? sb.from('chat_thread_reads').upsert({ user_auth_id: uid, thread_id: projectThreadIdFromChannel(ch), last_read_at: antes })
+        : sb.from('chat_read_status').upsert({ user_id: uid, channel: ch, last_read_at: antes });
+      up.then(function(r2){
+        if (r2 && r2.error) return;
+        channelUnread[ch] = Math.max(1, channelUnread[ch] || 0);
+        if (proj && projectThreadMeta[ch]) projectThreadMeta[ch].unread = channelUnread[ch];
+        updatePageTitle();
+        renderConvList();
+      });
+    });
+  }
 
   /* ═══════════════════════════════════════════════════════════════════
      ABRIR CANAL
@@ -1969,8 +2046,8 @@
     var html = '';
     /* Online primeiro (depois foco/ausente, offline), em ordem alfabética; filtra pela busca */
     var rankP = { online:0, foco:1, ausente:2 };
-    var qf = membersFilter.trim().toLowerCase();
-    var lista = teamMembers.filter(function(m){ return !qf || String(m.nome||'').toLowerCase().indexOf(qf) !== -1; })
+    var qf = _semAc(membersFilter).trim();
+    var lista = teamMembers.filter(function(m){ return !qf || _semAc(m.nome||'').indexOf(qf) !== -1; })
       .slice().sort(function(a,b){
         var pa = onlinePresence[a.auth_id], pb = onlinePresence[b.auth_id];
         var ra = pa ? (rankP[pa.status] ?? 3) : 4, rb = pb ? (rankP[pb.status] ?? 3) : 4;
@@ -4350,7 +4427,7 @@
     var q=val.slice(at+1,pos).toLowerCase();
     _mPos=at;
     var hits=(allMembers||[]).filter(function(m){
-      return m.ativo!==false&&m.auth_id!==user.auth_id&&(m.nome||'').toLowerCase().indexOf(q)!==-1;
+      return m.ativo!==false&&m.auth_id!==user.auth_id&&_temTermo(m.nome||'', q);
     }).slice(0,6);
     if(!hits.length){ _closeMentionDD(); return; }
     _openMentionDD(ta,hits);
@@ -4659,7 +4736,7 @@
     ativarNotificacoes, testarNotificacao,
     revResponder, revCancelar,
     toggleMediaPin,
-    openChannel, filterConvs, toggleProjectSection,
+    openChannel, filterConvs, toggleProjectSection, marcarNaoLida,
     toggleStatusPop, setStatus, toggleSoundPop, setSoundLevel, toggleDmPin, toggleProjectPin,
     setColor, toggleViewPicker, setFontScale, stepFont, setFontTone, toggleMonoMode,
     toggleUnreads, toggleFlagged,
