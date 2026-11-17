@@ -47,6 +47,7 @@ Ordem: primeiro o que tem mais impacto, foi mais citado e é mais simples. Por �
     - O primeiro projeto que aparece na semana recebe o tom base, o segundo o próximo tom, e assim por diante.
     - A cor não fica presa ao projeto: serve só para diferenciar os projetos na visão da semana.
     - Vale nas horas, no calendário semanal e no relatório.
+    - Feito na grade semanal do Apontamentos em 17/11/2026 (falta calendário e relatório, se quiser).
 14. **Card do projeto:** coordenador, localização e CPF/CNPJ, mais "atualizada em" na etapa.
 15. ~~Autocompletar nas horas~~ — substituído (17/11/2026): a descrição manual saiu do lançamento; projeto usa só atividades em tags e, fora de projeto, a subcategoria virou tags de um clique com dica ao passar o mouse e a mais usada pré-marcada.
 

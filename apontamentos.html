@@ -263,6 +263,7 @@ body{
 [data-theme="dark"] .cal-celula.fim-semana { background:#22211F; }
 [data-theme="dark"] .cal-total-dia.fim-semana { background:#22211F; color:#8F897F; }
 [data-theme="dark"] .cb-projeto { background:rgba(96,137,204,.52); }
+[data-theme="dark"] .cb-projeto[style*="background"] { opacity:.78; }
 [data-theme="dark"] .cb-organizacao { background:rgba(82,166,118,.52); }
 [data-theme="dark"] .cb-sociedade { background:rgba(212,170,55,.52); }
 
@@ -1941,7 +1942,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>
 <!-- Widget de chat (mesmo dos outros módulos): espera a sessão do app-shell e usa window.sb -->
-<script src="chat.js?v=2026-11-17g"></script>
+<script src="chat.js?v=2026-11-17k"></script>
 <script>
 (function () {
   'use strict';
@@ -2342,6 +2343,17 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         }
       }
     });
+    /* Tons de azul por projeto na semana (17/11/2026): o 1º projeto que aparece leva o azul base,
+       o 2º o próximo tom, e assim por diante (até 6). A cor serve só para diferenciar nesta semana. */
+    var TONS_AZUL = ['#5981CC', '#3D5FA3', '#7D9AD6', '#2D4677', '#4A86B8', '#6A6EBF'];
+    var tomProjeto = {}, nTom = 0;
+    lancPorDia.forEach(function(arr) {
+      arr.slice().sort(function(a, b){ return (a.hora_inicio || '').localeCompare(b.hora_inicio || ''); }).forEach(function(l) {
+        if (l.tipo !== 'projeto') return;
+        var k = String(l.produto_id || '_sem');
+        if (!(k in tomProjeto)) tomProjeto[k] = TONS_AZUL[nTom++ % TONS_AZUL.length];
+      });
+    });
 
     // Créditos de feriado/ausência entram no total do dia e da semana
     var credMap = (AP.weekCreditos && AP.weekCreditos.porDia) || {};
@@ -2460,7 +2472,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
           var titleTxt = l.tipo === 'projeto'
             ? esc([cli, proj, etapa].filter(Boolean).join(' · ') + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')')
             : esc(linha1 + ' ' + (l.hora_inicio||'').slice(0,5) + '–' + (l.hora_fim||'').slice(0,5) + ' (' + fmtH(diffH(l.hora_inicio,l.hora_fim)) + ')');
-          blocoHtml += '<div class="cal-bloco ' + cls + '" data-hid="' + esc(l.id) + '" style="top:' + topOff + 'px;height:' + height + 'px" title="' + titleTxt + '">' +
+          var tomStyle = l.tipo === 'projeto' ? 'background:' + (tomProjeto[String(l.produto_id || '_sem')] || '#5981CC') + ';' : '';
+          blocoHtml += '<div class="cal-bloco ' + cls + '" data-hid="' + esc(l.id) + '" style="top:' + topOff + 'px;height:' + height + 'px;' + tomStyle + '" title="' + titleTxt + '">' +
             '<span class="cal-bloco-linha1">' + esc(linha1) + '</span>' +
             (linha2 && height > 22 ? '<span class="cal-bloco-linha2">' + esc(linha2) + '</span>' : '') +
             '</div>';

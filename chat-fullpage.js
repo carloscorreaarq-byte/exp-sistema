@@ -3101,7 +3101,7 @@
       /* Só "amei": curtidas antigas não são mais exibidas */
       if (loveN>0) {
         html += '<div class="fp-msg-reactions">';
-        if (loveN>0) html += '<button class="fp-rxn-btn heart'+(loved?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="'+escHtml(reactionTitle(loveArr, uid))+'">❤️ <span class="fp-rxn-count">'+loveN+'</span></button>';
+        if (loveN>0) html += '<button class="fp-rxn-btn heart'+(loved?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="'+escHtml(reactionTitle(loveArr, uid))+'"><span class="fp-rxn-heart">'+icoHeart()+'</span> <span class="fp-rxn-count">'+loveN+'</span></button>';
         html += '</div>';
       }
 

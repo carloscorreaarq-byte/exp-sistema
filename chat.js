@@ -79,7 +79,7 @@
     '.chat-status-ind-dot.online{background:#2D9E6B}.chat-status-ind-dot.foco{background:#1D4FA0}.chat-status-ind-dot.ausente{background:#C4831A}',
     /* ── Status popover (flat — sem efeito 3D) ── */
     '.chat-status-pop{position:absolute;bottom:50px;right:50px;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);box-shadow:0 2px 12px rgba(0,0,0,.12);padding:5px;flex-direction:column;gap:1px;min-width:144px;z-index:10002}',
-    '.chat-status-pop-hdr{font-size:10px;font-weight:600;color:var(--cinza,#D0CFC9);padding:4px 10px 6px;text-transform:uppercase;letter-spacing:.7px}',
+    '.chat-status-pop-hdr{font-size:8px;font-weight:700;color:#8A867E;padding:4px 8px 4px;text-transform:uppercase;letter-spacing:.6px}',
     '.chat-sopt{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:var(--radius-input,6px);border:none;background:none;cursor:pointer;font-family:var(--font-ui);font-size:12px;font-weight:500;width:100%;text-align:left;transition:background .1s;color:#111110}',
     '.chat-sopt:hover{background:var(--off,#F7F6F3)}.chat-sopt.active{background:var(--cinza2,#ECEAE4);font-weight:700}',
     '.chat-sopt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}',
@@ -133,7 +133,7 @@
     '.chat-conv-info{flex:1;min-width:0}',
     '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-conv-preview{font-size:10px;color:#8A867E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}',
-    '.chat-conv-badge{background:var(--verde,#4D865C);color:#fff;font-size:9px;font-weight:700;font-family:var(--font-mono);min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
+    '.chat-conv-badge{background:var(--verde,#4D865C);color:#fff;font-size:9px;font-weight:700;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
     /* Quadro semi-transparente atrás da conversa quando há menção não lida a mim */
     /* Menção: fundo cinza neutro, conforme o tema (13/11/2026) */
     '.chat-conv-item.has-mention{background:rgba(17,17,16,.05);box-shadow:inset 0 0 0 1px rgba(17,17,16,.14)}',
@@ -202,7 +202,7 @@
     '.chat-loading-dot:nth-child(2){animation-delay:.2s}.chat-loading-dot:nth-child(3){animation-delay:.4s}',
     '@keyframes chatPulse{0%,80%,100%{opacity:.2}40%{opacity:1}}',
     /* ── Date separator ── */
-    '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:var(--font-mono);letter-spacing:.5px}',
+    '.chat-date-sep{display:flex;align-items:center;gap:7px;margin:8px 0 3px;color:var(--cinza,#D0CFC9);font-size:9px;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;letter-spacing:.5px}',
     '.chat-date-sep::before,.chat-date-sep::after{content:"";flex:1;height:1px;background:var(--cinza2,#ECEAE4)}',
     /* linha "Novas mensagens": onde parou a leitura, na cor do tema do chat */
     '.chat-new-divider{display:flex;align-items:center;gap:7px;margin:8px 0 4px;color:var(--verde,#4D865C);font-size:8px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}',
@@ -212,12 +212,15 @@
     '.chat-msg:hover{background:var(--off,#F7F6F3)}',
     /* Alinhamento: recebidas à esq, enviadas à dir */
     '.chat-msg.own{align-items:flex-end}',
-    '.chat-msg-meta{display:flex;align-items:center;gap:5px;margin-top:4px;margin-bottom:3px}',
-    '.chat-msg.own .chat-msg-meta{flex-direction:row-reverse}',
-    '.chat-av{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-mono);letter-spacing:0}',
+    '.chat-msg-meta{display:flex;align-items:baseline;gap:5px;margin-top:4px;margin-bottom:3px}',
+    '.chat-msg-meta > :first-child:not(.chat-msg-name):not(.chat-msg-time){align-self:center}',
+    '.chat-rxn-heart{display:inline-flex;color:#BC6143;vertical-align:-1px}',
+    '.chat-msg.own .chat-msg-meta{flex-direction:row-reverse;margin-right:22px}',
+    '.chat-av{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;letter-spacing:0}',
     '.chat-msg-name{font-weight:600;font-size:11px;color:var(--preto,#111110)}',
     '.chat-msg.own .chat-msg-name{color:var(--verde,#1D6A4A)}',
-    '.chat-msg-time{font-family:var(--font-mono,"DM Mono",monospace);font-size:9px;color:#8A867E}',
+    '.chat-msg-time{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:9px;font-weight:400;letter-spacing:.2px;color:#B5B1A8}',
+    '[data-theme="dark"] .chat-msg-time{color:#6B6862}',
     /* Bolhas: recv = off-white esq; sent = cinza2 dir */
     '.chat-msg-text{font-size:12px;line-height:1.5;word-break:break-word;padding:5px 9px;border-radius:var(--radius-card,8px);max-width:250px;display:inline-block}',
     /* Balões: os meus sempre cinza-claro; os da outra pessoa na cor do chat */
@@ -230,7 +233,7 @@
     '.chat-mention-dd{position:fixed;z-index:2147483600;background:#fff;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);box-shadow:0 4px 20px rgba(0,0,0,.16);max-height:184px;overflow-y:auto;min-width:170px;padding:3px}',
     '.chat-mention-it{display:flex;align-items:center;gap:8px;padding:6px 9px;cursor:pointer;font-size:11px;border-radius:var(--radius-input,6px);color:var(--preto,#111110)}',
     '.chat-mention-it:hover,.chat-mention-it.sel{background:var(--off,#F7F6F3)}',
-    '.chat-mention-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-mono)}',
+    '.chat-mention-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#fff;flex-shrink:0;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums}',
     '[data-theme="dark"] .chat-mention-dd{background:#1E1E1D;border-color:#2E2D2B}',
     '[data-theme="dark"] .chat-mention-it{color:#F0EDE6}',
     '[data-theme="dark"] .chat-mention-it:hover,[data-theme="dark"] .chat-mention-it.sel{background:#252523}',
@@ -260,7 +263,7 @@
     '.chat-audio-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
     '.chat-audio-track{height:3px;border-radius:2px;background:rgba(17,17,16,.12);cursor:pointer;position:relative}',
     '.chat-audio-fill{height:100%;border-radius:2px;background:var(--verde,#1D6A4A);width:0%}',
-    '.chat-audio-time{font-family:var(--font-mono);font-size:9px;color:#888}',
+    '.chat-audio-time{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:9px;color:#888}',
     '[data-theme="dark"] .chat-audio-bubble{background:#252523;border-color:#3A3836}',
     '[data-theme="dark"] .chat-msg.own .chat-audio-bubble{background:#2E2D2B}',
     '[data-theme="dark"] .chat-audio-track{background:rgba(255,255,255,.14)}',
@@ -272,7 +275,7 @@
     '.chat-record-bar.active{display:flex}',
     '.chat-record-dot{width:8px;height:8px;border-radius:50%;background:#B84C3A;flex-shrink:0;animation:chatRecDot 1s ease-in-out infinite}',
     '@keyframes chatRecDot{0%,100%{opacity:1}50%{opacity:.25}}',
-    '.chat-record-time{font-family:var(--font-mono);font-size:11px;color:var(--grafite,#111110);flex:1}',
+    '.chat-record-time{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:11px;color:var(--grafite,#111110);flex:1}',
     '.chat-record-cancel,.chat-record-stop{width:26px;height:26px;border-radius:50%;border:1px solid var(--cinza2,#ECEAE4);background:var(--off,#F7F6F3);color:#888;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}',
     '.chat-record-cancel:hover{color:#B84C3A;border-color:#B84C3A}',
     '.chat-record-stop{background:#B84C3A;border-color:#B84C3A;color:#fff}',
@@ -292,14 +295,16 @@
     /* ── Botões de reação: dois círculos LADO A LADO (aparecem no hover) ── */
     '.chat-msg-react-btns{display:flex;flex-direction:row;gap:2px;opacity:0;transition:opacity .15s;flex-shrink:0;align-items:center}',
     '.chat-msg:hover .chat-msg-react-btns{opacity:1}',
-    '.chat-rbtn{width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.1);transition:transform .1s,background .1s,border-color .1s;padding:0;flex-shrink:0;color:var(--cinza,#D0CFC9)}',
+    '.chat-rbtn{width:17px;height:17px;border-radius:50%;background:#fff;border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:transform .1s,background .1s,border-color .1s;padding:0;flex-shrink:0;color:var(--cinza,#D0CFC9)}',
     '.chat-rbtn:hover{transform:scale(1.15)}',
+    '.chat-rbtn svg{width:9px;height:9px}',
+    '.chat-rbtn.heart svg{width:8px;height:8px}',
     '.chat-rbtn.like.active{color:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE)}',
     '.chat-rbtn.heart.active{color:#B84C3A;border-color:#B84C3A;background:#FDF0EE}',
     /* ── Badge de reação na quina da bolha ── */
     '.chat-msg-rxn-badge{position:absolute;bottom:-9px;right:-10px;background:#fff;border-radius:var(--radius-card,8px);padding:1px 5px;font-size:10px;box-shadow:0 1px 5px rgba(0,0,0,.15);border:1px solid var(--cinza2,#ECEAE4);display:flex;align-items:center;gap:2px;line-height:1.5;white-space:nowrap}',
     '.chat-msg.own .chat-msg-rxn-badge{right:auto;left:-10px}',
-    '.chat-msg-rxn-count{font-size:8px;font-family:var(--font-mono);color:var(--cinza,#D0CFC9);margin-left:1px}',
+    '.chat-msg-rxn-count{font-size:8px;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;color:var(--cinza,#D0CFC9);margin-left:1px}',
     /* ── Status dot inline (presence) ── */
     '.chat-presence-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}',
     '.chat-presence-dot.online{background:#4D865C}.chat-presence-dot.foco{background:#5981CC}.chat-presence-dot.ausente{background:#E2B141}',
@@ -333,7 +338,7 @@
     /* "Chamar a atenção" — nota central na conversa */
     '.chat-attn-note{align-self:center;margin:7px auto;max-width:90%;text-align:center;font-size:11px;font-weight:600;color:var(--verde,#1D6A4A);background:var(--verde-bg,#EAF5EE);border:1px solid rgba(0,0,0,.05);border-radius:999px;padding:5px 12px;display:inline-flex;align-items:center;gap:7px;animation:chatAttnPulse .5s ease-out}',
     '[data-theme="dark"] .chat-attn-note{background:rgba(29,106,74,.22);color:#7FD0A8}',
-    '.chat-attn-time{font-family:var(--font-mono);font-size:8px;opacity:.6;font-weight:400}',
+    '.chat-attn-time{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:8px;opacity:.6;font-weight:400}',
     '@keyframes chatAttnPulse{0%{transform:scale(.9);opacity:.4}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}',
     '.chat-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-input,6px);padding:7px 11px;font-family:var(--font-ui);font-size:12px;resize:none;outline:none;max-height:80px;min-height:33px;color:var(--preto,#111110);background:var(--off,#F7F6F3);line-height:1.45;transition:border-color .15s,background .15s;overflow-y:auto}',
     '.chat-input::placeholder{color:var(--cinza,#D0CFC9)}',
@@ -355,7 +360,7 @@
     '.chat-media-viewer-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cinza2,#ECEAE4)}',
     '.chat-media-viewer-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}',
     '.chat-media-viewer-title{min-width:0;font-family:var(--font-ui);font-size:13px;font-weight:700;color:var(--grafite,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.chat-media-viewer-meta{font-family:var(--font-mono);font-size:10px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-media-viewer-meta{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:10px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.chat-media-viewer-tools{display:flex;align-items:center;gap:6px}',
     '.chat-media-viewer-zoombtn{width:28px;height:28px;border-radius:var(--radius-input,6px);border:1px solid rgba(17,17,16,.08);background:#fff;color:var(--grafite,#111110);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}',
     '.chat-media-viewer-zoombtn:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
@@ -386,8 +391,8 @@
     '.chat-media-pin{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--verde,#1D6A4A);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}',
     '[data-theme="dark"] .chat-mv-pin{background:#252523;border-color:#3A3836;color:#B9B7AF}',
     '[data-theme="dark"] .chat-mv-pin.on{background:var(--verde,#1D6A4A);color:#fff}',
-    '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
-    '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:var(--font-mono);font-size:10px;color:#666}',
+    '.chat-media-viewer-zoomlabel{min-width:44px;text-align:center;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:10px;color:#666}',
+    '.chat-media-viewer-count{min-width:42px;text-align:center;font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:10px;color:#666}',
     '.chat-media-viewer-body{background:#F7F6F3;position:relative;display:flex;min-height:260px;overflow:hidden}',
     '.chat-media-viewer-stage{flex:1;display:flex;overflow:auto;padding:14px;min-height:260px}',
     '.chat-mv-canvas{margin:auto;position:relative;line-height:0}',
@@ -432,7 +437,7 @@
     '[data-theme="dark"] .chat-media-viewer-head .chat-close{background:#2A2927;color:#F0EDE6;border-color:#3A3937}',
     '.chat-mv-marks{position:absolute;inset:0;pointer-events:none}',
     '.chat-mv-mark{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;display:flex;align-items:center;gap:3px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}',
-    '.chat-mv-mark-ini{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.72);color:rgba(17,17,16,.55);font-family:var(--font-mono);font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;user-select:none}',
+    '.chat-mv-mark-ini{width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.72);color:rgba(17,17,16,.55);font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.2px;user-select:none}',
     '[data-theme="dark"] .chat-mv-tool{background:#2A2927;border-color:#3A3937}',
     '.chat-media-viewer-nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid rgba(17,17,16,.08);background:rgba(255,255,255,.94);color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;box-shadow:0 8px 20px rgba(0,0,0,.12)}',
     '.chat-media-viewer-nav:hover{border-color:var(--verde,#1D6A4A);color:var(--verde,#1D6A4A)}',
@@ -557,7 +562,7 @@
     '.chat-insearch.open{display:flex}',
     '.chat-insearch-input{flex:1;border:1px solid var(--cinza2,#ECEAE4);border-radius:var(--radius-card,8px);padding:6px 9px;font-family:var(--font-ui);font-size:12px;background:var(--off,#F7F6F3);color:var(--preto,#111110);outline:none}',
     '.chat-insearch-input:focus{border-color:var(--verde,#1D6A4A);background:#fff}',
-    '.chat-insearch-count{font-family:var(--font-mono);font-size:10px;color:var(--cinza,#D0CFC9);min-width:34px;text-align:center}',
+    '.chat-insearch-count{font-family:var(--font-ui);font-variant-numeric:lining-nums tabular-nums;font-size:10px;color:var(--cinza,#D0CFC9);min-width:34px;text-align:center}',
     '.chat-insearch-nav{width:24px;height:24px;border-radius:var(--radius-input,6px);border:none;background:rgba(0,0,0,.06);color:var(--grafite,#111110);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s}',
     '.chat-insearch-nav:hover{background:rgba(0,0,0,.12)}',
     '.chat-insearch-nav:disabled{opacity:.35;cursor:default}',
@@ -1103,7 +1108,7 @@
 
       /* ── Status popover ── */
       '<div class="chat-status-pop" id="exp-chat-status-pop" style="display:none">' +
-        '<div class="chat-status-pop-hdr">' + escHtml(fn) + '</div>' +
+        '<div class="chat-status-pop-hdr">Status</div>' +
         sopt('online',  'Online') +
         sopt('foco',    'Foco') +
         sopt('ausente', 'Ausente') +
@@ -1471,7 +1476,7 @@
         return '<div class="chat-conv-item' + _mentionCls(dm.channel) + '" onclick="expChat.openChannel(\'' + chanArg + '\',\'' + nameArg + '\')">' +
           avDm +
           '<div class="chat-conv-info">' +
-            '<div class="chat-conv-name">' + nameEsc + (isMuted(dm.channel) ? ' <span class="chat-conv-state" title="Silenciada">🔕</span>' : '') + '</div>' +
+            '<div class="chat-conv-name">' + nameEsc + (isMuted(dm.channel) ? ' <span class="chat-conv-state" title="Silenciada"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.9 17.9 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>' : '') + '</div>' +
             '<div class="chat-conv-preview">' + escHtml(preview) + '</div>' +
           '</div>' +
           (dmU > 0 && mentionChannels[dm.channel] ? '<div class="chat-conv-at" title="Você foi mencionado">@</div>' : '') +
@@ -3341,7 +3346,7 @@
 
       /* Mensagem apagada (exclusão lógica) — nota central, sem conteúdo */
       if (msg.deleted_at) {
-        html += '<div class="chat-attn-note chat-deleted-note">🚫 ' +
+        html += '<div class="chat-attn-note chat-deleted-note">' +
           (isOwn ? 'Você apagou uma mensagem' : 'Mensagem de ' + escHtml(fn) + ' apagada') +
           '<span class="chat-attn-time">' + fmtTime(dt) + '</span></div>';
         prevSender = null; prevTime = dt;
@@ -3351,8 +3356,8 @@
       /* Mensagem "chamar a atenção" — nota central, sem bolha */
       if (isAttentionSentinel(msg.content)) {
         var attnTxt = isOwn
-          ? 'Você chamou a atenção 👋'
-          : '👋 ' + escHtml(fn) + ' está chamando sua atenção';
+          ? 'Você chamou a atenção'
+          : escHtml(fn) + ' está chamando sua atenção';
         html += '<div class="chat-attn-note">' + attnTxt +
           '<span class="chat-attn-time">' + fmtTime(dt) + '</span></div>';
         prevSender = msg.sender_id; prevTime = dt;
@@ -3375,7 +3380,7 @@
       var badgeHtml = '';
       if (hasRxn) {
         badgeHtml = '<div class="chat-msg-rxn-badge">';
-        if (loveN > 0) badgeHtml += '<span class="chat-msg-rxn-item" title="' + escHtml(reactionTitle(loveArr, uid)) + '">&#10084;&#65039;' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '') + '</span>';
+        if (loveN > 0) badgeHtml += '<span class="chat-msg-rxn-item" title="' + escHtml(reactionTitle(loveArr, uid)) + '"><span class="chat-rxn-heart">' + icoHeart() + '</span>' + (loveN > 1 ? '<span class="chat-msg-rxn-count">' + loveN + '</span>' : '') + '</span>';
         badgeHtml += '</div>';
       }
 
@@ -3543,9 +3548,9 @@
       : isDM ? sender + ' enviou uma mensagem'
       : isGeneral ? sender + (ch === 'bim' ? ' no #BIM' : ' no #geral')
       : sender + ' no #sócios';
-    var body = raw === '[print]' ? '📷 Enviou um print'
-      : raw === CHAT_FILE_SENTINEL ? '📎 Enviou um arquivo'
-      : raw === '[audio]' ? '🎤 Enviou um áudio'
+    var body = raw === '[print]' ? 'Enviou uma imagem'
+      : raw === CHAT_FILE_SENTINEL ? 'Enviou um arquivo'
+      : raw === '[audio]' ? 'Enviou um áudio'
       : (raw.length > 80 ? raw.substring(0, 80) + '...' : raw) || 'Nova mensagem no chat';
     sb.functions.invoke('send-push', { body: { usuario_id: appUserId, title: title, body: body, url: window.location.href, tag: 'exp-chat-' + ch } })
       .catch(function (e) { console.warn('[EXP Chat Push] erro:', e); });
@@ -3634,7 +3639,7 @@
   function _snippet(msg) {
     if (!msg) return 'Mensagem anterior';
     if (msg.deleted_at) return 'Mensagem apagada';
-    if (isFileSentinel(msg.content)) { var a = arquivosCache[msg.id]; return '📎 ' + (a ? a.nome : 'Arquivo'); }
+    if (isFileSentinel(msg.content)) { var a = arquivosCache[msg.id]; return 'Arquivo: ' + (a ? a.nome : 'anexo'); }
     return compactPreviewText(msg.content, 70, 'Mensagem');
   }
   function renderReplyBar() {
@@ -3992,8 +3997,8 @@
   function previewFirstLine(text) {
     var line = normalizePreviewText(String(text || '').split(/\r?\n/)[0]).trim();
     if (isImageOnlySentinel(line)) return 'Print anexado';
-    if (isAudioOnlySentinel(line)) return '🎤 Áudio anexado';
-    if (isAttentionSentinel(line)) return '👋 Chamou sua atenção';
+    if (isAudioOnlySentinel(line)) return 'Áudio anexado';
+    if (isAttentionSentinel(line)) return 'Chamou sua atenção';
     if (line.length > 70) return line.substring(0, 70) + '...';
     return line || 'Nova mensagem';
   }
@@ -5562,8 +5567,8 @@
   }
 
   function compactPreviewText(text, maxLen, fallback) {
-    if (isAttentionSentinel(text)) return '👋 Chamou sua atenção';
-    if (isFileSentinel(text)) return '📎 Arquivo';
+    if (isAttentionSentinel(text)) return 'Chamou sua atenção';
+    if (isFileSentinel(text)) return 'Arquivo';
     var clean = normalizePreviewText(text).trim();
     var limit = Number(maxLen) > 0 ? Number(maxLen) : 34;
     if (!clean) return fallback || '';
@@ -5690,7 +5695,7 @@
       sb.functions.invoke('send-push', { body: {
         usuario_id: other.id,
         title: firstName(user.nome) + ' quer sua atenção',
-        body: '👋 Está te chamando no chat',
+        body: 'Está te chamando no chat',
         url: window.location.href,
         tag: 'exp-chat-attn-' + currentChannel
       } }).catch(function (e) { console.warn('[EXP Chat Atenção] push erro:', e); });

@@ -146,6 +146,9 @@ body {
 .bv-titulo { font-size: 26px; font-weight: 700; letter-spacing: -.6px; line-height: 1.1; margin-bottom: 3px; }
 .bv-info-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .bv-info-row .term-chip { margin-top: 0; }
+/* Termo: o aviso só aparece pendente; o display do design system anulava o "hidden" (17/11/2026) */
+.term-chip[hidden] { display: none !important; }
+.term-chip-icon { display: inline-flex; align-items: center; line-height: 0; }
 
 /* ── SCROLL BODY ─────────────────────────────────────────── */
 #app-body {
@@ -604,7 +607,7 @@ body {
 [data-theme="dark"] .prio-hub-prazo.sem-prazo { color: var(--txt-4); }
 
 /* ── Prioridades coletivas — carrossel de 3 colunas ─────────── */
-.pmhub-wrap  { display: flex; align-items: stretch; gap: 8px; }
+.pmhub-wrap  { display: flex; align-items: stretch; gap: 8px; position: relative; }
 .pmhub-track {
   display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 8px) / 2);
   gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
@@ -615,15 +618,24 @@ body {
   scroll-snap-align: start; margin-bottom: 0; min-height: 92px;
   display: flex; flex-direction: column; justify-content: center;
 }
+/* Setas sobrepostas às bordas dos cards: aparecem só com o mouse sobre a faixa (17/11/2026) */
 .pmhub-nav {
-  flex-shrink: 0; width: 26px; align-self: center; border: 1px solid var(--cinza);
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 28px; border: 1px solid var(--cinza);
   background: var(--branco); border-radius: 50%; cursor: pointer;
   align-items: center; justify-content: center; color: var(--txt-3); font-size: 14px;
-  transition: border-color .12s, color .12s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.10);
+  opacity: 0; pointer-events: none;
+  transition: opacity .15s, border-color .12s, color .12s;
 }
+.pmhub-nav:first-child { left: -6px; }
+.pmhub-nav:last-child  { right: -6px; }
+.pmhub-wrap:hover .pmhub-nav, .pmhub-nav:focus-visible { opacity: 1; pointer-events: auto; }
+@media (hover: none) { .pmhub-nav { display: none !important; } }
+[data-theme="dark"] .pmhub-nav { background: #252523; border-color: #3A3836; }
 .pmhub-nav:hover { border-color: var(--grafite); color: var(--grafite); }
 .pmhub-wrap.tres .pmhub-track { grid-auto-columns: calc((100% - 16px) / 3); }
-.pmhub-nav { display: flex; height: 26px; padding: 0; }
+.pmhub-nav { display: flex; height: 28px; padding: 0; }
 @media (max-width: 860px) { .pmhub-track, .pmhub-wrap.tres .pmhub-track { grid-auto-columns: calc(70% - 6px); } }
 /* cores do card definidas via inline style no buildCard (semafórico) */
 
@@ -3781,16 +3793,17 @@ function _fmtDate(iso) {
 // ── Renders ────────────────────────────────────────────────────────
 
 function renderHoursWidget(horasSemana, credito = 0, jornada = 40) {
-  // % da jornada da pessoa; feriados e ausências da semana contam como horas feitas
-  const pct = jornada > 0 ? Math.round(((horasSemana + credito) / jornada) * 100) : 0;
+  // Meta da semana = jornada menos feriados/ausências (8h por dia útil numa jornada de 40h) — 17/11/2026
+  const meta = Math.max(0, jornada - credito);
+  const pct = meta > 0 ? Math.round((horasSemana / meta) * 100) : 0;
   const days = _weekDays();
   return `
     <a class="dash-card hours-widget hours-link" href="apontamentos.html" title="Abrir Apontamentos">
       <div class="hours-num-row">
         <div class="hours-big-num">${_fmtH(horasSemana)}</div>
-        <div class="hours-pct-inline"><strong>${pct}%</strong> de ${_fmtH(jornada)}</div>
+        <div class="hours-pct-inline"><strong>${pct}%</strong> de ${_fmtH(meta)}</div>
       </div>
-      ${credito > 0.01 ? `<div class="hours-cred">+ ${_fmtH(credito)} de feriado/ausência</div>` : ''}
+      ${credito > 0.01 ? `<div class="hours-cred">${_fmtH(credito)} de feriado/ausência descontadas da meta</div>` : ''}
       <div class="hours-bar">
         ${days.map(d => `<div class="hours-seg ${d.status}"></div>`).join('')}
       </div>
@@ -5600,7 +5613,7 @@ init().then(() => {
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <!-- EXP · Chat Widget -->
 <script src="app-fase2-checkpoint5.js?v=2026-11-06b" charset="UTF-8"></script>
-<script src="chat.js?v=2026-11-17g"></script>
+<script src="chat.js?v=2026-11-17k"></script>
 <!-- EXP · Nav compartilhada -->
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>

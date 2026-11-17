@@ -6389,7 +6389,20 @@ async function carregarDashboard() {
     .gte('data_lancamento', ini).lte('data_lancamento', fim);
   const horasH = fmtH(calcTotalHoras(horas || []));
   setStatV('st-horas', horasH);
-  const subV = document.getElementById('st-horas-sub-v'); if (subV) subV.textContent = 'de 40h';
+  // Meta da semana: jornada da pessoa menos feriados/recessos/ausências (8h por dia útil numa jornada de 40h) — 17/11/2026
+  let _metaSem = 40, _descSem = 0;
+  if (window.ExpHorasCredito) {
+    try {
+      const _cr = await window.ExpHorasCredito.carregar(sb, uid, ini, fim, { nucleoId: G.usuario?.nucleo_id || G.usuario?.nucleo });
+      _metaSem = (_cr && _cr.jornadaSemanalH) || 40;
+      _descSem = window.ExpHorasCredito.total(_cr, ini, fim) || 0;
+    } catch (e) { /* sem créditos: mantém a jornada cheia */ }
+  }
+  const subV = document.getElementById('st-horas-sub-v');
+  if (subV) {
+    subV.textContent = 'de ' + fmtH(Math.max(0, _metaSem - _descSem));
+    subV.title = _descSem > 0.01 ? 'Jornada de ' + fmtH(_metaSem) + ' menos ' + fmtH(_descSem) + ' de feriado/ausência' : '';
+  }
 
   // S4-04: horas realizadas por produto (todos os lançamentos de todos os usuários)
   renderDashProjetos(meusProdutos, G._horasPorProd || {});
@@ -22183,7 +22196,7 @@ else init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-11-17g"></script>
+<script src="chat.js?v=2026-11-17k"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js?v=2026-10-27a"></script>
 <style>
