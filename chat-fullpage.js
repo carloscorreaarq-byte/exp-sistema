@@ -2816,6 +2816,77 @@
   /* ═══════════════════════════════════════════════════════════════════
      RENDER MENSAGENS — estilo Slack (flat, sem bolhas)
   ═══════════════════════════════════════════════════════════════════ */
+  /* ── Fotos em sequência viram um slideshow (17/11/2026) ──
+     Conjunto = mensagens seguidas da mesma pessoa, só com imagem, sem anotação e sem resposta,
+     com até 10 min entre uma e outra. Quebra com texto, outra pessoa, foto anotada, troca de dia,
+     de tópico (revisão) ou na linha "Novas mensagens". Cada foto segue sendo uma mensagem no banco. */
+  var _slides = {};
+  function _fotoAgrupavel(m) {
+    if (!m || m.deleted_at || m.pending || m.failed || m.reply_to) return false;
+    if (!isImageOnlySentinel(m.content)) return false;
+    var md = getMessageMedia(m);
+    if (!md || !md.objectUrl || md.failed_load || md.pending) return false;
+    if (md.mime_type && md.mime_type.indexOf('audio/') === 0) return false;
+    return !(md.marcadores && md.marcadores.length);
+  }
+  function _gruposFotos(lista, lastReadAt, uid) {
+    var mapa = {}, atual = null;
+    function fecha() {
+      if (atual && atual.idxs.length > 1) {
+        var key = 'g' + atual.ids[0], a = atual;
+        a.idxs.forEach(function (ix, k) { mapa[ix] = { key: key, idxs: a.idxs, ids: a.ids, first: k === 0 }; });
+      }
+      atual = null;
+    }
+    lista.forEach(function (m, i) {
+      if (!_fotoAgrupavel(m)) { fecha(); return; }
+      if (atual) {
+        var p = lista[atual.idxs[atual.idxs.length - 1]];
+        var quebra = p.sender_id !== m.sender_id
+          || (new Date(m.created_at) - new Date(p.created_at)) > 10 * 60 * 1000
+          || new Date(m.created_at).toDateString() !== new Date(p.created_at).toDateString()
+          || (p.tarefa_revisao_id || '') !== (m.tarefa_revisao_id || '')
+          || (lastReadAt && m.sender_id !== uid && p.created_at <= lastReadAt && m.created_at > lastReadAt);
+        if (quebra) fecha();
+      }
+      if (!atual) atual = { idxs: [], ids: [] };
+      atual.idxs.push(i); atual.ids.push(String(m.id));
+    });
+    fecha();
+    return mapa;
+  }
+  function _slideAtual(g, lista) {
+    var s = _slides[g.key] || (_slides[g.key] = { cur: 0 });
+    s.ids = g.ids;
+    if (s.cur >= g.ids.length) s.cur = g.ids.length - 1;
+    return lista[g.idxs[s.cur]];
+  }
+  function slideGo(key, d, j) {
+    var s = _slides[key]; if (!s || !s.ids) return;
+    var n = s.ids.length;
+    s.cur = (j != null) ? j : (((s.cur + d) % n) + n) % n;
+    renderMessages();
+  }
+  function _slideHtml(g, lista, P, api) {
+    var s = _slides[g.key], n = g.ids.length, m = lista[g.idxs[s.cur]], md = getMessageMedia(m) || {};
+    var k = escHtml(g.key);
+    var seta = function (cls, d, rot, pts) {
+      return '<button type="button" class="' + P + '-slide-nav ' + cls + '" aria-label="' + rot + '" title="' + rot + '" onclick="event.stopPropagation();' + api + '.slideGo(\'' + k + '\',' + d + ')">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + pts + '"/></svg></button>';
+    };
+    return '<div class="' + P + '-slide">' +
+      '<div class="' + P + '-slide-stage" onclick="' + api + '.openMediaViewer(\'' + escHtml(mediaKeyForMessage(m)) + '\')">' +
+        '<img src="' + escHtml(md.objectUrl || '') + '" alt="Foto ' + (s.cur + 1) + ' de ' + n + '" decoding="async">' +
+        seta('prev', -1, 'Foto anterior', '15 18 9 12 15 6') + seta('next', 1, 'Próxima foto', '9 18 15 12 9 6') +
+        '<span class="' + P + '-slide-ct">' + (s.cur + 1) + ' / ' + n + '</span>' +
+      '</div>' +
+      '<div class="' + P + '-slide-thumbs">' + g.idxs.map(function (ix, j) {
+        var mm = getMessageMedia(lista[ix]) || {};
+        return '<button type="button" class="' + P + '-slide-tn' + (j === s.cur ? ' on' : '') + '" aria-label="Foto ' + (j + 1) + '" onclick="' + api + '.slideGo(\'' + k + '\',0,' + j + ')"><img src="' + escHtml(mm.objectUrl || '') + '" alt="" loading="lazy" decoding="async"></button>';
+      }).join('') + '</div>' +
+    '</div>';
+  }
+
   function renderMessages() {
     if (!$msgs) return;
 
@@ -2854,7 +2925,12 @@
         (loadingOlder ? 'Carregando…' : '↑ Carregar mensagens anteriores') + '</button></div>';
     }
 
-    toRender.forEach(function(msg) {
+    var _gf = _gruposFotos(toRender, lastReadAt, uid);
+    toRender.forEach(function(msg, _ti) {
+      var _g = _gf[_ti];
+      if (_g && !_g.first) { prevSender = msg.sender_id; prevTime = new Date(msg.created_at); return; }
+      if (_g) msg = _slideAtual(_g, toRender);   /* a foto que está aparecendo no conjunto */
+      var _gLast = _g ? toRender[_g.idxs[_g.idxs.length - 1]] : null;
       var msgIdx   = messages.indexOf(msg);
       var isOwn    = msg.sender_id===uid;
       var dt       = new Date(msg.created_at);
@@ -2992,7 +3068,9 @@
       }
 
       /* Mídia */
-      if (media && media.objectUrl) {
+      if (_g) {
+        html += _slideHtml(_g, toRender, 'fp', 'fpChat');
+      } else if (media && media.objectUrl) {
         if (mediaIsAudio) {
           html += audioBubbleHtml(media.objectUrl, media.duration_seconds);
         } else {
@@ -3040,7 +3118,7 @@
         '</div>';
 
       html += '</div>'; /* /fp-msg-block */
-      if (isOwn && msgIdx === _lastOwnIdx) html += seenHtml(msg);
+      if (isOwn && (msgIdx === _lastOwnIdx || (_gLast && messages.indexOf(_gLast) === _lastOwnIdx))) html += seenHtml(_gLast || msg);
 
       prevSender=msg.sender_id; prevTime=dt;
     });
@@ -4821,7 +4899,7 @@
     react, flagMessage, toggleFixar, criarTarefaDaMensagem, abrirNaMensagem,
     startEditMessage, editMessageInput, editMessageKey, saveEditMessage, cancelEditMessage,
     openMediaViewer, closeMediaViewer, mvPrev, mvNext, mvZoomIn, mvZoomOut, mvZoomReset,
-    mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded,
+    mvSelectTool, mvRemoveMark, openAnnotatedPrint, _thumbLoaded, slideGo,
     showNotaInput, _confirmNota, _cancelNota, _notaKeydown, renderMvNotesPanel,
     /* fixar projetos */
     togglePinCurrent, openPinPop, closePinPop, pinPopToggle,

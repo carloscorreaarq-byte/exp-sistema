@@ -105,10 +105,10 @@
     /* ── Views ── */
     '.chat-view{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}',
     /* ── Header ── */
-    '.chat-header{padding:7px 11px;background:var(--chat-head-bg,var(--cinza2,#ECEAE4));color:var(--chat-head-fg,var(--grafite,#111110));display:flex;align-items:center;gap:7px;flex-shrink:0}',
-    '.chat-header-info{flex:1;min-width:0}',
-    '.chat-header-title{font-weight:var(--weight-semibold,600);font-size:var(--text-title,13px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.chat-header-sub{font-size:11px;opacity:.8;margin-top:3px;display:flex;align-items:center;gap:4px}',
+    '.chat-header{height:40px;box-sizing:border-box;padding:0 11px;background:var(--chat-head-bg,var(--cinza2,#ECEAE4));color:var(--chat-head-fg,var(--grafite,#111110));display:flex;align-items:center;gap:7px;flex-shrink:0}',
+    '.chat-header-info{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px}',
+    '.chat-header-title{font-weight:var(--weight-semibold,600);font-size:var(--text-title,13px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}',
+    '.chat-header-sub{font-size:10px;opacity:.8;margin-top:0;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}',
     '.chat-header-acts{display:flex;align-items:center;gap:1px}',
     '.chat-icon-btn{background:transparent;border:none;color:var(--chat-head-fg,var(--grafite,#111110));cursor:pointer;width:24px;height:24px;border-radius:var(--radius-input,6px);display:flex;align-items:center;justify-content:center;transition:background .12s,opacity .12s;opacity:.78}',
     '.chat-icon-btn:hover{background:var(--chat-head-btn,rgba(0,0,0,.07));opacity:1}',
@@ -365,6 +365,24 @@
     '.chat-mv-pin.on{background:var(--verde,#1D6A4A);border-color:var(--verde,#1D6A4A);color:#fff}',
     '.chat-mv-pin svg{display:block}',
     '.chat-media-thumb{position:relative}',
+    /* Fotos em sequência: slideshow */
+    '.chat-slide{width:240px;max-width:100%;margin-top:4px;border:1px solid rgba(17,17,16,.08);border-radius:8px;overflow:hidden;background:#fff}',
+    '.chat-slide-stage{position:relative;height:160px;background:#F1EFE8;cursor:zoom-in;display:flex;align-items:center;justify-content:center}',
+    '.chat-slide-stage img{max-width:100%;max-height:100%;object-fit:contain;display:block}',
+    '.chat-slide-nav{position:absolute;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;border:0;padding:0;background:rgba(255,255,255,.92);color:#111110;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18);opacity:0;transition:opacity .12s}',
+    '.chat-slide:hover .chat-slide-nav{opacity:1}',
+    '.chat-slide-nav.prev{left:6px}',
+    '.chat-slide-nav.next{right:6px}',
+    '.chat-slide-ct{position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;font-variant-numeric:lining-nums tabular-nums;background:rgba(17,17,16,.62);color:#fff;border-radius:999px;padding:1px 7px;line-height:1.5}',
+    '.chat-slide-thumbs{display:flex;gap:3px;padding:4px;overflow-x:auto;scrollbar-width:none}',
+    '.chat-slide-thumbs::-webkit-scrollbar{display:none}',
+    '.chat-slide-tn{flex:0 0 36px;height:28px;border-radius:4px;overflow:hidden;border:1.5px solid transparent;padding:0;cursor:pointer;background:#F1EFE8;opacity:.55;transition:opacity .12s}',
+    '.chat-slide-tn:hover{opacity:.85}',
+    '.chat-slide-tn.on{border-color:#111110;opacity:1}',
+    '.chat-slide-tn img{width:100%;height:100%;object-fit:cover;display:block}',
+    '[data-theme="dark"] .chat-slide{background:#252523;border-color:#2E2D2B}',
+    '[data-theme="dark"] .chat-slide-stage,[data-theme="dark"] .chat-slide-tn{background:#1C1C1B}',
+    '[data-theme="dark"] .chat-slide-tn.on{border-color:#F0EDE6}',
     '.chat-media-pin{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:var(--verde,#1D6A4A);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.25);pointer-events:none}',
     '[data-theme="dark"] .chat-mv-pin{background:#252523;border-color:#3A3836;color:#B9B7AF}',
     '[data-theme="dark"] .chat-mv-pin.on{background:var(--verde,#1D6A4A);color:#fff}',
@@ -945,8 +963,8 @@
             '<div class="chat-header-info"><div class="chat-header-title" id="exp-chat-chan-title"># geral</div><div class="chat-header-sub" id="exp-chat-chan-sub" style="display:none"></div></div>' +
             '<div class="chat-header-acts">' +
               '<button class="chat-icon-btn" id="exp-chat-attn-btn" onclick="expChat.chamarAtencao()" title="Chamar a atenção" style="display:none">' + icoAttention() + '</button>' +
-              '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
               '<button class="chat-icon-btn" id="exp-chat-flagfilter-btn" onclick="expChat.toggleFlaggedFilter()" title="Mostrar só sinalizadas">' + icoFlag() + '</button>' +
+              '<button class="chat-icon-btn" id="exp-chat-insearch-btn" onclick="expChat.openInSearch()" title="Buscar na conversa">' + icoSearch() + '</button>' +
               '<button class="chat-close" onclick="expChat.close()">' + icoClose() + '</button>' +
             '</div>' +
           '</div>' +
@@ -3167,6 +3185,77 @@
   /* ══════════════════════════════════════════════════════════════════
      RENDER MENSAGENS
   ══════════════════════════════════════════════════════════════════ */
+  /* ── Fotos em sequência viram um slideshow (17/11/2026) ──
+     Conjunto = mensagens seguidas da mesma pessoa, só com imagem, sem anotação e sem resposta,
+     com até 10 min entre uma e outra. Quebra com texto, outra pessoa, foto anotada, troca de dia,
+     de tópico (revisão) ou na linha "Novas mensagens". Cada foto segue sendo uma mensagem no banco. */
+  var _slides = {};
+  function _fotoAgrupavel(m) {
+    if (!m || m.deleted_at || m.pending || m.failed || m.reply_to) return false;
+    if (!isImageOnlySentinel(m.content)) return false;
+    var md = getMessageMedia(m);
+    if (!md || !md.objectUrl || md.failed_load || md.pending) return false;
+    if (md.mime_type && md.mime_type.indexOf('audio/') === 0) return false;
+    return !(md.marcadores && md.marcadores.length);
+  }
+  function _gruposFotos(lista, lastReadAt, uid) {
+    var mapa = {}, atual = null;
+    function fecha() {
+      if (atual && atual.idxs.length > 1) {
+        var key = 'g' + atual.ids[0], a = atual;
+        a.idxs.forEach(function (ix, k) { mapa[ix] = { key: key, idxs: a.idxs, ids: a.ids, first: k === 0 }; });
+      }
+      atual = null;
+    }
+    lista.forEach(function (m, i) {
+      if (!_fotoAgrupavel(m)) { fecha(); return; }
+      if (atual) {
+        var p = lista[atual.idxs[atual.idxs.length - 1]];
+        var quebra = p.sender_id !== m.sender_id
+          || (new Date(m.created_at) - new Date(p.created_at)) > 10 * 60 * 1000
+          || new Date(m.created_at).toDateString() !== new Date(p.created_at).toDateString()
+          || (p.tarefa_revisao_id || '') !== (m.tarefa_revisao_id || '')
+          || (lastReadAt && m.sender_id !== uid && p.created_at <= lastReadAt && m.created_at > lastReadAt);
+        if (quebra) fecha();
+      }
+      if (!atual) atual = { idxs: [], ids: [] };
+      atual.idxs.push(i); atual.ids.push(String(m.id));
+    });
+    fecha();
+    return mapa;
+  }
+  function _slideAtual(g, lista) {
+    var s = _slides[g.key] || (_slides[g.key] = { cur: 0 });
+    s.ids = g.ids;
+    if (s.cur >= g.ids.length) s.cur = g.ids.length - 1;
+    return lista[g.idxs[s.cur]];
+  }
+  function slideGo(key, d, j) {
+    var s = _slides[key]; if (!s || !s.ids) return;
+    var n = s.ids.length;
+    s.cur = (j != null) ? j : (((s.cur + d) % n) + n) % n;
+    renderMessages();
+  }
+  function _slideHtml(g, lista, P, api) {
+    var s = _slides[g.key], n = g.ids.length, m = lista[g.idxs[s.cur]], md = getMessageMedia(m) || {};
+    var k = escHtml(g.key);
+    var seta = function (cls, d, rot, pts) {
+      return '<button type="button" class="' + P + '-slide-nav ' + cls + '" aria-label="' + rot + '" title="' + rot + '" onclick="event.stopPropagation();' + api + '.slideGo(\'' + k + '\',' + d + ')">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + pts + '"/></svg></button>';
+    };
+    return '<div class="' + P + '-slide">' +
+      '<div class="' + P + '-slide-stage" onclick="' + api + '.openMediaViewer(\'' + escHtml(mediaKeyForMessage(m)) + '\')">' +
+        '<img src="' + escHtml(md.objectUrl || '') + '" alt="Foto ' + (s.cur + 1) + ' de ' + n + '" decoding="async">' +
+        seta('prev', -1, 'Foto anterior', '15 18 9 12 15 6') + seta('next', 1, 'Próxima foto', '9 18 15 12 9 6') +
+        '<span class="' + P + '-slide-ct">' + (s.cur + 1) + ' / ' + n + '</span>' +
+      '</div>' +
+      '<div class="' + P + '-slide-thumbs">' + g.idxs.map(function (ix, j) {
+        var mm = getMessageMedia(lista[ix]) || {};
+        return '<button type="button" class="' + P + '-slide-tn' + (j === s.cur ? ' on' : '') + '" aria-label="Foto ' + (j + 1) + '" onclick="' + api + '.slideGo(\'' + k + '\',0,' + j + ')"><img src="' + escHtml(mm.objectUrl || '') + '" alt="" loading="lazy" decoding="async"></button>';
+      }).join('') + '</div>' +
+    '</div>';
+  }
+
   function renderMessages() {
     if (!$msgs) return;
     if (!messages.length) {
@@ -3201,7 +3290,11 @@
         (loadingOlder ? 'Carregando…' : '↑ Carregar mensagens anteriores') + '</button></div>';
     }
 
+    var _gf = showOnlyFlagged ? {} : _gruposFotos(toRender, lastReadAt, uid);
     toRender.forEach(function (msg, _idx) {
+      var _g = _gf[_idx];
+      if (_g && !_g.first) { prevSender = msg.sender_id; prevTime = new Date(msg.created_at); return; }
+      if (_g) msg = _slideAtual(_g, toRender);   /* a foto que está aparecendo no conjunto */
       var isOwn   = msg.sender_id === uid;
       var flagged = isMessageFlagged(msg.id);
       var dt      = new Date(msg.created_at);
@@ -3307,7 +3400,7 @@
             quoteHtml(msg) + (isFile ? fileCardHtml(msg) : '') +
             (hasText ? linkify(hlMentions(escHtml(msg.content)).replace(/\n/g, '<br>')) + (msg.editado_em ? '<span class="chat-msg-edited">(editado)</span>' : '') : '') +
           '</div>' +
-          (media && media.objectUrl
+          (_g ? _slideHtml(_g, toRender, 'chat', 'expChat') : media && media.objectUrl
             ? (mediaIsAudio
                 ? audioBubbleHtml(media.objectUrl, media.duration_seconds)
                 : '<div class="chat-media-thumb" onclick="expChat.openMediaViewer(\'' + mediaKeyForMessage(msg) + '\')">' +
@@ -3335,7 +3428,7 @@
       '</div>';
 
       html += '</div>';
-      if (isOwn && _idx === _lastOwnIdx) html += seenHtml(msg);
+      if (isOwn && (_idx === _lastOwnIdx || (_g && _g.idxs.indexOf(_lastOwnIdx) !== -1))) html += seenHtml(_g ? toRender[_g.idxs[_g.idxs.length - 1]] : msg);
       prevSender = msg.sender_id;
       prevTime   = dt;
     });
@@ -5794,6 +5887,7 @@
     finalizeGroup:   finalizeGroup,
     renameConversation: renameConversation,
     loadOlderMessages: loadOlderMessages,
+    slideGo: slideGo,
     deleteMessage:   deleteMessage,
     startReply:      startReply,
     cancelReply:     cancelReply,
