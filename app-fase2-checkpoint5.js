@@ -565,11 +565,14 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
 
   function mediaContextLabel(value) {
     const key = String(value || '').toLowerCase();
-    if (key === 'revisao_tarefa') return 'Revisoes';
+    if (key === 'revisao_tarefa') return 'Revisões';
     if (key === 'checklist_etapa_exec_item') return 'Checklist de etapa';
     if (key === 'checklist_tarefa_item') return 'Checklist de tarefa';
+    if (key === 'tarefa_livre') return 'Tarefas';
+    if (key === 'chat_message') return 'Chat';
+    if (key === 'chat_thread_message') return 'Chat de projeto';
     if (key === 'processos_tarefa') return 'Processos';
-    return value || 'Outro';
+    return value || 'Outros';
   }
 
   function fillPlatformTempMediaConfig(config) {
@@ -591,68 +594,48 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   function renderPlatformTempMediaUsage(rows) {
     const statsWrap = document.getElementById('platform-media-stats');
     const contextsWrap = document.getElementById('platform-media-contexts');
-    const activeRows = (rows || []).filter((row) => !row.removido_em);
+    const agora = Date.now();
+    const DIA = 24 * 60 * 60 * 1000;
+    const activeRows = (rows || []).filter((row) => !row.removido_em && (!row.expires_at || new Date(row.expires_at).getTime() > agora));
+    /* "Sem prazo": itens abertos e tarefas ficam com validade de 10 anos — tudo acima de 1 ano conta aqui */
+    const semPrazo = (row) => row.expires_at && new Date(row.expires_at).getTime() > agora + 365 * DIA;
+    const venceLogo = (row) => row.expires_at && new Date(row.expires_at).getTime() <= agora + 7 * DIA;
+    const mb = (b) => (b / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
     const total = activeRows.length;
     const totalBytes = activeRows.reduce((sum, row) => sum + Number(row.size_bytes || 0), 0);
-    const avgBytes = total ? (totalBytes / total) : 0;
-    const weekAhead = Date.now() + (7 * 24 * 60 * 60 * 1000);
-    const expiringSoon = activeRows.filter((row) => {
-      const exp = row.expires_at ? new Date(row.expires_at).getTime() : null;
-      return exp && exp <= weekAhead;
-    }).length;
 
     if (statsWrap) {
       const cards = [
-        { label: 'Anexos ativos',      value: String(total) },
-        { label: 'Volume total',        value: (totalBytes / (1024 * 1024)).toFixed(2) + ' MB' },
-        { label: 'Média por anexo',     value: (avgBytes / 1024).toFixed(1) + ' KB' },
-        { label: 'Expiram em 7 dias',   value: String(expiringSoon) }
+        { label: 'Arquivos guardados', value: String(total) },
+        { label: 'Espaço usado', value: mb(totalBytes) },
+        { label: 'Sem prazo (itens abertos)', value: String(activeRows.filter(semPrazo).length) },
+        { label: 'Vencem em 7 dias', value: String(activeRows.filter(venceLogo).length) }
       ];
-      const LIMIT_BYTES = 524288000; // 500 MB = 50% do free tier Supabase (1 GB)
-      const usedMB = (totalBytes / (1024 * 1024)).toFixed(2);
-      const limitMB = (LIMIT_BYTES / (1024 * 1024)).toFixed(0);
+      const LIMIT_BYTES = 524288000; // 500 MB = metade do armazenamento do plano gratuito (1 GB)
       const pct = Math.min(100, (totalBytes / LIMIT_BYTES) * 100);
-      const pctStr = pct.toFixed(1);
-      const barColor = pct >= 80 ? '#C36247' : pct >= 60 ? '#D19931' : '#45865D';
-      statsWrap.innerHTML = cards.map((card) => ''
-        + '<div class="platform-user-card">'
-        + '  <div class="platform-user-ident">'
-        + '    <strong>' + escapeHtml(card.value) + '</strong>'
-        + '    <span>' + escapeHtml(card.label) + '</span>'
-        + '  </div>'
-        + '</div>'
-      ).join('')
-      + '<div style="margin-top:14px;padding:0 2px">'
-      + '  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
-      + '    <span style="font-size:11px;font-weight:600;color:#333">Cota de armazenamento temporário</span>'
-      + '    <span style="font-size:10px;color:#888">' + escapeHtml(usedMB) + ' MB usados de ' + escapeHtml(limitMB) + ' MB &nbsp;(' + escapeHtml(pctStr) + '%)</span>'
-      + '  </div>'
-      + '  <div style="width:100%;height:8px;background:#e8e8e8;border-radius:4px;overflow:hidden">'
-      + '    <div style="height:100%;width:' + escapeHtml(pct.toFixed(2)) + '%;background:' + escapeHtml(barColor) + ';border-radius:4px;transition:width .4s"></div>'
-      + '  </div>'
-      + '</div>';
+      const cls = pct >= 80 ? ' tc' : pct >= 60 ? ' ouro' : '';
+      statsWrap.innerHTML = '<div class="pm-stats">' + cards.map((c) => '<div class="pm-stat"><b>' + escapeHtml(c.value) + '</b><span>' + escapeHtml(c.label) + '</span></div>').join('') + '</div>'
+        + '<div class="pm-cota"><div class="pm-cota-hd"><b>Limite reservado para mídia temporária</b><span>' + escapeHtml(mb(totalBytes)) + ' de 500 MB · ' + escapeHtml(pct.toFixed(1).replace('.', ',')) + '%</span></div>'
+        + '<div class="pm-barra"><i class="' + cls.trim() + '" style="width:' + pct.toFixed(2) + '%"></i></div></div>';
     }
 
     if (contextsWrap) {
       const grouped = activeRows.reduce((map, row) => {
-        const key = String(row.contexto_tipo || 'outro');
-        if (!map[key]) map[key] = { total: 0, bytes: 0 };
+        const key = mediaContextLabel(row.contexto_tipo);
+        if (!map[key]) map[key] = { total: 0, bytes: 0, semPrazo: 0, logo: 0 };
         map[key].total += 1;
         map[key].bytes += Number(row.size_bytes || 0);
+        if (semPrazo(row)) map[key].semPrazo += 1;
+        else if (venceLogo(row)) map[key].logo += 1;
         return map;
       }, {});
-      const entries = Object.entries(grouped).sort((a, b) => b[1].total - a[1].total);
+      const entries = Object.entries(grouped).sort((a, b) => b[1].bytes - a[1].bytes);
       if (!entries.length) {
-        contextsWrap.innerHTML = '<div class="platform-empty">Nenhum anexo temporario ativo.</div>';
+        contextsWrap.innerHTML = '<div class="platform-empty">Nenhum arquivo temporário guardado.</div>';
       } else {
-        contextsWrap.innerHTML = entries.map(([contexto, info]) => ''
-          + '<div class="platform-user-card">'
-          + '  <div class="platform-user-ident">'
-          + '    <strong>' + escapeHtml(mediaContextLabel(contexto)) + '</strong>'
-          + '    <span>' + escapeHtml(String(info.total)) + ' anexos · ' + escapeHtml((info.bytes / (1024 * 1024)).toFixed(2)) + ' MB</span>'
-          + '  </div>'
-          + '</div>'
-        ).join('');
+        contextsWrap.innerHTML = '<div class="pm-ctx"><div class="pm-ctx-row hd"><span>Onde</span><span>Arquivos</span><span>Espaço</span><span>Sem prazo · 7 dias</span></div>'
+          + entries.map(([rotulo, info]) => '<div class="pm-ctx-row"><b>' + escapeHtml(rotulo) + '</b><span>' + info.total + '</span><span>' + escapeHtml(mb(info.bytes)) + '</span><span>' + info.semPrazo + ' · ' + info.logo + '</span></div>').join('')
+          + '</div>';
       }
     }
   }
@@ -661,7 +644,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const statsWrap = document.getElementById('platform-media-stats');
     const contextsWrap = document.getElementById('platform-media-contexts');
     if (statsWrap) statsWrap.innerHTML = '<div class="platform-empty">Carregando uso atual...</div>';
-    if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Carregando distribuicao...</div>';
+    if (contextsWrap) contextsWrap.innerHTML = '<div class="platform-empty">Carregando distribuição...</div>';
 
     const [
       { data: config,       error: configError },
@@ -699,7 +682,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     fillPlatformTempMediaConfig(platformTempMediaConfigCache);
     fillPlatformPresetImageConfig(presetConfigError ? null : (presetConfig || null));
     renderPlatformTempMediaUsage(platformTempMediaUsageCache);
-    setPlataformaStatus('Painel de mídia temporária carregado.');
+    setPlataformaStatus('');
   }
 
   async function carregarFeedbackPlataforma() {
@@ -809,8 +792,8 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   }
 
   function roleLabel(role) {
-    if (role === 'socio_admin') return 'Socio administrador';
-    if (role === 'socio') return 'Socio';
+    if (role === 'socio_admin') return 'Sócio administrador';
+    if (role === 'socio') return 'Sócio';
     if (role === 'colaborador') return 'Colaborador';
     if (role === 'coordenador') return 'Coordenador';
     if (role === 'freelancer') return 'Freelancer';
@@ -821,11 +804,11 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const status = String(termo?.status_termo || 'pending').toLowerCase();
     if (status === 'signed') {
       return termo?.expira_em
-        ? 'Assinado - validade ate ' + (formatPtDate(termo.expira_em) || '-')
-        : 'Assinado';
+        ? 'assinado até ' + (formatPtDate(termo.expira_em) || '-')
+        : 'assinado';
     }
-    if (status === 'expired') return 'Vencido';
-    return 'Pendente';
+    if (status === 'expired') return 'vencido';
+    return 'pendente';
   }
 
   const baseFetchCurrentUsuario = window.fetchCurrentUsuario;
@@ -1127,26 +1110,32 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   function platformUserRowHtml(user) {
     const current = currentSessionUsuario()?.app_user_id === user.id;
     const termo = platformTermosCache[user.id] || null;
-    const rowClass = 'platform-user-row' + (isPlatformUserInactive(user) ? ' inactive' : '');
+    const rowClass = 'platform-user-row' + (isPlatformUserInactive(user) ? ' inactive' : '') + (current ? ' atual' : '');
+    const podeLink = !!currentSessionUsuario()?.is_platform_manager && !isPlatformUserInactive(user) && !!user.auth_id;
+    const st = String(termo?.status_termo || 'pending').toLowerCase();
+    const termoCls = st === 'signed' ? '' : (st === 'expired' ? ' tc' : ' ouro');
+    const opt = (v, rot, atual) => '<option value="' + v + '"' + (atual === v ? ' selected' : '') + '>' + rot + '</option>';
+    const statusAtual = user.status_acesso || 'ativo';
     return '<div class="' + rowClass + '">'
       + '<div class="platform-user-avatar clickable" title="Alterar avatar" onclick="subirAvatarPlataforma(\'' + user.id + '\')" style="background:' + (user.cor || '#888') + '">' + buildPlatformUserAvatar(user) + '</div>'
-      + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong><span>' + (user.email_login || user.email || 'sem login institucional') + '<br>' + (user.apelido || '-') + ' &middot; ' + roleLabel(user.role) + '</span></div>'
-      + '<div class="platform-user-meta">Status: ' + (user.status_acesso || (user.ativo ? 'ativo' : 'inativo')) + '<br>Termo: ' + termStatusLabel(termo) + '<br>Platform manager: ' + (user.is_platform_manager ? 'sim' : 'não') + '</div>'
-      + '<div class="platform-inline">'
-      + '<select id="platform-role-' + user.id + '" class="shell-btn" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
-      + '<option value="colaborador"' + (user.role === 'colaborador' ? ' selected' : '') + '>Colaborador</option>'
-      + '<option value="freelancer"' + (user.role === 'freelancer' ? ' selected' : '') + '>Freelancer</option>'
-      + '<option value="coordenador"' + (user.role === 'coordenador' ? ' selected' : '') + '>Coordenador</option>'
-      + '<option value="socio"' + (user.role === 'socio' ? ' selected' : '') + '>Socio</option>'
-      + '<option value="socio_admin"' + (user.role === 'socio_admin' ? ' selected' : '') + '>Socio administrador</option>'
+      + '<div class="platform-user-copy"><strong>' + (user.nome || '-') + '</strong>'
+      + '<span>' + (user.email_login || user.email || 'sem login institucional') + (user.apelido ? ' · ' + user.apelido : '') + '</span>'
+      + '<span class="pu-termo' + termoCls + '">Termo: ' + termStatusLabel(termo) + '</span></div>'
+      + '<div class="pu-controles">'
+      + '<select id="platform-role-' + user.id + '" class="shell-btn" title="Papel" onchange="salvarRolePlatform(\'' + user.id + '\', this.value)">'
+      + opt('colaborador', 'Colaborador', user.role) + opt('freelancer', 'Freelancer', user.role) + opt('coordenador', 'Coordenador', user.role)
+      + opt('socio', 'Sócio', user.role) + opt('socio_admin', 'Sócio administrador', user.role)
       + '</select>'
-      + '<select id="platform-status-' + user.id + '" class="shell-btn" onchange="salvarStatusPlatform(\'' + user.id + '\', this.value)">'
-      + '<option value="ativo"' + ((user.status_acesso || 'ativo') === 'ativo' ? ' selected' : '') + '>Ativo</option>'
-      + '<option value="inativo"' + (user.status_acesso === 'inativo' ? ' selected' : '') + '>Inativo</option>'
-      + '<option value="bloqueado"' + (user.status_acesso === 'bloqueado' ? ' selected' : '') + '>Bloqueado</option>'
-      + '</select></div>'
-      + '<div class="platform-user-actions"><label class="shell-check"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>' + (current ? '<span class="platform-user-meta">usuario atual</span>' : '') + (!currentSessionUsuario()?.is_platform_manager || isPlatformUserInactive(user) || !user.auth_id ? '' : '<button type="button" class="shell-btn" onclick="copiarLinkSenhaPlataforma(\'' + user.id + '\')">Copiar link de senha</button>') + '</div>'
-      + '<div class="platform-inline"><button type="button" class="shell-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')" style="margin-right:6px">Ver dados</button><button type="button" class="shell-btn warn" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Resetar termo</button></div>'
+      + '<select id="platform-status-' + user.id + '" class="shell-btn" title="Acesso" onchange="salvarStatusPlatform(\'' + user.id + '\', this.value)">'
+      + opt('ativo', 'Ativo', statusAtual) + opt('inativo', 'Inativo', statusAtual) + opt('bloqueado', 'Bloqueado', statusAtual)
+      + '</select>'
+      + '<label class="shell-check" title="Gestor da plataforma"><input type="checkbox"' + (user.is_platform_manager ? ' checked' : '') + ' onchange="salvarPlatformManager(\'' + user.id + '\', this.checked)"> Gestor</label>'
+      + '</div>'
+      + '<div class="pu-acoes">'
+      + '<button type="button" class="pu-btn" onclick="verDadosUsuarioPlataforma(\'' + user.id + '\')">Dados</button>'
+      + (podeLink ? '<button type="button" class="pu-btn" title="Copia um link para a pessoa criar uma nova senha" onclick="copiarLinkSenhaPlataforma(\'' + user.id + '\')">Nova senha</button>' : '')
+      + '<button type="button" class="pu-btn ouro" title="Pede que a pessoa assine o termo de novo" onclick="resetarTermoPlataforma(\'' + user.id + '\')">Refazer termo</button>'
+      + '</div>'
       + '</div>';
   }
 
@@ -1154,7 +1143,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
     const wrap = document.getElementById('platform-users-list');
     if (!wrap) return;
     if (!users.length) {
-      wrap.innerHTML = '<div class="platform-empty">Nenhum usuario encontrado.</div>';
+      wrap.innerHTML = '<div class="platform-empty">Nenhum usuário encontrado.</div>';
       return;
     }
     const ativos = users.filter((user) => !isPlatformUserInactive(user));
@@ -1514,7 +1503,7 @@ EXP · Documento gerado automaticamente pela plataforma · Registro de aceite ar
   window.salvarMidiaTemporariaPlataforma = async function salvarMidiaTemporariaPlataforma() {
     const sessionUser = currentSessionUsuario();
     if (!sessionUser?.is_platform_manager && sessionUser?.role !== 'socio_admin') {
-      setPlataformaStatus('A edicao da midia temporaria exige acesso administrativo de plataforma.');
+      setPlataformaStatus('A edição da mídia temporária exige acesso de gestor da plataforma.');
       return;
     }
 

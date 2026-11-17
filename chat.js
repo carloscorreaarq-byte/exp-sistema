@@ -47,8 +47,8 @@
     { e: '😄', t: 'Feliz' }, { e: '😂', t: 'Chorando de rir' }, { e: '😍', t: 'Apaixonado' },
     { e: '😢', t: 'Triste' }, { e: '😠', t: 'Raiva' }
   ];
-  var MSG_LOAD_LIMIT     = 500;
-  var OLDER_PAGE_SIZE    = 200;                      /* bloco de "carregar anteriores" */                      /* mensagens mais recentes carregadas por conversa */
+  var MSG_LOAD_LIMIT     = 50;                       /* mensagens mais recentes ao abrir a conversa */
+  var OLDER_PAGE_SIZE    = 50;                       /* lote ao rolar até o topo / "carregar anteriores" */
   var UNREAD_WINDOW_MS   = 30 * 24 * 60 * 60 * 1000; /* janela de apuração de não lidas (texto não expira) */
   var SIGNED_URL_EXPIRES = 7 * 24 * 60 * 60; /* 7 dias — cobre toda a vida do print (expira em 7d) */
   var CHAT_MEDIA_LIMITS = {
@@ -856,6 +856,8 @@
     if ($msgs) {
       $msgs.addEventListener('scroll', function () {
         scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 40;
+        /* perto do topo: busca o lote anterior */
+        if ($msgs.scrollTop < 80 && hasOlderMessages && !loadingOlder && !isLoading && !showOnlyFlagged) loadOlderMessages();
       });
     }
   }
@@ -1509,6 +1511,13 @@
     }
     return out + escHtml(txt.slice(ult));
   }
+  /* Menção: só casa com o início do nome ou de um sobrenome ("@la" acha "Laís", não "Vilela") (16/11/2026) */
+  function _iniciaNome(nome, q) {
+    var nn = _semAc(nome).trim(), nq = _semAc(q).trim();
+    if (!nq) return true;
+    if (nn.indexOf(nq) === 0) return true;
+    return nn.split(/[\s.'-]+/).some(function (w) { return w.indexOf(nq) === 0; });
+  }
   /* Trecho da mensagem em volta do termo (para o termo aparecer no resultado) */
   function _trecho(txt, q, max) {
     txt = String(txt || '').replace(/\s+/g, ' ').trim(); max = max || 140;
@@ -1582,6 +1591,7 @@
   ══════════════════════════════════════════════════════════════════ */
   var _revThreads = {};
   function openChannel(channel, displayName) {
+    _guardarConversa();
     var _tid = String(channel || '').indexOf('project:') === 0 ? String(channel).slice(8) : '';
     if (_tid && _revThreads[_tid]) { window.location.href = 'chat-fullpage.html?thread=' + encodeURIComponent(_tid); return; }
     removeConversationAlert(channel);
@@ -1908,7 +1918,7 @@
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages' }, function (payload) {
         var up = payload.new;
-        if (up.channel !== currentChannel) return;
+        if (up.channel !== currentChannel) { delete _msgCache[up.channel]; return; }
         upsertMessage(up);
         if (isOpen && currentView === 'channel') renderMessages();
       })
@@ -1945,7 +1955,7 @@
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_thread_messages' }, function (payload) {
         var up = normalizeProjectMessage(payload.new);
         updateProjectThreadSnapshot(payload.new.thread_id, payload.new.content, payload.new.created_at, payload.new.sender_auth_id);
-        if (up.channel !== currentChannel) return;
+        if (up.channel !== currentChannel) { delete _msgCache[up.channel]; return; }
         upsertMessage(up);
         if (isOpen && currentView === 'channel') renderMessages();
       })
@@ -2230,56 +2240,92 @@
     });
   }
 
+  /* ── Carregamento em lotes (17/11/2026): abre com as últimas 50; mais 50 ao rolar até o topo.
+     Com muitas não lidas, completa até a linha "Novas mensagens" (teto 200).
+     As últimas 5 conversas ficam na memória: reabrir mostra na hora e só busca o que chegou. ── */
+  var MSG_CACHE_MAX = 5, MSG_CACHE_TTL = 15 * 60 * 1000, UNREAD_FILL_MAX = 200;
+  var _msgCache = {};
+  function _guardarConversa() {
+    if (!currentChannel || isLoading || !messages || !messages.length) return;
+    var rows = messages.filter(function (m) { return !m.pending; });
+    if (!rows.length) return;
+    var corte = rows.length > UNREAD_FILL_MAX;
+    _msgCache[currentChannel] = { rows: corte ? rows.slice(-UNREAD_FILL_MAX) : rows, hasOlder: hasOlderMessages || corte, at: Date.now() };
+    var chaves = Object.keys(_msgCache);
+    if (chaves.length > MSG_CACHE_MAX) {
+      chaves.sort(function (a, b) { return _msgCache[a].at - _msgCache[b].at; });
+      chaves.slice(0, chaves.length - MSG_CACHE_MAX).forEach(function (k) { delete _msgCache[k]; });
+    }
+  }
+  function _baseMsgQuery(channel) {
+    return isProjectChannel(channel)
+      ? sb.from('chat_thread_messages').select('*').eq('thread_id', projectThreadIdFromChannel(channel))
+      : sb.from('chat_messages').select('*').eq('channel', channel);
+  }
+  function _completarNaoLidas(channel, seq, done) {
+    var lr = channelLastReadAt[channel];
+    var first = messages.find(function (m) { return !m.pending; });
+    if (!hasOlderMessages || !lr || !first || first.created_at <= lr || messages.length >= UNREAD_FILL_MAX) { done(); return; }
+    var isPrj = isProjectChannel(channel);
+    _baseMsgQuery(channel).gt('created_at', lr).lt('created_at', first.created_at)
+      .order('created_at', { ascending: false }).limit(UNREAD_FILL_MAX - messages.length)
+      .then(function (r) {
+        if (seq !== loadRequestSeq || channel !== currentChannel) return;
+        if (!r.error && r.data && r.data.length) {
+          var rows = r.data.slice().reverse();
+          if (isPrj) rows = rows.map(normalizeProjectMessage);
+          messages = rows.concat(messages);
+        }
+        done();
+      }, function () { done(); });
+  }
+
   function loadMessages() {
     if (isLoading) return;
     hasOlderMessages = false;
-    var channel = currentChannel;
-    var requestSeq = ++loadRequestSeq;
-    isLoading = true;
-    showLoading();
-    if (isProjectChannel(channel)) {
-      var threadId = projectThreadIdFromChannel(channel);
-      sb.from('chat_thread_messages')
-        .select('*')
-        .eq('thread_id', threadId)
-        .order('created_at', { ascending: false })
-        .limit(200)
-        .then(function (r) {
-          if (requestSeq !== loadRequestSeq || channel !== currentChannel) return;
-          isLoading = false;
-          if (r.error) { showError(); return; }
-          hasOlderMessages = (r.data || []).length >= 200;
-          messages = (r.data || []).slice().reverse().map(normalizeProjectMessage);
-          clearMessageMediaCache();
-          (_lastReadP || Promise.resolve()).then(function () {
-            if (channel !== currentChannel) return;
-            renderMessages();
-            loadCurrentMessageMedia();
-            scrollParaNovas();
-          });
+    var channel = currentChannel, seq = ++loadRequestSeq, isPrj = isProjectChannel(channel);
+    var norm = function (rows) { return isPrj ? rows.map(normalizeProjectMessage) : rows; };
+    var c = _msgCache[channel]; delete _msgCache[channel];
+    var depois = function () {
+      (_lastReadP || Promise.resolve()).then(function () {
+        if (seq !== loadRequestSeq || channel !== currentChannel) return;
+        _completarNaoLidas(channel, seq, function () {
+          if (seq !== loadRequestSeq || channel !== currentChannel) return;
+          renderMessages(); loadCurrentMessageMedia(); loadArquivosFor(); scrollParaNovas();
         });
+      });
+    };
+    var doZero = function () { isLoading = false; messages = []; loadMessages(); };
+    if (c && c.rows.length && Date.now() - c.at < MSG_CACHE_TTL) {
+      /* Conversa guardada: aparece na hora e busca só o que chegou desde então */
+      messages = c.rows.slice(); hasOlderMessages = c.hasOlder;
+      clearMessageMediaCache();
+      renderMessages(); loadCurrentMessageMedia(); scrollBottom();
+      isLoading = true;
+      var ult = messages[messages.length - 1].created_at;
+      _baseMsgQuery(channel).gt('created_at', ult).order('created_at', { ascending: true }).limit(MSG_LOAD_LIMIT)
+        .then(function (r) {
+          if (seq !== loadRequestSeq || channel !== currentChannel) return;
+          if (r.error || (r.data || []).length >= MSG_LOAD_LIMIT) { doZero(); return; }
+          isLoading = false;
+          norm(r.data || []).forEach(function (m) { upsertMessage(m); });
+          depois();
+        }, function () { if (seq === loadRequestSeq && channel === currentChannel) doZero(); });
       return;
     }
-
-    /* Mensagens de texto não expiram: busca as MAIS RECENTES (desc + limite) e inverte —
-       em ordem ascendente o teto de linhas do PostgREST cortaria as mensagens novas. */
-    sb.from('chat_messages').select('*').eq('channel', channel)
-      .order('created_at', { ascending: false }).limit(MSG_LOAD_LIMIT)
+    isLoading = true;
+    showLoading();
+    /* Busca as MAIS RECENTES (desc + limite) e inverte */
+    _baseMsgQuery(channel).order('created_at', { ascending: false }).limit(MSG_LOAD_LIMIT)
       .then(function (r) {
-        if (requestSeq !== loadRequestSeq || channel !== currentChannel) return;
+        if (seq !== loadRequestSeq || channel !== currentChannel) return;
         isLoading = false;
         if (r.error) { showError(); return; }
         hasOlderMessages = (r.data || []).length >= MSG_LOAD_LIMIT;
-        messages = (r.data || []).slice().reverse();
+        messages = norm((r.data || []).slice().reverse());
         clearMessageMediaCache();
-        (_lastReadP || Promise.resolve()).then(function () {
-          if (channel !== currentChannel) return;
-          renderMessages();
-          loadCurrentMessageMedia();
-          loadArquivosFor();
-          scrollParaNovas();
-        });
-      });
+        depois();
+      }, function () { if (seq === loadRequestSeq && channel === currentChannel) { isLoading = false; showError(); } });
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -4101,7 +4147,10 @@
     var q = val.slice(at + 1, pos).toLowerCase();
     _mPos = at;
     var hits = (allMembers || []).filter(function (m) {
-      return m.ativo !== false && m.auth_id !== user.auth_id && _temTermo(m.nome || '', q);
+      return m.ativo !== false && m.auth_id !== user.auth_id && _iniciaNome(m.nome || '', q);
+    }).sort(function (a, b) {
+      /* quem começa pelo primeiro nome vem antes */
+      return (_semAc(b.nome || '').indexOf(_semAc(q)) === 0) - (_semAc(a.nome || '').indexOf(_semAc(q)) === 0);
     }).slice(0, 6);
     if (!hits.length) { _closeMentionDD(); return; }
     _openMentionDD(ta, hits);

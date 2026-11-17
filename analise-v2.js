@@ -319,12 +319,26 @@
 
   function kpi(valor, rotulo, opts) {
     opts = opts || {};
-    return '<div class="av-kpi' + (opts.on ? ' on' : '') + (opts.click ? ' clic' : '') + '"' + (opts.click ? ' onclick="' + opts.click + '"' : '') + '>' +
+    return '<div class="av-kpi' + (opts.on ? ' on' : '') + (opts.click ? ' clic' : '') + (opts.info ? ' info' : '') + '"' + (opts.click ? ' onclick="' + opts.click + '"' : '') + '>' +
       '<b' + (opts.cor ? ' style="color:' + opts.cor + '"' : '') + '>' + valor + '</b><span>' + rotulo + '</span></div>';
   }
 
   function barra(pct, cor) {
     return '<div class="av-bar"><i style="width:' + Math.max(0, Math.min(pct || 0, 100)) + '%;background:' + cor + '"></i></div>';
+  }
+
+  /* Linha separadora dentro da tabela ("Precisam de atenção" / "Em dia") */
+  function grupoHd(rotulo, n, cols, primeiro) {
+    return '<tr class="av-grp' + (primeiro ? ' primeiro' : '') + '"><td colspan="' + cols + '"><span>' + rotulo + '</span><i>' + n + '</i></td></tr>';
+  }
+  /* Monta as linhas em dois blocos quando não há filtro ativo */
+  function emBlocos(L, ehAtencao, linha, cols, separar) {
+    if (!separar) return L.map(linha).join('');
+    var A = L.filter(ehAtencao), B = L.filter(function (x) { return !ehAtencao(x); });
+    var h = '';
+    if (A.length) h += grupoHd('Precisam de atenção', A.length, cols, true) + A.map(linha).join('');
+    if (B.length) h += grupoHd('Em dia', B.length, cols, !A.length) + B.map(linha).join('');
+    return h;
   }
 
   function renderProjetos() {
@@ -339,28 +353,27 @@
       kpi(d.ativos.filter(function (x) { return x.problema; }).length, 'projetos com problema', { click: tg('prob'), on: f === 'prob', cor: 'var(--terracota)' }) +
       kpi(d.ativos.filter(function (x) { return x.estouro; }).length, 'com etapa atual estourada', { click: tg('est'), on: f === 'est' }) +
       kpi(d.ativos.filter(function (x) { return x.atrasado; }).length, 'com etapa atrasada', { click: tg('atr'), on: f === 'atr' }) +
-      kpi(d.ativos.length, 'projetos ativos', { click: f ? tg(f) : '', on: false }) +
+      kpi(d.ativos.length, 'projetos ativos', { info: true }) +
       '</div>';
     if (!L.length) return html + '<div class="av-vazio">Nenhum projeto nesta seleção.</div>';
     html += '<div class="av-card"><table class="av-tb">' +
-      '<colgroup><col style="width:29%"><col style="width:22%"><col style="width:9%"><col style="width:14%"><col style="width:18%"><col style="width:8%"></colgroup>' +
-      '<tr><th>Projeto</th><th>Etapa atual</th><th>Etapas</th><th class="n">Margem até agora</th><th>Consumo da etapa atual</th><th class="n">Sinais</th></tr>' +
-      L.map(function (x) {
+      '<colgroup><col style="width:26%"><col style="width:20%"><col style="width:7%"><col style="width:10%"><col style="width:16%"><col style="width:21%"></colgroup>' +
+      '<tr><th>Projeto</th><th>Etapa atual</th><th>Etapas</th><th class="n" title="Margem até agora: só das etapas concluídas">Margem</th><th title="Quanto do previsto da etapa atual já foi gasto">Consumo</th><th>Atenção</th></tr>' +
+      emBlocos(L, function (x) { return x.problema; }, function (x) {
         var a = x.atual;
-        var sin = [
-          ['Margem', x.margemAgora != null && x.margemAgora < 5],
-          ['Etapa estourada', x.estouro],
-          ['Atraso', x.atrasado],
-        ].map(function (s) { return '<i class="av-dot" title="' + s[0] + (s[1] ? ': atenção' : ': ok') + '" style="background:' + (s[1] ? 'var(--terracota)' : 'var(--cinza)') + '"></i>'; }).join('');
+        var sin = [];
+        if (x.margemAgora != null && x.margemAgora < 5) sin.push('Margem baixa');
+        if (x.estouro) sin.push('Etapa estourada');
+        if (x.atrasado) sin.push('Atrasado');
         return '<tr class="l" onclick="' + linkProjeto(x.produto.id) + '">' +
           '<td><b>' + esc(x.produto.nome) + '</b><em>' + esc(x.produto.cliente) + (x.produto.nucleo ? ' · ' + esc(x.produto.nucleo) : '') + '</em></td>' +
           '<td>' + (a ? esc(a.etapa.nome) + (a.atraso > 0 ? '<em class="ruim">' + a.atraso + ' dias de atraso</em>' : '') : '<em>Nenhuma em andamento</em>') + '</td>' +
           '<td class="mut">' + x.nConc + '/' + x.etapas.length + '</td>' +
           '<td class="n" style="color:' + corMargem(x.margemAgora) + '">' + (x.margemAgora != null ? fPc(x.margemAgora) : '—') + '</td>' +
           '<td>' + (a && a.consumo != null ? barra(a.consumo, corConsumo(a.consumo)) + '<em style="color:' + corConsumo(a.consumo) + '">' + Math.round(a.consumo) + '% do previsto</em>' : '<em>sem previsto</em>') + '</td>' +
-          '<td class="n">' + sin + '</td></tr>';
-      }).join('') + '</table></div>' +
-      '<div class="av-nota">Margem até agora considera só as etapas concluídas ("—" = nenhuma concluída com previsto). Projeto com problema: margem até agora abaixo de 5%, etapa atual acima de 100% do previsto ou etapa atrasada. Clique para abrir o projeto.</div>';
+          '<td class="quebra av-sinal">' + sin.join(' · ') + '</td></tr>';
+      }, 6, !f) + '</table></div>' +
+      '<div class="av-nota">Margem = margem até agora, só das etapas concluídas ("—" = nenhuma concluída com previsto). Projeto com problema: margem até agora abaixo de 5%, etapa atual acima de 100% do previsto ou etapa atrasada. Clique para abrir o projeto.</div>';
     return html;
   }
 
@@ -375,13 +388,13 @@
       kpi(E.filter(function (r) { return r.consumo > 100; }).length, 'acima do previsto', { click: tg('est'), on: f === 'est', cor: 'var(--terracota)' }) +
       kpi(E.filter(function (r) { return r.consumo >= 85 && r.consumo <= 100; }).length, 'perto do limite (85%+)', { click: tg('lim'), on: f === 'lim', cor: 'var(--ouro)' }) +
       kpi(E.filter(function (r) { return r.atraso > 0; }).length, 'atrasadas', { click: tg('atr'), on: f === 'atr' }) +
-      kpi(E.length, 'etapas em andamento', { click: f ? tg(f) : '' }) +
+      kpi(E.length, 'etapas em andamento', { info: true }) +
       '</div>';
     if (!L.length) return html + '<div class="av-vazio">Nenhuma etapa nesta seleção.</div>';
     html += '<div class="av-card"><table class="av-tb">' +
       '<colgroup><col style="width:30%"><col style="width:12%"><col style="width:12%"><col style="width:20%"><col style="width:12%"><col style="width:14%"></colgroup>' +
-      '<tr><th>Etapa · projeto</th><th class="n">Previsto</th><th class="n">Realizado</th><th>Consumo</th><th>Prazo</th><th>Mais horas</th></tr>' +
-      L.map(function (r) {
+      '<tr><th>Etapa · projeto</th><th class="n">Previsto</th><th class="n">Realizado</th><th title="Quanto do previsto já foi gasto">Consumo</th><th title="Dias desde a liberação">Prazo</th><th>Mais horas</th></tr>' +
+      emBlocos(L, function (r) { return r.consumo >= 85 || r.atraso > 0; }, function (r) {
         return '<tr class="l" onclick="' + linkProjeto(r.produto.id) + '">' +
           '<td><b>' + esc(r.etapa.nome) + '</b><em>' + esc(r.produto.nome) + '</em></td>' +
           '<td class="n">' + (r.previsto != null ? fR(r.previsto) : '—') + '</td>' +
@@ -389,9 +402,71 @@
           '<td>' + (r.consumo != null ? barra(r.consumo, corConsumo(r.consumo)) + '<em style="color:' + corConsumo(r.consumo) + '">' + Math.round(r.consumo) + '%</em>' : '<em>sem previsto</em>') + '</td>' +
           '<td class="mut">' + (r.diasLib != null ? r.diasLib + ' dias' : '—') + (r.atraso > 0 ? '<em class="ruim">+' + r.atraso + ' de atraso</em>' : '') + '</td>' +
           '<td class="mut">' + esc(r.maisHoras || '—') + (r.horas ? '<em>' + fHrs(r.horas) + ' no total</em>' : '') + '</td></tr>';
-      }).join('') + '</table></div>' +
-      '<div class="av-nota">Etapa em andamento ainda não tem margem: a barra mostra quanto do previsto já foi gasto. Amarelo a partir de 85%, terracota acima de 100%.</div>';
+      }, 6, !f) + '</table></div>' +
+      '<div class="av-nota">Etapa em andamento ainda não tem margem: a barra mostra quanto do previsto já foi gasto. Amarelo a partir de 85%, terracota acima de 100%. Precisam de atenção: 85% ou mais do previsto, ou atrasadas.</div>';
     return html;
+  }
+
+  /* Gráfico: margem ponderada por tipo de etapa (barras horizontais, cor pela regra de margem) */
+  function graficoTipos(H) {
+    var g = {};
+    H.forEach(function (r) {
+      var x = g[r.tipo] || (g[r.tipo] = { pv: 0, r: 0, h: 0, n: 0, atr: 0, nAtr: 0 });
+      x.pv += r.previsto; x.r += r.realizado; x.h += r.horas; x.n++;
+      if (r.atraso != null) { x.atr += Math.max(0, r.atraso); x.nAtr++; }
+    });
+    var itens = TIPOS.filter(function (t) { return g[t.key]; }).map(function (t) {
+      var x = g[t.key];
+      return { label: t.label, m: x.pv > 0 ? ((x.pv - x.r) / x.pv) * 100 : 0, x: x };
+    });
+    if (!itens.length) return '';
+    AV._graf = itens;
+    var ms = itens.map(function (i) { return i.m; });
+    var lo = Math.max(-100, Math.min(0, Math.min.apply(null, ms)));
+    var hi = Math.min(100, Math.max(20, Math.max.apply(null, ms)));
+    lo = Math.floor(lo / 5) * 5; hi = Math.ceil(hi / 5) * 5;
+    var pos = function (v) { return ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * 100; };
+    var z = pos(0);
+    var marcas = [0, 5, 15].filter(function (v) { return v >= lo && v <= hi; });
+    var html = '<div class="av-card av-graf">' +
+      '<div class="av-graf-hd"><span class="av-lb">Margem por tipo de etapa</span>' +
+      '<span class="av-graf-leg"><i style="background:var(--verde)"></i>acima de 15%<i style="background:var(--ouro)"></i>5 a 15%<i style="background:var(--terracota)"></i>abaixo de 5%</span></div>' +
+      '<div class="av-graf-corpo">' +
+      '<div class="av-graf-lin av-graf-eixo"><span></span><div class="av-graf-trilho">' +
+      marcas.map(function (v) { return '<em style="left:' + pos(v) + '%">' + v + '%</em>'; }).join('') + '</div><b></b></div>' +
+      itens.map(function (it, i) {
+        var a = pos(it.m), esq = Math.min(z, a), larg = Math.abs(a - z);
+        return '<div class="av-graf-lin" onmousemove="AnaliseV2.tip(event,' + i + ')" onmouseleave="AnaliseV2.tip(null)">' +
+          '<span>' + esc(it.label) + '</span>' +
+          '<div class="av-graf-trilho">' +
+          marcas.map(function (v) { return '<u class="' + (v === 0 ? 'zero' : '') + '" style="left:' + pos(v) + '%"></u>'; }).join('') +
+          '<i style="left:' + esq + '%;width:' + Math.max(larg, 0.6) + '%;background:' + corMargem(it.m) + ';border-radius:' + (it.m < 0 ? '4px 0 0 4px' : '0 4px 4px 0') + '"></i></div>' +
+          '<b>' + fPc(it.m) + '</b></div>';
+      }).join('') +
+      '</div></div>';
+    return html;
+  }
+
+  function tooltipGraf(ev, i) {
+    var t = document.getElementById('av-tip');
+    if (ev == null) { if (t) t.style.display = 'none'; return; }
+    var it = (AV._graf || [])[i];
+    if (!it) return;
+    if (!t) { t = document.createElement('div'); t.id = 'av-tip'; t.className = 'av-tip'; document.body.appendChild(t); }
+    var x = it.x;
+    t.innerHTML = '<div class="av-tip-t">' + esc(it.label) + '</div>' +
+      '<div><span>Margem</span><b style="color:' + corMargem(it.m) + '">' + fPc(it.m) + '</b></div>' +
+      '<div><span>Previsto</span><b>' + fR(x.pv) + '</b></div>' +
+      '<div><span>Realizado</span><b>' + fR(x.r) + '</b></div>' +
+      '<div><span>Horas</span><b>' + fHrs(x.h) + '</b></div>' +
+      '<div><span>Etapas</span><b>' + x.n + '</b></div>' +
+      '<div><span>Atraso médio</span><b>' + (x.nAtr ? String(Math.round(x.atr / x.nAtr * 10) / 10).replace('.', ',') + ' dias' : '—') + '</b></div>';
+    t.style.display = 'block';
+    var w = t.offsetWidth, h = t.offsetHeight;
+    var px = ev.clientX + 14, py = ev.clientY + 14;
+    if (px + w > window.innerWidth - 8) px = ev.clientX - w - 14;
+    if (py + h > window.innerHeight - 8) py = ev.clientY - h - 14;
+    t.style.left = Math.max(8, px) + 'px'; t.style.top = Math.max(8, py) + 'px';
   }
 
   function renderHistorico() {
@@ -432,6 +507,7 @@
     if (!H.length) {
       html += '<div class="av-vazio">Nenhuma etapa concluída com cadastro completo' + (cli ? ' para este cliente' : '') + '.</div>';
     } else {
+      html += graficoTipos(H);
       html += '<div class="av-card"><table class="av-tb">' +
         '<colgroup><col style="width:28%"><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:10%"><col style="width:11%"><col style="width:12%"></colgroup>' +
         '<tr><th>' + rot[grp] + '</th><th class="n">Etapas</th><th class="n">Previsto</th><th class="n">Realizado</th><th class="n">Horas</th><th class="n">Margem</th><th class="n">Atraso médio</th></tr>' +
@@ -521,6 +597,7 @@
     var bar = document.getElementById('analise-tabs-bar');
     var box = document.getElementById('analise-panels');
     if (!bar || !box) return;
+    tooltipGraf(null);
     bar.innerHTML = abas();
     if (AV.erro) { box.innerHTML = '<div class="av-aviso">' + esc(AV.erro) + '</div>'; return; }
     if (AV.carregando || !AV.dados) { box.innerHTML = '<div class="loading-state">Carregando projetos, horas e custos…</div>'; return; }
@@ -539,6 +616,7 @@
     set: function (k, v) { AV.filtro[k] = v; render(); },
     abrir: function (id) { window.open('gestao.html?produto=' + encodeURIComponent(id) + '&aba=resultado', '_blank'); },
     recarregar: carregar,
+    tip: tooltipGraf,
     tipoEtapa: tipoEtapa,
     _agregar: agregar,
     _render: render,
