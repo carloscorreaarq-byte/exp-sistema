@@ -22,7 +22,7 @@
 </script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
-<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -517,6 +517,16 @@ textarea{resize:vertical;min-height:60px}
 .mt-2{margin-top:2px}.mb-4{margin-bottom:4px}.mb-6{margin-bottom:6px}.mb-8{margin-bottom:8px}.mb-10{margin-bottom:10px}.mb-12{margin-bottom:12px}
 .ml-auto{margin-left:auto}
 .bar-track{height:6px;background:var(--cinza2);border-radius:var(--radius-badge,4px)}
+/* Painel "Por tipo": rosca + legenda compacta alinhada (17/11/2026) */
+.tipo-body{padding:14px 16px;display:grid;grid-template-columns:112px minmax(0,1fr);gap:18px;align-items:center}
+.tipo-donut{width:112px;height:112px;position:relative}
+.tipo-leg{display:flex;flex-direction:column;gap:7px}
+.tipo-leg-row{display:grid;grid-template-columns:8px minmax(0,1fr) 34px auto;align-items:center;column-gap:8px;font-size:10px;line-height:1.3}
+.tipo-leg-cor{width:8px;height:8px;border-radius:2px}
+.tipo-leg-nome{font-weight:600;color:var(--grafite);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tipo-leg-pct{text-align:right;color:#A9A59C;font-variant-numeric:lining-nums tabular-nums}
+.tipo-leg-val{text-align:right;font-weight:700;color:var(--grafite);font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+[data-theme="dark"] .tipo-leg-nome,[data-theme="dark"] .tipo-leg-val{color:#F0EDE6}
 </style>
 </head>
 <body>
@@ -742,8 +752,8 @@ textarea{resize:vertical;min-height:60px}
             <button id="dtm-resp" class="btn xs ghost" onclick="setDashTipoMode('resp')" style="font-size:9px;padding:2px 8px">Resp.</button>
           </div>
         </div>
-        <div class="card-body" style="padding:10px 14px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center">
-          <div style="width:120px;height:120px;position:relative;flex-shrink:0">
+        <div class="card-body tipo-body">
+          <div class="tipo-donut">
             <canvas id="chart-tipo"></canvas>
           </div>
           <div id="chart-tipo-legenda"></div>
@@ -2051,7 +2061,7 @@ function getChartCores(){
     Consultorias:   _cssVar('--consul') || '#BC6143',
     'Projetos Especiais': _cssVar('--esp') || '#E2B141',
     // Total em tom neutro: a soma não pode ter a cor de um núcleo (era o mesmo azul de Urbanismo)
-    Total:          _cssVar('--grafite') || '#141414',
+    Total:          '#8A867E',   /* cinza médio: a soma fica de fundo, sem pesar mais que os núcleos */
   };
 }
 const CHART_CORES = new Proxy({}, { get:(_,prop)=>getChartCores()[prop] });
@@ -2068,6 +2078,40 @@ function escJsStr(v){return String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\
 function toast(m,dur=2800){const t=document.getElementById('toast');t.textContent=String(m??'');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function closeM(id){document.getElementById(id).classList.remove('open');}
 function openM(id){document.getElementById(id).classList.add('open');}
+/* Esc fecha o pop-up aberto, um por vez, do que está por cima (17/11/2026).
+   Fase de captura: roda antes do Esc do chat, que então não minimiza junto. */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+  const t = e.target;
+  if (t && typeof t.onkeydown === 'function' && /Escape/.test(String(t.onkeydown))) return; // campo com Esc próprio
+  const chat = document.getElementById('exp-chat-widget');
+  if (chat && t && t !== document.body && chat.contains(t)) return;
+  const mv = document.getElementById('exp-chat-media-viewer');
+  if (mv && mv.style.display && mv.style.display !== 'none') return;
+  let fechou = false;
+  for (const id of ['popup-confirm-overlay', 'popup-lembrete']) {
+    const el = document.getElementById(id);
+    if (el) { el.remove(); fechou = true; break; }
+  }
+  if (!fechou) {
+    const abertos = [...document.querySelectorAll('.modal-bg.open, .side-panel-bg.open')];
+    if (abertos.length) {
+      abertos.sort((a, b) => (parseInt(getComputedStyle(a).zIndex) || 0) - (parseInt(getComputedStyle(b).zIndex) || 0));
+      const topo = abertos[abertos.length - 1];
+      const x = topo.querySelector('.modal-x');
+      if (x) x.click(); else topo.classList.remove('open');
+      fechou = true;
+    }
+  }
+  if (!fechou) {
+    const menu = document.getElementById('pcard-menu');
+    if (menu && menu.classList.contains('open')) { typeof closeCardMenu === 'function' ? closeCardMenu() : menu.classList.remove('open'); fechou = true; }
+    const pops = document.querySelectorAll('.nav-feedback-pop.open');
+    if (pops.length) { pops.forEach(p => p.classList.remove('open')); fechou = true; }
+  }
+  if (fechou) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+
 
 // Normaliza stage para label amigável
 function stageLabel(s){return STAGE_LABEL[s?.toLowerCase()]||s||'—';}
@@ -3053,7 +3097,7 @@ function renderDash(){
   if(nucFil==='todos' && datasetsCap.length>0){
     const totalCap=Array(12).fill(0);
     nucsCap.forEach(n=>nucMapCap[n].forEach((v,i)=>totalCap[i]+=v));
-    datasetsCap.push({label:'Total',data:totalCap,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:3,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,borderDash:[5,3]});
+    datasetsCap.push({label:'Total',data:totalCap,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:CHART_CORES.Total,tension:.3,fill:false,borderDash:[4,4]});
   }
   if(!datasetsCap.length){
     const totalCap=Array(12).fill(0);
@@ -3094,7 +3138,7 @@ function renderDash(){
   if(nucFil==='todos' && datasets.length>0){
     const total=Array(12).fill(0);
     nucs.forEach(n=>nucMap[n].forEach((v,i)=>total[i]+=v));
-    datasets.push({label:'Total',data:total,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:3,pointRadius:4,pointHoverRadius:6,tension:.3,fill:false,borderDash:[5,3]});
+    datasets.push({label:'Total',data:total,borderColor:CHART_CORES.Total,backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:CHART_CORES.Total,tension:.3,fill:false,borderDash:[4,4]});
   }
   if(!datasets.length){
     const total=Array(12).fill(0);
@@ -3123,7 +3167,7 @@ function renderDash(){
       if(!p.data_fechamento||!p.data_fechamento.startsWith(anoStr))return;
       let key;
       if(dashTipoMode==='nucleo'){
-        key=NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
+        key=NUCLEO_GRUPO[normNucleo(p.nucleo)]||NUCLEO_GRUPO[p.nucleo]||p.nucleo||'Outros';
       } else if(dashTipoMode==='stage'){
         key=STAGE_LABEL[op.pipeline_stage]||op.pipeline_stage||'—';
       } else {
@@ -3159,15 +3203,13 @@ function renderDash(){
     backgroundColor:tCores,
     borderWidth:0
   }]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fmt(ctx.parsed)} (${Math.round(ctx.parsed/total_tipo*100)}%)`}}}}});
-  document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?tLabels.map((l,i)=>`
-    <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
-      <div style="width:8px;height:8px;border-radius:2px;background:${tCores[i]};flex-shrink:0"></div>
-      <div style="font-size:10px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(l)}">${escHtml(l)}</div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:10px;font-variant-numeric:lining-nums tabular-nums;font-weight:700;color:var(--grafite)">${fmt(tipoMap[l])}</div>
-        <div style="font-size:9px;font-variant-numeric:lining-nums tabular-nums;color:#A9A59C">${Math.round(tipoMap[l]/total_tipo*100)}%</div>
-      </div>
-    </div>`).join(''):'<div style="font-size:10px;color:#A9A59C;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
+  document.getElementById('chart-tipo-legenda').innerHTML=tLabels.length?`<div class="tipo-leg">${tLabels.map((l,i)=>`
+    <div class="tipo-leg-row">
+      <span class="tipo-leg-cor" style="background:${tCores[i]}"></span>
+      <span class="tipo-leg-nome" title="${escAttr(l)}">${escHtml(l)}</span>
+      <span class="tipo-leg-pct">${Math.round(tipoMap[l]/total_tipo*100)}%</span>
+      <span class="tipo-leg-val">${fmt(tipoMap[l])}</span>
+    </div>`).join('')}</div>`:'<div style="font-size:10px;color:#A9A59C;padding:4px 0">Sem fechamentos em '+anoStr+'</div>';
   const elTipoTitle=document.getElementById('chart-tipo-title');
   if(elTipoTitle)elTipoTitle.textContent=`Por tipo · ${anoStr}`;
 
@@ -8021,7 +8063,7 @@ async function _enviarLembrete() {
   #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:30px!important;z-index:9998!important}
 </style>
 <!-- EXP · Nav lateral compartilhada -->
-<script src="shared/lists-panel.js?v=2026-10-25"></script>
+<script src="shared/lists-panel.js?v=2026-11-17b"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>
 </body>
 </html>

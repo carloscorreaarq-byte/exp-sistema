@@ -18,7 +18,7 @@
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
-<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
 
 <!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
 
@@ -1758,6 +1758,19 @@ body {
 .tarefa-prio.p2 { background: var(--ouro); color: #fff; border-color: var(--ouro); }
 .tarefa-prio.p3 { background: transparent; color: var(--txt-3); border-color: var(--cinza); }
 span.tarefa-prio { display: inline-block; cursor: default; }
+/* Categoria do item (17/11/2026): mesma chave da prioridade, sem cor */
+.tarefa-cat {
+  flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  font-family: var(--font-ui); line-height: 1; text-align: center; width: 38px;
+  border-radius: 999px; padding: 3px 4px; border: 1px solid var(--cinza);
+  background: transparent; color: var(--txt-3); -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.tarefa-cat.vazia { border-style: dashed; color: var(--cinza); }
+.tarefa-cat:focus { outline: none; box-shadow: 0 0 0 2px var(--mod-focus-soft); }
+span.tarefa-cat { display: inline-block; cursor: default; }
+.prancha-cats { display: inline-flex; gap: 8px; font-size: 9px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--txt-3); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+.prancha-cats b { color: var(--txt-2); font-weight: 700; margin-left: 3px; }
+.prancha-card.ajuste-geral .prancha-nome::after { content: 'vale para todas as pranchas'; margin-left: 8px; font-size: 9px; font-weight: 400; color: var(--txt-3); letter-spacing: 0; text-transform: none; }
 .prancha-preview-task.prio-p1 { color: var(--terracota); font-weight: 700; }
 .prancha-preview-task.prio-p2 { color: var(--ouro); font-weight: 700; }
 .tarefa-item-tools{display:flex;align-items:center;gap:4px;flex-shrink:0;min-width:46px;justify-content:flex-end}
@@ -4406,7 +4419,9 @@ span.tarefa-prio { display: inline-block; cursor: default; }
               <div class="dr"><div class="dk">Oportunidade</div><div class="dv" id="mp-opp">—</div></div>
               <div class="dr"><div class="dk">Cidade / UF</div><div class="dv" id="mp-cidade-uf">—</div></div>
               <div class="dr"><div class="dk">Endereço</div><div class="dv" id="mp-proj-endereco">—</div></div>
-              <div class="dr"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
+              <div class="dr" id="mp-proj-razao-row"><div class="dk">Razão social</div><div class="dv" id="mp-proj-razao">—</div></div>
+              <div class="dr" id="mp-proj-cnpj-row"><div class="dk">CNPJ</div><div class="dv" id="mp-proj-cnpj">—</div></div>
+              <div class="dr" id="mp-proj-cpf-row" style="display:none"><div class="dk">CPF</div><div class="dv" id="mp-proj-cpf">—</div></div>
               <div class="dr"><div class="dk">Prev. orçamentária</div><div class="dv" id="mp-proj-prev-orc">—</div></div>
               <div class="ms-sub">Parceiros</div>
               <div class="dr"><div class="dk">Arquitetura</div><div class="dv" id="mp-proj-esc-arq">—</div></div>
@@ -5152,8 +5167,27 @@ span.tarefa-prio { display: inline-block; cursor: default; }
             <input type="text" id="ep-proj-endereco" placeholder="Endereço do projeto">
           </div>
           <div class="fgroup">
-            <label>CNPJ do cliente</label>
-            <input type="text" id="ep-proj-cnpj" placeholder="00.000.000/0000-00">
+            <label>Contratante</label>
+            <select id="ep-proj-tipo-pessoa" onchange="_epTipoPessoaUI()">
+              <option value="pj">Pessoa jurídica</option>
+              <option value="pf">Pessoa física</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg fg2 mb8" id="ep-proj-pj">
+          <div class="fgroup">
+            <label>Razão social</label>
+            <input type="text" id="ep-proj-razao" placeholder="Razão social da empresa contratante">
+          </div>
+          <div class="fgroup">
+            <label>CNPJ</label>
+            <input type="text" id="ep-proj-cnpj" placeholder="00.000.000/0000-00" inputmode="numeric" onblur="this.value=_fmtDoc(this.value,'pj')">
+          </div>
+        </div>
+        <div class="fg fg2 mb8" id="ep-proj-pf" style="display:none">
+          <div class="fgroup">
+            <label>CPF</label>
+            <input type="text" id="ep-proj-cpf" placeholder="000.000.000-00" inputmode="numeric" onblur="this.value=_fmtDoc(this.value,'pf')">
           </div>
         </div>
         <div class="fg fg3 mb8">
@@ -6202,12 +6236,37 @@ async function carregarHorasGlobal(cfg) {
   });
 }
 
+/* ── Contratante do projeto: pessoa jurídica (razão social + CNPJ) ou física (CPF) — 17/11/2026 ──
+   Sem escolha gravada, segue o tipo do cliente no CRM (Pessoa Física → PF; os demais → PJ). */
+function _tipoPessoaProj(opp) {
+  if (opp?.tipo_pessoa === 'pf' || opp?.tipo_pessoa === 'pj') return opp.tipo_pessoa;
+  return opp?.clientes?.tipo === 'pessoa_fisica' ? 'pf' : 'pj';
+}
+function _epTipoPessoaUI() {
+  const pf = document.getElementById('ep-proj-tipo-pessoa')?.value === 'pf';
+  const a = document.getElementById('ep-proj-pj'), b = document.getElementById('ep-proj-pf');
+  if (a) a.style.display = pf ? 'none' : '';
+  if (b) b.style.display = pf ? '' : 'none';
+}
+/* Formata ao sair do campo; se não tiver o número certo de dígitos, deixa como foi digitado */
+function _fmtDoc(v, tipo) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (tipo === 'pf' && d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  if (tipo === 'pj' && d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  return String(v || '').trim();
+}
+
 async function carregarProdutos(cfg) {
   // 1. Produtos já cadastrados no módulo de gestão (com opp vinculada)
   // Tenta query completa (com colunas novas); fallback sem elas se ainda não existirem
   const _buscarProdutos = async () => {
+    /* contratante PF/PJ (17/11/2026): só existe depois de rodar supabase/projeto_contratante.sql */
+    const { data: _dNovo, error: _eNovo } = await sb.from('produtos')
+      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, uf, endereco, cnpj, tipo_pessoa, razao_social, cpf, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf, tipo))`)
+      .order('created_at', { ascending: false });
+    if (!_eNovo) return _dNovo;
     const { data, error } = await sb.from('produtos')
-      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
+      .select(`*, oportunidades(id, projeto, pipeline_stage, cliente_id, cidade, uf, endereco, cnpj, escritorio_arq, escritorio_int, gestao_empresa, link_arquivo, link_planilha, previsao_orcamentaria, clientes(id, nome, sigla, cidade, uf))`)
       .order('created_at', { ascending: false });
     if (!error) return data;
     const { data: _pgFallback } = await sb.from('produtos')
@@ -10543,12 +10602,13 @@ function abrirSolicitarRevisaoColabProd(prodId) {
         });
       }
       const { count: cntP } = await sb.from('revisoes').select('*', { count: 'exact', head: true }).eq('etapa_id', etapaId);
-      await sb.from('revisoes').insert({
+      const { data: _revNova } = await sb.from('revisoes').insert({
         etapa_id: etapaId,
         numero: (cntP || 0) + 1,
         aberta_por: G.usuario.id,
         status: 'aberta'
-      });
+      }).select('id').maybeSingle();
+      if (_revNova?.id) await _criarPranchaAjusteGeral(_revNova.id);
       await sb.from('etapas').update({ status: 'em_revisao' }).eq('id', etapaId);
       pop.remove();
       toast('Revisão solicitada — coordenador notificado');
@@ -10670,6 +10730,12 @@ function abrirSolicitarRevisaoColab() {
   };
 }
 
+/* Toda revisão nova já vem com a prancha "Ajuste geral" (para o que vale em todas as pranchas) */
+async function _criarPranchaAjusteGeral(revId) {
+  const { error } = await sb.from('pranchas').insert({ revisao_id: revId, nome: 'Ajuste geral', ordem: -1, ajuste_geral: true });
+  if (error) console.warn('[revisão] Ajuste geral não criado (rode revisao_categorias.sql):', error.message);
+}
+
 async function selecionarRevisao(id) {
   document.querySelectorAll('.rev-lista-item').forEach(el => el.classList.remove('selected'));
   document.querySelector(`[onclick="selecionarRevisao('${id}')"]`)?.classList.add('selected');
@@ -10708,6 +10774,17 @@ async function selecionarRevisao(id) {
         ...pr,
         tarefas_revisao: (pr.tarefas_revisao || []).sort((a,b) => (a.created_at||'').localeCompare(b.created_at||''))
       }));
+  // "Ajuste geral" sempre primeiro; vazio, só aparece para quem revisa (sócio, revisor do projeto e coordenadores)
+  {
+    const _p = rev.etapas?.produtos, _eu = G.usuario.id;
+    const _pc = (G.todosProdutos || []).find(x => x.id === _p?.id) || _p;
+    const _et = (G.todasEtapas || []).find(e => e.id === rev.etapa_id);
+    G._revEhRevisor = isSocioRole(G.usuario.role) || _pc?.revisor_id === _eu || _pc?.coordenador_id === _eu || _et?.coordenador_id === _eu;
+    pranchas.sort((a, b) => (_ehAjusteGeral(b) ? 1 : 0) - (_ehAjusteGeral(a) ? 1 : 0));
+    for (let i = pranchas.length - 1; i >= 0; i--) {
+      if (_ehAjusteGeral(pranchas[i]) && !(pranchas[i].tarefas_revisao || []).length && !G._revEhRevisor) pranchas.splice(i, 1);
+    }
+  }
   await carregarTempMediaCounts(
     'revisao_tarefa',
     pranchas.flatMap(pr => (pr.tarefas_revisao || []).map(t => t.id))
@@ -10768,8 +10845,9 @@ async function selecionarRevisao(id) {
 
   // Calcula resumo geral para as barras de progresso da revisão
   const { total: _totalTarefas, conc: _concTarefas } = _revContagem(pranchas.flatMap(pr => pr.tarefas_revisao || []));
-  const _totalPranchas = pranchas.length;
-  const _concPranchas  = pranchas.filter(pr => {
+  const _pranchasContam = pranchas.filter(pr => !(_ehAjusteGeral(pr) && !(pr.tarefas_revisao || []).length));
+  const _totalPranchas = _pranchasContam.length;
+  const _concPranchas  = _pranchasContam.filter(pr => {
     const c = _revContagem(pr.tarefas_revisao);
     return c.total > 0 && c.conc === c.total;
   }).length;
@@ -10907,6 +10985,39 @@ async function selecionarRevisao(id) {
   G._revisaoAtiva = id;
 }
 
+/* ── Categorias do item e prancha "Ajuste geral" (17/11/2026) ── */
+const REV_CATS = [
+  { v: 'projeto',       k: 'Proj', nome: 'Projeto' },
+  { v: 'representacao', k: 'Repr', nome: 'Representação' },
+  { v: 'documentacao',  k: 'Doc',  nome: 'Documentação' },
+];
+const _revCat = v => REV_CATS.find(c => c.v === v) || null;
+function _ehAjusteGeral(pr) { return !!pr?.ajuste_geral; }
+function _revCatContador(tarefas) {
+  const partes = REV_CATS.map(c => {
+    const its = (tarefas || []).filter(t => t.categoria === c.v);
+    if (!its.length) return '';
+    const conc = its.filter(t => t.concluida).length;
+    return `<span title="${c.nome}: ${its.length} ${its.length > 1 ? 'itens' : 'item'}, ${conc} concluído${conc === 1 ? '' : 's'}">${c.k}<b>${its.length}</b></span>`;
+  }).filter(Boolean);
+  return partes.length ? `<span class="prancha-cats">${partes.join('')}</span>` : '';
+}
+async function mudarCategoriaTarefa(sel, id, pranchaId) {
+  const categoria = sel.value || null;
+  sel.classList.toggle('vazia', !categoria);
+  const { error } = await sb.from('tarefas_revisao').update({ categoria }).eq('id', id);
+  if (error) {
+    toast(/categoria|column|schema/i.test(error.message || '') ? 'Falta rodar o SQL das categorias no Supabase (revisao_categorias.sql).' : 'Erro ao alterar categoria: ' + error.message, 5000);
+    return;
+  }
+  const t = G._revTarefas?.[id]; if (t) t.categoria = categoria;
+  // atualiza só o contador da prancha, sem recolher
+  const card = document.getElementById('prancha-' + pranchaId);
+  const tarefas = Object.values(G._revTarefas || {}).filter(x => String(x.prancha_id) === String(pranchaId));
+  const alvo = card?.querySelector('.prancha-cats-slot');
+  if (alvo) alvo.innerHTML = _revCatContador(tarefas);
+}
+
 function renderPrancha(pr, isSocioOrCoord) {
   const { total, conc } = _revContagem(pr.tarefas_revisao);
   const concluida100 = total > 0 && conc === total;
@@ -10937,11 +11048,20 @@ function renderPrancha(pr, isSocioOrCoord) {
            <option value="P1" ${prio === 'P1' ? 'selected' : ''}>P1</option>
          </select>`
       : `<span class="tarefa-prio ${prioCls}" title="Prioridade">${prio}</span>`;
+    const cat = _revCat(t.categoria);
+    const catControl = isSocioOrCoord
+      ? `<select class="tarefa-cat${cat ? '' : ' vazia'}" title="Categoria — Projeto · Representação · Documentação"
+             onclick="event.stopPropagation()" onchange="mudarCategoriaTarefa(this, '${t.id}', '${prId}')">
+           <option value="" ${cat ? '' : 'selected'}>—</option>
+           ${REV_CATS.map(c => `<option value="${c.v}" ${cat?.v === c.v ? 'selected' : ''}>${c.k}</option>`).join('')}
+         </select>`
+      : (cat ? `<span class="tarefa-cat" title="${cat.nome}">${cat.k}</span>` : '');
     const tmAttrs = isSocioOrCoord ? ` data-tm-ctx="revisao_tarefa" data-tm-id="${_escN(t.id)}" data-tm-tit="${_escN('Tarefa de revisão · ' + t.descricao)}"` : '';
     return `<div class="tarefa-item prio-${prioCls}" data-tarefa-id="${t.id}"${tmAttrs}>
       <div class="tarefa-check ${t.concluida ? 'done' : ''} ${isSocioOrCoord ? '' : 'readonly'}"
            ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
       ${prioControl}
+      ${catControl}
       <span class="tarefa-num" title="Item ${_num} desta prancha">${_num}</span>
       <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}${t.re_revisar ? (t.re_revisar_ok ? '<span class="rr-chip ok" title="Re-revisão fechada">Re-revisado</span>' : '<span class="rr-chip" title="Ponto crítico: pendente no bloco Re-revisão">Re-revisar</span>') : ''}</div>
       ${mediaViewBtn}
@@ -10989,17 +11109,19 @@ function renderPrancha(pr, isSocioOrCoord) {
       })()
     : '';
 
-  return `<div class="prancha-card" id="prancha-${prId}">
+  const ajusteGeral = _ehAjusteGeral(pr);
+  return `<div class="prancha-card${ajusteGeral ? ' ajuste-geral' : ''}" id="prancha-${prId}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''} prancha-hd-click" onclick="togglePranchaExpand(${prIdJs})">
       <div>
         <div class="prancha-nome">${_escN(pr.nome)}${concluida100 ? '' : ''}</div>
       </div>
       <div class="prancha-actions">
+        <span class="prancha-cats-slot">${_revCatContador(pr.tarefas_revisao)}</span>
         <span class="prancha-prog">${conc}/${total}</span>
         <button class="btn sm" onclick="event.stopPropagation();addComentarioPrancha('${prId}')">+ Comentário</button>
         ${isSocioOrCoord ? `<button class="btn sm" onclick="event.stopPropagation();addTarefaPrancha('${prId}')">+ Tarefa</button>` : ''}
-        ${podeGerirPrancha ? `<button class="prancha-ic" type="button" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqAttr(_sqN(pr.nome))})" title="Renomear prancha" aria-label="Renomear prancha">${GI.edit}</button>` : ''}
-        ${podeGerirPrancha ? `<button class="prancha-ic tc" type="button" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha" aria-label="Excluir prancha">${GI.x}</button>` : ''}
+        ${podeGerirPrancha && !ajusteGeral ? `<button class="prancha-ic" type="button" onclick="event.stopPropagation();editarNomePrancha('${prId}',${_sqAttr(_sqN(pr.nome))})" title="Renomear prancha" aria-label="Renomear prancha">${GI.edit}</button>` : ''}
+        ${podeGerirPrancha && !ajusteGeral ? `<button class="prancha-ic tc" type="button" onclick="event.stopPropagation();excluirPrancha('${prId}','${G._revisaoAtiva}')" title="Excluir prancha" aria-label="Excluir prancha">${GI.x}</button>` : ''}
       </div>
     </div>
     <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${pct}%"></div></div>
@@ -11536,6 +11658,11 @@ function addTarefaPrancha(pranchaId) {
         <option value="P2">P2</option>
         <option value="P1">P1</option>
       </select>
+      <select id="tic-${pranchaId}" class="tarefa-cat vazia" title="Categoria — Projeto · Representação · Documentação"
+        onchange="this.classList.toggle('vazia', !this.value)">
+        <option value="" selected>—</option>
+        ${REV_CATS.map(c => `<option value="${c.v}">${c.k}</option>`).join('')}
+      </select>
       <button class="btn sm verde" onclick="salvarTarefaInline('${pranchaId}')">Adicionar</button>
       <button class="btn sm" onclick="cancelarTarefaInline('${pranchaId}')">Cancelar</button>
     </div>
@@ -11557,7 +11684,12 @@ async function salvarTarefaInline(pranchaId) {
   const valor = ta?.value.trim();
   if(!valor) { cancelarTarefaInline(pranchaId); return; }
   const prioridade = document.getElementById(`tip-${pranchaId}`)?.value || 'P3';
-  const { error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor, prioridade });
+  const categoria = document.getElementById(`tic-${pranchaId}`)?.value || null;
+  let { error } = await sb.from('tarefas_revisao').insert(categoria ? { prancha_id: pranchaId, descricao: valor, prioridade, categoria } : { prancha_id: pranchaId, descricao: valor, prioridade });
+  if (error && categoria && /categoria|column|schema/i.test(error.message || '')) {
+    ({ error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor, prioridade }));
+    if (!error) toast('Item salvo sem categoria: falta rodar o SQL revisao_categorias.sql no Supabase.', 5000);
+  }
   if(error) { toast('Erro ao adicionar tarefa'); return; }
   // Captura quais pranchas estão expandidas antes do re-render
   const expandidas = new Set(
@@ -11688,7 +11820,8 @@ async function abrirProduto(id, targetPanel = null) {
   document.getElementById('mp-subtipo-hd').textContent = prod.nome;
   document.getElementById('mp-cliente').textContent = cli?.nome || '—';
   document.getElementById('mp-opp').textContent = opp?.projeto || '—';
-  const _cidadeUF = [cli?.cidade, cli?.uf].filter(Boolean).join(' / ');
+  /* cidade do projeto (oportunidade); a do cliente só quando o projeto não tem cidade (17/11/2026) */
+  const _cidadeUF = opp?.cidade ? [opp.cidade, opp.uf].filter(Boolean).join(' / ') : [cli?.cidade, cli?.uf].filter(Boolean).join(' / ');
   document.getElementById('mp-cidade-uf').textContent = _cidadeUF || '—';
   document.getElementById('mp-status').innerHTML = `<span class="badge ${stProd.cls}">${stProd.label}</span>`;
   document.getElementById('mp-coord').innerHTML = coord
@@ -11705,6 +11838,12 @@ async function abrirProduto(id, targetPanel = null) {
   // Dados do projeto (novos campos na oportunidade)
   document.getElementById('mp-proj-endereco').textContent = opp?.endereco || '—';
   document.getElementById('mp-proj-cnpj').textContent     = opp?.cnpj || '—';
+  document.getElementById('mp-proj-razao').textContent    = opp?.razao_social || '—';
+  document.getElementById('mp-proj-cpf').textContent      = opp?.cpf || '—';
+  const _ehPF = _tipoPessoaProj(opp) === 'pf';
+  document.getElementById('mp-proj-razao-row').style.display = _ehPF ? 'none' : '';
+  document.getElementById('mp-proj-cnpj-row').style.display  = _ehPF ? 'none' : '';
+  document.getElementById('mp-proj-cpf-row').style.display   = _ehPF ? '' : 'none';
   document.getElementById('mp-proj-esc-arq').textContent  = opp?.escritorio_arq || '—';
   document.getElementById('mp-proj-esc-int').textContent  = opp?.escritorio_int || '—';
   document.getElementById('mp-proj-gestao').textContent   = opp?.gestao_empresa || '—';
@@ -12128,6 +12267,7 @@ async function salvarNovaRevisao() {
       return;
     }
 
+    await _criarPranchaAjusteGeral(rev.id);
     // Pranchas
     const nomes = [...document.querySelectorAll('.nr-prancha-nome')].map(i => i.value.trim()).filter(Boolean);
     for (let i = 0; i < nomes.length; i++) {
@@ -12227,6 +12367,7 @@ function abrirNovaRevisaoGlobal() {
       const { count } = await sb.from('revisoes').select('*',{count:'exact',head:true}).eq('etapa_id',etapaId);
       const { data: rev, error: errRev } = await sb.from('revisoes').insert({ etapa_id: etapaId, numero: (count||0)+1, aberta_por: G.usuario.id, status: 'aberta' }).select().single();
       if (errRev || !rev) { toast('Erro: '+(errRev?.message||'falha')); return; }
+      await _criarPranchaAjusteGeral(rev.id);
       const nomes = [...document.querySelectorAll('.nrg-prancha-nome')].map(i => i.value.trim()).filter(Boolean);
       for (let i = 0; i < nomes.length; i++) await sb.from('pranchas').insert({ revisao_id: rev.id, nome: nomes[i], ordem: i });
       pop.remove(); toast('Revisão criada'); carregarRevisoes();
@@ -17163,6 +17304,10 @@ async function abrirEditarProduto() {
   // Dados do projeto
   document.getElementById('ep-proj-endereco').value  = prod.oportunidades?.endereco       || '';
   document.getElementById('ep-proj-cnpj').value      = prod.oportunidades?.cnpj            || '';
+  document.getElementById('ep-proj-razao').value     = prod.oportunidades?.razao_social    || '';
+  document.getElementById('ep-proj-cpf').value       = prod.oportunidades?.cpf             || '';
+  document.getElementById('ep-proj-tipo-pessoa').value = _tipoPessoaProj(prod.oportunidades);
+  _epTipoPessoaUI();
   document.getElementById('ep-proj-esc-arq').value   = prod.oportunidades?.escritorio_arq  || '';
   document.getElementById('ep-proj-esc-int').value   = prod.oportunidades?.escritorio_int  || '';
   document.getElementById('ep-proj-gestao').value    = prod.oportunidades?.gestao_empresa  || '';
@@ -17316,6 +17461,9 @@ async function salvarEdicaoProduto() {
       const updOpp = {
         endereco:       val('ep-proj-endereco'),
         cnpj:           val('ep-proj-cnpj'),
+        tipo_pessoa:    document.getElementById('ep-proj-tipo-pessoa')?.value || 'pj',
+        razao_social:   val('ep-proj-razao'),
+        cpf:            val('ep-proj-cpf'),
         escritorio_arq: val('ep-proj-esc-arq'),
         escritorio_int: val('ep-proj-esc-int'),
         gestao_empresa: val('ep-proj-gestao'),
@@ -17324,7 +17472,12 @@ async function salvarEdicaoProduto() {
         updOpp.link_arquivo  = val('ep-link-arquivo');
         updOpp.link_planilha = val('ep-link-planilha');
       }
-      const { error: eOpp } = await sb.from('oportunidades').update(updOpp).eq('id', prod.oportunidade_id);
+      let { error: eOpp } = await sb.from('oportunidades').update(updOpp).eq('id', prod.oportunidade_id);
+      if (eOpp && /tipo_pessoa|razao_social|cpf/i.test(eOpp.message || '')) {
+        delete updOpp.tipo_pessoa; delete updOpp.razao_social; delete updOpp.cpf;
+        ({ error: eOpp } = await sb.from('oportunidades').update(updOpp).eq('id', prod.oportunidade_id));
+        if (!eOpp) toast('Projeto salvo. Contratante, razão social e CPF ainda não existem no banco: rode supabase/projeto_contratante.sql.');
+      }
       if (eOpp) toast('Projeto salvo, mas os dados do projeto e links não: ' + eOpp.message);
       else if (prod.oportunidades) Object.assign(prod.oportunidades, updOpp);
     }
@@ -22208,7 +22361,7 @@ else init();
 </style>
 
 
-<script src="shared/lists-panel.js?v=2026-10-25"></script>
+<script src="shared/lists-panel.js?v=2026-11-17b"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>
 </body>
 </html>

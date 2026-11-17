@@ -13,7 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
 <link rel="stylesheet" href="shared/exp-nav.css?v=2026-10-30a">
-<link rel="stylesheet" href="shared/lists-panel.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script>
   (function(){
@@ -178,6 +178,12 @@ body.can-delete .del-col{display:table-cell}
 .rg-stripe{width:3px;height:10px;flex-shrink:0}
 .rg-label{font-size:var(--text-label);font-weight:var(--weight-label);letter-spacing:.5px;text-transform:uppercase;flex:1}
 .rg-sub{font-size:var(--text-sub);font-weight:var(--weight-label);margin-left:auto}
+.rg-cubs{margin-left:auto;font-size:10px;color:#A9A59C;white-space:nowrap;font-variant-numeric:lining-nums tabular-nums}
+.rg-cubs + .rg-sub{margin-left:12px}
+.total-cubs{font-size:10px;opacity:.6;text-align:right;margin-top:1px;font-variant-numeric:lining-nums tabular-nums}
+.cub-aviso{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--off);border:1px solid var(--cinza);border-radius:var(--radius-btn,8px);padding:8px 11px;font-size:11px;color:#5F5B54;margin-bottom:10px;font-variant-numeric:lining-nums tabular-nums}
+.cub-aviso .f1{flex:1;min-width:200px}
+.cub-aviso b{color:var(--grafite);font-weight:700}
 .rg-item{display:grid;grid-template-columns:2fr 1.2fr .7fr 1fr auto;gap:5px;align-items:center;padding:6px 11px;border:1px solid var(--cinza);border-top:none;background:var(--branco);font-size:var(--text-sub);font-weight:300;min-width:0}
 .rg-item>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rg-item:hover{background:var(--off)}
@@ -1209,7 +1215,7 @@ select option[disabled]{color:#A9A59C}
 <!-- MODAL EDITAR VALOR -->
 <div class="modal-bg" id="modal-edit">
   <div class="modal">
-    <div class="modal-hd"><div class="modal-title">Ajustar valor do item</div><span class="modal-x" onclick="closeM('modal-edit')">×</span></div>
+    <div class="modal-hd"><div class="modal-title" id="ev-titulo">Ajustar valor do item</div><span class="modal-x" onclick="closeM('modal-edit')">×</span></div>
     <div class="modal-body">
       <div class="fg fg2 mb8">
         <div class="fgroup"><label>Valor calculado</label><input type="text" id="ev-calc" class="inp-readonly" readonly></div>
@@ -2033,6 +2039,40 @@ function abrirPopupConfirm(titulo, mensagem, onConfirm, btnLabel = 'Excluir') {
 }
 function closeM(id) { document.getElementById(id).classList.remove('open'); }
 function openM(id)  { document.getElementById(id).classList.add('open'); }
+/* Esc fecha o pop-up aberto, um por vez, do que está por cima (17/11/2026).
+   Fase de captura: roda antes do Esc do chat, que então não minimiza junto. */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+  const t = e.target;
+  if (t && typeof t.onkeydown === 'function' && /Escape/.test(String(t.onkeydown))) return; // campo com Esc próprio
+  const chat = document.getElementById('exp-chat-widget');
+  if (chat && t && t !== document.body && chat.contains(t)) return;
+  const mv = document.getElementById('exp-chat-media-viewer');
+  if (mv && mv.style.display && mv.style.display !== 'none') return;
+  let fechou = false;
+  for (const id of ['popup-confirm-overlay', 'popup-lembrete']) {
+    const el = document.getElementById(id);
+    if (el) { el.remove(); fechou = true; break; }
+  }
+  if (!fechou) {
+    const abertos = [...document.querySelectorAll('.modal-bg.open, .side-panel-bg.open')];
+    if (abertos.length) {
+      abertos.sort((a, b) => (parseInt(getComputedStyle(a).zIndex) || 0) - (parseInt(getComputedStyle(b).zIndex) || 0));
+      const topo = abertos[abertos.length - 1];
+      const x = topo.querySelector('.modal-x');
+      if (x) x.click(); else topo.classList.remove('open');
+      fechou = true;
+    }
+  }
+  if (!fechou) {
+    const menu = document.getElementById('pcard-menu');
+    if (menu && menu.classList.contains('open')) { typeof closeCardMenu === 'function' ? closeCardMenu() : menu.classList.remove('open'); fechou = true; }
+    const pops = document.querySelectorAll('.nav-feedback-pop.open');
+    if (pops.length) { pops.forEach(p => p.classList.remove('open')); fechou = true; }
+  }
+  if (fechou) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+
 
 // ════════════════════════════════════════════════════════
 // NAVEGAÇÃO
@@ -2286,6 +2326,7 @@ function excluirCubHist(idx) {
   aplicarCubBase();
   updateCubDisplay();
   if (eraBase) {
+    _rascunhoSegueCub();
     cItems.forEach(it => { if (it.mode === 'calc' || it.mode === 'floreira') it.valorCalc = calcIV(it); });
     calcResumo();
   }
@@ -2304,6 +2345,7 @@ function salvarCUB() {
   updateCubDisplay();
   renderParams();
   document.getElementById('cub-edit').style.display = 'none';
+  _rascunhoSegueCub();
   cItems.forEach(it=>{ if(it.mode==='calc'||it.mode==='floreira') it.valorCalc = calcIV(it); });
   calcResumo(); save(); saveParamsToSupabase(); showToast('CUB atualizado — proposta recalibrada');
 }
@@ -2494,12 +2536,13 @@ function updateItemForm() {
 // ════════════════════════════════════════════════════════
 // ENGINE DE CÁLCULO
 // ════════════════════════════════════════════════════════
-function calcBase(area, faixas) {
+function calcBase(area, faixas, cub) {
+  if (cub == null) cub = S.cub;
   let rem=area, tot=0, prev=0;
   for (const f of faixas) {
     const top = f.max===null ? Infinity : f.max;
     const chunk = Math.max(0, Math.min(rem, top-prev));
-    tot += chunk * f.mult * S.cub;
+    tot += chunk * f.mult * cub;
     rem -= chunk; prev = top;
     if (rem <= 0) break;
   }
@@ -2507,21 +2550,70 @@ function calcBase(area, faixas) {
 }
 
 function calcIV(it) {
-  if (!S.cub) return S.mins[it.subK]||0;
+  /* cada item usa o CUB com que foi calculado (cubSnap); só muda pelo botão Atualizar CUB (17/11/2026) */
+  const cub = +it.cubSnap || S.cub;
+  if (!cub) return S.mins[it.subK]||0;
   const k=it.subK, area=+it.area||0, coef=+it.coef||0;
   let base=0;
-  if (k==='PAIS_FLOREIRA') base = area * S.cub;
-  else if (k==='PAIS_ARB') base = area * COEF_ARB * S.cub;
-  else if (k==='URB_CONCEITO') base = coef * S.cub;
+  if (k==='PAIS_FLOREIRA') base = area * cub;
+  else if (k==='PAIS_ARB') base = area * COEF_ARB * cub;
+  else if (k==='URB_CONCEITO') base = coef * cub;
   else if (it.mode==='livre'||it.mode==='esp') base = +it.vFix||0;
   else if (it.mode==='consul') base = (+it.horaVal||0)*(+it.horas||0);
   else if (it.mode==='exec_fixo') base = +it.vFix||0;
   else if (it.mode==='exec_pct') base = (+it.custoObra||0) * ((+it.pctHonor||0)/100);
   else if (it.mode==='exec_acomp') base = +it.valorEstimado||0;
-  else if (k.startsWith('PAIS')) base = calcBase(area, S.fP) * coef;
-  else if (k.startsWith('URB'))  base = calcBase(area, S.fU) * coef;
+  else if (k.startsWith('PAIS')) base = calcBase(area, S.fP, cub) * coef;
+  else if (k.startsWith('URB'))  base = calcBase(area, S.fU, cub) * coef;
   else base = +it.vFix||0;
   return Math.max(base, S.mins[k]||0);
+}
+
+/* ── CUB da proposta e número de CUBs (17/11/2026) ── */
+const _usaCub = it => it.mode==='calc' || it.mode==='floreira';
+function cubDaLista(lista) {
+  const comCub = (lista||[]).filter(i => +i.cubSnap > 0);
+  if (!comCub.length) return { val:S.cub, mes:S.cubMes, misto:false };
+  const v0 = +comCub[0].cubSnap;
+  return { val:v0, mes:comCub[0].cubMes || '', misto: comCub.some(i => Math.abs(+i.cubSnap - v0) > 0.005) };
+}
+function fmtCubs(valor, cub) {
+  if (!(cub > 0) || !(valor > 0)) return '';
+  return '≈ ' + (valor / cub).toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + ' CUB';
+}
+function _itensForaDoCub() {
+  if (!S.cub) return [];
+  return cItems.filter(it => Math.abs((+it.cubSnap || S.cub) - S.cub) > 0.005);
+}
+/* proposta nova (não é revisão): segue o CUB vigente ao mudar o CUB nos Parâmetros */
+function _rascunhoSegueCub() {
+  if (editingProposalId !== null) return;
+  cItems.forEach(it => { it.cubSnap = S.cub; it.cubMes = S.cubMes; });
+}
+function atualizarCubProposta() {
+  if (!S.cub) { showBlocked('Cadastre o CUB nos Parâmetros'); return; }
+  const alvo = _itensForaDoCub();
+  if (!alvo.length) { showToast('A proposta já está no CUB vigente'); return; }
+  const pc = cubDaLista(alvo);
+  const ajustados = alvo.filter(it => _usaCub(it) && it.valorProposto !== null);
+  const pct = pc.val > 0 ? (S.cub / pc.val - 1) * 100 : 0;
+  const pctTxt = (pct >= 0 ? '+' : '') + pct.toLocaleString('pt-BR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + '%';
+  const de = pc.misto ? 'CUBs diferentes nos itens' : `${fmt(pc.val)}${pc.mes ? ' (' + fmtM(pc.mes) + ')' : ''}`;
+  const msg = `CUB da proposta: ${de}<br>CUB vigente: ${fmt(S.cub)} (${fmtM(S.cubMes)})${pc.misto ? '' : ', ' + pctTxt}<br><br>`
+    + `Os itens calculados por CUB são refeitos com o valor vigente.`
+    + (ajustados.length ? ` Os valores ajustados à mão mudam na mesma proporção, arredondados de R$ 10 em R$ 10.` : '')
+    + ` Hora técnica, valor livre, execução, subcontratações e despesas não mudam.`;
+  abrirPopupConfirm('Atualizar CUB da proposta', msg, () => {
+    alvo.forEach(it => {
+      const antigo = +it.cubSnap || S.cub;
+      if (_usaCub(it) && it.valorProposto !== null && antigo > 0) {
+        it.valorProposto = Math.round(it.valorProposto * S.cub / antigo / 10) * 10;
+      }
+      it.cubSnap = S.cub; it.cubMes = S.cubMes;
+    });
+    calcResumo(); updateCardBars(); save();
+    showToast('Proposta atualizada para o CUB de ' + fmtM(S.cubMes));
+  }, 'Atualizar');
 }
 
 // Unidade de área — Urbanismo permite alternar ha/m² sem trocar o valor real
@@ -2773,9 +2865,45 @@ function editarItemCompleto(id) {
 // ════════════════════════════════════════════════════════
 let _evBase = 0; // valor calculado base do item em edição
 
+/* ── Total ao cliente da subcontratação: arredondar/editar (17/11/2026) ──
+   A diferença entra no ganho EXP; custo e bitributação não mudam. */
+let _evSubId = null;
+function _subTotalCalc(sc) { return (+sc.val||0) * (1 + (+sc.bit||0)/100 + (+sc.ret||0)/100); }
+function _subPago(sc) { return (+sc.val||0) * (1 + (+sc.bit||0)/100); }
+function _subPctEfetivo(sc) {
+  const v = +sc.val||0; if (!v) return sc.ret;
+  return (sc.ganhoEXP / v * 100).toLocaleString('pt-BR', { maximumFractionDigits:1 });
+}
+function _subRecalc(sc) {
+  if (sc.valManual != null) { sc.valComBit = +sc.valManual; sc.ganhoEXP = +sc.valManual - _subPago(sc); }
+  else { sc.ganhoEXP = (+sc.val||0) * (+sc.ret||0) / 100; sc.valComBit = _subTotalCalc(sc); }
+}
+function openEditSub(id) {
+  const sc = cSubs.find(s=>s.id===id); if(!sc) return;
+  _evSubId = id; evItemId = null;
+  _evBase = _subTotalCalc(sc);
+  document.getElementById('ev-titulo').textContent = 'Ajustar total ao cliente';
+  document.getElementById('ev-calc').value = fmt(_evBase);
+  document.getElementById('ev-novo').value = sc.valManual != null ? sc.valManual : Math.round(_evBase*100)/100;
+  document.getElementById('ev-just').value = sc.editJust || '';
+  document.getElementById('btn-restaurar').style.display = sc.valManual != null ? '' : 'none';
+  _evRenderAtalhos(_evBase);
+  _evPreview();
+  openM('modal-edit');
+}
+function _restaurarSub(id) {
+  const sc = cSubs.find(s=>s.id===id); if(!sc) return;
+  abrirPopupConfirm('Restaurar total', 'Voltar ao total calculado da subcontratação?', () => {
+    sc.valManual = null; sc.editJust = null; _subRecalc(sc);
+    renderSubList(); calcResumo(); save();
+    showToast('Total restaurado');
+  }, 'Restaurar');
+}
+
 function openEdit(id) {
   const it = cItems.find(i=>i.itemId===id); if(!it)return;
-  evItemId = id;
+  evItemId = id; _evSubId = null;
+  document.getElementById('ev-titulo').textContent = 'Ajustar valor do item';
   _evBase = (it.mode==='livre'||it.mode==='esp') ? (it.vFix||0) : it.valorCalc;
   document.getElementById('ev-calc').value = fmt(_evBase);
   document.getElementById('ev-novo').value = it.valorProposto!==null ? it.valorProposto : _evBase;
@@ -2827,6 +2955,18 @@ function _evPreview() {
 function confirmEdit() {
   const novo = +document.getElementById('ev-novo').value;
   if (novo < 0) { showBlocked('Valor inválido'); return; }
+  if (_evSubId !== null) {
+    const sc = cSubs.find(s=>s.id===_evSubId); if(!sc) return;
+    if (novo < _subPago(sc) - 0.005) { showBlocked('O total não pode ficar abaixo do pago ao contratado (' + fmt(_subPago(sc)) + ')'); return; }
+    const just = document.getElementById('ev-just').value.trim();
+    if (Math.abs(novo - _evBase) < 0.01) { sc.valManual = null; sc.editJust = null; }
+    else { sc.valManual = novo; sc.editJust = just || null; }
+    _subRecalc(sc);
+    _evSubId = null;
+    closeM('modal-edit'); renderSubList(); calcResumo(); save();
+    showToast('Total da subcontratação atualizado');
+    return;
+  }
   const it = cItems.find(i=>i.itemId===evItemId); if(!it)return;
   const just = document.getElementById('ev-just').value.trim();
   if (Math.abs(novo - _evBase) < 0.01) {
@@ -2842,6 +2982,13 @@ function confirmEdit() {
 }
 
 function restaurarValor() {
+  if (_evSubId !== null) {
+    const sc = cSubs.find(s=>s.id===_evSubId); _evSubId = null; if(!sc) return;
+    sc.valManual = null; sc.editJust = null; _subRecalc(sc);
+    closeM('modal-edit'); renderSubList(); calcResumo(); save();
+    showToast('Total restaurado');
+    return;
+  }
   const it = cItems.find(i=>i.itemId===evItemId); if(!it)return;
   it.valorProposto = null; it.editJust = null; it.editAt = null;
   closeM('modal-edit'); calcResumo(); save();
@@ -3036,7 +3183,7 @@ function addSubcontr() {
   const valComBit = val*(1+bit/100+ret/100);
   const editando = editingSubId !== null && cSubs.some(s=>s.id===editingSubId);
   if (editando) {
-    cSubs = cSubs.map(s => s.id===editingSubId ? { ...s, serv, emp, data, val, bit, ret, valComBit, ganhoEXP } : s);
+    cSubs = cSubs.map(s => s.id===editingSubId ? { ...s, serv, emp, data, val, bit, ret, valComBit, ganhoEXP, valManual:null, editJust:null } : s);
   } else {
     cSubs.push({ id:Date.now(), serv, emp, data, val, bit, ret, valComBit, ganhoEXP });
   }
@@ -3432,6 +3579,22 @@ function calcResumo() {
     </div>`;
   }
 
+  // Aviso de CUB: itens calculados com CUB diferente do vigente (proposta antiga ou mista)
+  const _cubProp = cubDaLista(cItems);
+  const _fora = _itensForaDoCub();
+  if (_fora.length) {
+    const pf = cubDaLista(_fora);
+    const pct = pf.val > 0 && !pf.misto ? (S.cub / pf.val - 1) * 100 : null;
+    const pctTxt = pct == null ? '' : ` · ${pct >= 0 ? '+' : ''}${pct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}%`;
+    const txtProp = pf.misto || _fora.length < cItems.length
+      ? 'Há itens com CUBs diferentes nesta proposta'
+      : `CUB desta proposta: <b>${fmt(pf.val)}</b>${pf.mes ? ' · ' + fmtM(pf.mes) : ''}`;
+    html += `<div class="cub-aviso">
+      <div class="f1">${txtProp}<br>CUB vigente: <b>${fmt(S.cub)}</b> · ${fmtM(S.cubMes)}${pctTxt}</div>
+      <button class="btn xs ghost" onclick="atualizarCubProposta()" style="white-space:nowrap;flex-shrink:0">Atualizar CUB</button>
+    </div>`;
+  }
+
   // GRUPOS POR NÚCLEO (Produtos / Serviços EXP)
   ['PAIS','URB','CONSUL','ESP'].forEach(nuc=>{
     const its = cItems.filter(i=>i.nucleo===nuc);
@@ -3444,6 +3607,7 @@ function calcResumo() {
         <div class="rg-stripe" style="background:${cor}"></div>
         <span class="rg-label">${NC[nuc]}</span>
         ${isLocked?`<span style="font-size:10px;color:var(--terracota);margin-left:6px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> travado</span>`:''}
+        <span class="rg-cubs" title="Subtotal ÷ CUB ${fmt(cubDaLista(its).val)}">${fmtCubs(stot, cubDaLista(its).val)}</span>
         <span class="rg-sub" style="color:${cor}">${fmt(stot)}</span>
       </div>
       ${its.map(it=>{
@@ -3499,11 +3663,14 @@ function calcResumo() {
       <div class="rg-head">
         <div class="rg-stripe" style="background:var(--terracota)"></div>
         <span class="rg-label">Subcontratações</span>
+        <span class="rg-cubs" title="Subtotal ÷ CUB ${fmt(_cubProp.val)}">${fmtCubs(totSub, _cubProp.val)}</span>
         <span class="rg-sub t-tc">${fmt(totSub)}</span>
       </div>
       ${cSubs.map(_sc=>{
         const sc={..._sc, serv:escHtml(_sc.serv), emp:escHtml(_sc.emp||'')};
         const bitVal = sc.val*(sc.bit/100);
+        const manual = sc.valManual != null;
+        const retTxt = manual ? _subPctEfetivo(sc) : sc.ret;
         return`<div style="border:1px solid var(--cinza);border-top:none;background:#fff;padding:8px 11px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
             <div style="min-width:0;flex:1">
@@ -3513,11 +3680,15 @@ function calcResumo() {
                 <span class="t-dica">Custo cotado</span><span style="font-variant-numeric:lining-nums tabular-nums">${fmt(sc.val)}</span>
                 <span class="t-tc">+ Bitrib. est. ${sc.bit}%</span><span style="font-variant-numeric:lining-nums tabular-nums;color:var(--terracota)">+ ${fmt(bitVal)}</span>
                 <span style="color:#8A867E;padding-top:2px">→ Pago ao contratado</span><span style="font-variant-numeric:lining-nums tabular-nums;padding-top:2px">${fmt(sc.val+bitVal)}</span>
-                <span class="t-vd">+ Ganho EXP ${sc.ret}%</span><span style="font-variant-numeric:lining-nums tabular-nums;color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
-                <span style="color:#5F5B54;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente</span><span style="font-variant-numeric:lining-nums tabular-nums;font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${fmt(sc.valComBit)}</span>
+                <span class="t-vd">+ Ganho EXP ${retTxt}%</span><span style="font-variant-numeric:lining-nums tabular-nums;color:var(--verde);font-weight:600">+ ${fmt(sc.ganhoEXP)}</span>
+                <span style="color:#5F5B54;font-weight:600;border-top:1px solid var(--cinza2);padding-top:3px">Total ao cliente${manual?' <span style="font-size:9px;font-weight:400;color:#8A867E">ajustado</span>':''}</span><span style="font-variant-numeric:lining-nums tabular-nums;font-weight:700;border-top:1px solid var(--cinza2);padding-top:3px">${manual?`<span style="font-size:9px;font-weight:400;text-decoration:line-through;color:#A9A59C;margin-right:6px">${fmt(_subTotalCalc(sc))}</span>`:''}${fmt(sc.valComBit)}</span>
               </div>
             </div>
-            <button class="btn xs danger" onclick="remSub(${sc.id})" style="flex-shrink:0;margin-top:2px">✕</button>
+            <div style="display:flex;gap:3px;flex-shrink:0;margin-top:2px">
+              <button class="btn xs ghost" onclick="openEditSub(${sc.id})" title="Arredondar ou editar o total ao cliente">R$</button>
+              ${manual?`<button class="btn xs ghost t-tc" onclick="_restaurarSub(${sc.id})" title="Restaurar total calculado">↺</button>`:''}
+              <button class="btn xs danger" onclick="remSub(${sc.id})">✕</button>
+            </div>
           </div>
         </div>`;
       }).join('')}
@@ -3597,7 +3768,10 @@ function calcResumo() {
   // TOTAL
   html+=`<div class="total-bar" style="margin-top:8px">
     <div class="total-lbl">Valor total da proposta</div>
-    <div class="total-val">${fmt(total)}</div>
+    <div>
+      <div class="total-val">${fmt(total)}</div>
+      ${_cubProp.val > 0 ? `<div class="total-cubs">${fmtCubs(total, _cubProp.val)} · CUB ${fmt(_cubProp.val)}${_cubProp.mes ? ' (' + fmtM(_cubProp.mes) + ')' : ''}</div>` : ''}
+    </div>
   </div>`;
 
   if (desconto>0.01) {
@@ -3817,6 +3991,7 @@ function sanitizeFilename(s) {
 // PDF da proposta (uso interno). Hierarquia: identificação → base de cálculo → resumo →
 // detalhe por produto → repasse/terceiros/despesas → etapas por produto → ganho EXP.
 const PROPOSTA_VALIDADE_DIAS = 90;   // mesmo prazo que o CRM usa para marcar proposta expirada
+let _pdfVersaoExata = false;
 function exportarPDF() {
   if (!cItems.length && !cSubs.length) { showBlocked('Adicione serviços antes de exportar'); return; }
 
@@ -3833,7 +4008,7 @@ function exportarPDF() {
   let propCode = null, version = 0;
   if (editingProposalId !== null) {
     const orig = S.proposals.find(p => String(p.id) === String(editingProposalId));
-    if (orig) { propCode = orig.propCode; version = (orig.version||0)+1; }
+    if (orig) { propCode = orig.propCode; version = _pdfVersaoExata ? (orig.version||0) : (orig.version||0)+1; }
   } else {
     const matches = S.proposals.filter(p=>p.projeto===proj && p.cliente===cliente);
     const match = matches.sort((a,b)=>(b.version||0)-(a.version||0))[0];
@@ -4039,7 +4214,7 @@ function exportarPDF() {
       if (info) txt(info, M + 3, y + 4, { size:7.5, cor:CL.sec });
       const partes = [`Custo ${fmt(sc.val)}`];
       if (sc.bit > 0) partes.push(`bitributação ${num(sc.bit,2)}% ${fmt(sc.val * sc.bit / 100)}`);
-      if (sc.ganhoEXP > 0) partes.push(`ganho EXP ${num(sc.ret,2)}% ${fmt(sc.ganhoEXP)}`);
+      if (sc.ganhoEXP > 0) partes.push(`ganho EXP ${sc.valManual != null && +sc.val ? num(sc.ganhoEXP / sc.val * 100, 1) : num(sc.ret,2)}% ${fmt(sc.ganhoEXP)}`);
       txt(partes.join('   +   '), M + 3, y + 8, { size:7, cor:CL.gray, maxWidth: TW - 6 });
       linha(y + 10.5); y += 15;
     });
@@ -4432,6 +4607,7 @@ function abrirProposta(id) {
 function carregarPropostaParaRevisao(p) {
   // Carrega os dados da proposta no formulário de cálculo
   cItems  = JSON.parse(JSON.stringify(p.items||[]));
+  cItems.forEach(it => { if (!(+it.cubSnap > 0) && +p.cubSnap > 0) { it.cubSnap = +p.cubSnap; it.cubMes = p.cubMes || ''; } });
   cSubs   = JSON.parse(JSON.stringify(p.subs||[]));
   cDesps  = JSON.parse(JSON.stringify(p.desps||[])).map(d=>({confirmada:true,...d}));
   editingProposalId = p.id;
@@ -4482,9 +4658,11 @@ function exportarPDFFromProposal(p) {
   const origBit = document.getElementById('desp-bit').value;
 
   cItems = JSON.parse(JSON.stringify(p.items||[]));
+  cItems.forEach(it => { if (!(+it.cubSnap > 0) && +p.cubSnap > 0) { it.cubSnap = +p.cubSnap; it.cubMes = p.cubMes || ''; } });
   cSubs  = JSON.parse(JSON.stringify(p.subs||[]));
   cDesps = JSON.parse(JSON.stringify(p.desps||[])).map(d=>({confirmada:true,...d}));
-  cRepasse = p.repasse ? { ...p.repasse } : null;
+  /* repasse é uma lista: null quebrava getRepasseCalc (cRepasse.length) e o PDF não saía (17/11/2026) */
+  cRepasse = Array.isArray(p.repasse) ? JSON.parse(JSON.stringify(p.repasse)) : (p.repasse ? [{ ...p.repasse }] : []);
   editingProposalId = p.id; // para que exportarPDF use o propCode/version corretos
   document.getElementById('f-cliente').value = p.cliente||'';
   document.getElementById('f-projeto').value = p.projeto||'';
@@ -4496,9 +4674,14 @@ function exportarPDFFromProposal(p) {
   document.getElementById('f-obs').value     = p.obs||'';
   if (p.despBit!==undefined) document.getElementById('desp-bit').value = p.despBit;
 
+  _pdfVersaoExata = true;   // PDF de uma versão salva: usa a versão dela (não a próxima)
   try {
     exportarPDF();
+  } catch (e) {
+    console.error('[PDF] falha ao gerar', e);
+    showBlocked('Não foi possível gerar o PDF: ' + (e && e.message || e));
   } finally {
+    _pdfVersaoExata = false;
     cItems = origItems; cSubs = origSubs; cDesps = origDesps; cRepasse = origRepasse;
     editingProposalId = origEditing;
     origFields.forEach(f=>{ document.getElementById(f.id).value = f.val; });
@@ -5082,7 +5265,7 @@ async function _enviarLembrete() {
 <style>
   #exp-timer-widget{left:calc(72px + (66px / 2) - 23px)!important;bottom:30px!important;z-index:9998!important}
 </style>
-<script src="shared/lists-panel.js?v=2026-10-25"></script>
+<script src="shared/lists-panel.js?v=2026-11-17b"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>
 <script>
 ExpNav.init({ module: 'calc' });

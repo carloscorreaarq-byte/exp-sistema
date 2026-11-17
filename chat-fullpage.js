@@ -4909,7 +4909,7 @@
     /* tarefas / listas */
     toggleTasksPanel, checkTask, addTask, openAssignDrop, taskDescInput, toggleDelegadas, _assignTo: window._assignTo,
     editTask, saveTaskEdit, cancelTaskEdit, toggleRecentes, restoreTask, editCkItem,
-    switchListsTab, selectCkByIndex, fpToggleCkItem, fpAddCkItem, fpAddCkItemBlur,
+    switchListsTab, selectCkByIndex, fpToggleCkItem, fpAddCkItem, fpAddCkItemBlur, fotosCkItem,
     get _listsActiveTab() { return _listsActiveTab; },
     /* prioridade */
     checkPrio,
@@ -5654,6 +5654,7 @@
       }
       $items.innerHTML = html;
       _renderCkFooter(tipo, ck);
+      _fpMarcarFotos($items);
 
     } else if (tipo === 'etapa') {
       var its    = (ck.checklist_etapa_exec_item || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
@@ -5672,10 +5673,12 @@
       }
       $items.innerHTML = html;
       _renderCkFooter(tipo, ck);
+      _fpMarcarFotos($items);
 
     } else if (tipo === 'revisao') {
       var pranchas = (ck.pranchas || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
       pranchas.forEach(function(pr) {
+        if (pr.nome === 'Ajuste geral' && !(pr.tarefas_revisao || []).length) return;   // vazio: só o revisor vê, na Gestão
         html += '<div class="fp-ck-secao">' + escHtml(pr.nome || '') + '</div>';
         (pr.tarefas_revisao || []).forEach(function(t){ html += _fpCkItemHtml(t, tipo, ck.id); });
       });
@@ -5754,6 +5757,21 @@
   }
 
 
+  /* Fotos nos itens de checklist (17/11/2026) — janela de shared/tarefa-fotos.js */
+  function _fpFotoBtn(tipo, id) {
+    var ctx = tipo === 'abertos' ? 'checklist_tarefa_item' : tipo === 'etapa' ? 'checklist_etapa_exec_item' : null;
+    if (!ctx) return '';
+    return '<button type="button" class="fp-ck-foto" data-ctx="' + ctx + '" data-id="' + id + '" title="Fotos do item" onclick="fpChat.fotosCkItem(this)">' + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' + '<span class="fp-ck-foto-n"></span></button>';
+  }
+  function _fpFotoOpts() { return { sb: sb, usuarioId: user && (user.app_user_id || user.id) }; }
+  function fotosCkItem(btn) {
+    if (!window.ExpTarefaFotos || !window.ExpTarefaFotos.abrirItem) { if (typeof toast === 'function') toast('As fotos não carregaram. Atualize a página.'); return; }
+    window.ExpTarefaFotos.abrirItem(btn, _fpFotoOpts());
+  }
+  function _fpMarcarFotos(el) {
+    if (el && window.ExpTarefaFotos && window.ExpTarefaFotos.marcarItens) window.ExpTarefaFotos.marcarItens(el, _fpFotoOpts());
+  }
+
   function _fpCkItemHtml(it, tipo, ckId) {
     var checked = tipo === 'revisao' ? it.concluida : it.concluido;
     var id  = escHtml(String(it.id));
@@ -5766,6 +5784,7 @@
       '<input type="checkbox" class="fp-ck-cb"' + (checked ? ' checked' : '') +
       ' onchange="fpChat.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
+      _fpFotoBtn(tipo, id) +
       editBtn +
       '</div>';
   }
@@ -5853,6 +5872,9 @@
       : { concluido: checked, concluido_por: checked ? uid : null, concluido_por_nome: checked ? (user.nome||'') : null, concluido_em: checked ? now : null };
     sb.from(tbl).update(upd).eq('id', itemId).then(function(r) {
       if (r.error) return;
+      if (tipo !== 'revisao' && window.ExpTarefaFotos && window.ExpTarefaFotos.sincronizarItem) {
+        window.ExpTarefaFotos.sincronizarItem(tipo === 'abertos' ? 'checklist_tarefa_item' : 'checklist_etapa_exec_item', itemId, checked, _fpFotoOpts());
+      }
       // update local cache
       var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
       list.forEach(function(ck) {
