@@ -48,7 +48,7 @@ Ordem: primeiro o que tem mais impacto, foi mais citado e é mais simples. Por �
     - A cor não fica presa ao projeto: serve só para diferenciar os projetos na visão da semana.
     - Vale nas horas, no calendário semanal e no relatório.
 14. **Card do projeto:** coordenador, localização e CPF/CNPJ, mais "atualizada em" na etapa.
-15. **Autocompletar nas horas**, com as descrições já lançadas.
+15. ~~Autocompletar nas horas~~ — substituído (17/11/2026): a descrição manual saiu do lançamento; projeto usa só atividades em tags e, fora de projeto, a subcategoria virou tags de um clique com dica ao passar o mouse e a mais usada pré-marcada.
 
 ## Fase 4 — Maior complexidade (depois)
 16. Fluxo de projetos por pessoa, em blocos e calendário (substituir o Excel).

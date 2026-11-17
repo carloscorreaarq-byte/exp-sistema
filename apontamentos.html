@@ -1363,8 +1363,10 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
             </div>
 
             <div class="apo-field" id="apo-category-wrap" style="display:none">
-              <label for="apo-category">Subcategoria</label>
-              <select id="apo-category"></select>
+              <label>Subcategoria</label>
+              <!-- Tags de um clique (17/11/2026); o select fica oculto e continua guardando o valor -->
+              <div class="apo-chips" id="apo-cat-chips" role="radiogroup" aria-label="Subcategoria"></div>
+              <select id="apo-category" hidden></select>
             </div>
 
             <div id="apo-project-wrap">
@@ -1966,6 +1968,23 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
   var SUBTIPOS = {
     organizacao: ['Organização de demandas','Capacitação','Reunião Semanal','Feedback','Reunião Interna'],
     sociedade:   ['Marketing','Prospecção','Administrativo','Jurídico','Reunião Societária','Consultoria','RH e Pessoas','Gestão','Outros'],
+  };
+  /* O que cada subcategoria junta (balão ao passar o mouse nas tags) */
+  var SUBTIPO_DICA = {
+    'Organização de demandas': 'planejamento da semana, organizar tarefas e arquivos, e-mails',
+    'Capacitação': 'cursos, treinamentos, estudo de ferramentas',
+    'Reunião Semanal': 'reunião semanal da equipe',
+    'Feedback': 'conversas de feedback e acompanhamento',
+    'Reunião Interna': 'outras reuniões internas fora de projeto',
+    'Marketing': 'ADIT, Complan, apresentações EXP, assessoria de imprensa, marca, redes sociais',
+    'Prospecção': 'propostas, apresentação de orçamento, contatos comerciais',
+    'Administrativo': 'contratos, certificações, financeiro, documentos da empresa',
+    'Jurídico': 'questões jurídicas e acompanhamento com advogados',
+    'Reunião Societária': 'reuniões entre sócios',
+    'Consultoria': 'consultorias externas e mentorias',
+    'RH e Pessoas': 'contratação, contratos de equipe, pesquisa de clima, avaliações',
+    'Gestão': 'gestão da empresa, indicadores, planejamento',
+    'Outros': 'o que não se encaixa nas demais'
   };
   var TIPO_PT = { projeto:'Projeto', organizacao:'Org. interna', sociedade:'Societária' };
   /* Atividades padrão de projeto (montadas a partir das subtarefas/descrições mais usadas — 27/10/2026).
@@ -4315,9 +4334,33 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
       document.getElementById('apo-category').innerHTML = (SUBTIPOS[type]||[]).map(function(s){
         return '<option value="'+esc(s)+'">'+esc(s)+'</option>';
       }).join('')||'<option value="">—</option>';
+      AP.catTocada = false;
+      renderCatChips();
+      preMarcarSubtipo(type);
     }
     renderSubtarefasSuggestions().catch(function(){});
     updateClassUI();
+  }
+
+  /* Subcategoria em tags (17/11/2026): um clique marca; o select oculto guarda o valor */
+  function renderCatChips() {
+    var box = document.getElementById('apo-cat-chips'), cat = document.getElementById('apo-category');
+    if (!box || !cat) return;
+    box.innerHTML = Array.prototype.map.call(cat.options, function(o){
+      if (!o.value) return '';
+      var on = o.value === cat.value;
+      return '<button type="button" class="apo-chip'+(on?' on':'')+'" role="radio" aria-checked="'+on+'" data-cat="'+esc(o.value)+'" data-dica-t="'+esc(o.value)+'" data-dica="'+esc(SUBTIPO_DICA[o.value]||'')+'">'+esc(o.value)+'</button>';
+    }).join('');
+  }
+  /* Ao trocar para Org. interna ou Sociedade: já marca a subcategoria que a pessoa mais usa */
+  function preMarcarSubtipo(type) {
+    if (AP.editHoraId) return;
+    carregarHistAtiv().then(function(hist){
+      if (AP.catTocada || AP.editHoraId || document.getElementById('apo-type').value !== type) return;
+      var cat = document.getElementById('apo-category');
+      var v = _maisFrequente((hist||[]).filter(function(h){ return h.tipo === type; }).map(function(h){ return h.subtipo; }));
+      if (v && Array.prototype.some.call(cat.options, function(o){ return o.value === v; })) { cat.value = v; renderCatChips(); }
+    }).catch(function(){});
   }
 
   function getStageName() {
@@ -4883,6 +4926,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         cat.insertAdjacentHTML('beforeend', '<option value="'+esc(l.subtipo)+'">'+esc(l.subtipo)+'</option>');
       }
       cat.value = l.subtipo || '';
+      AP.catTocada = true; renderCatChips();
     }
     document.getElementById('apo-desc').value = l.descricao || '';
     updateDuration();
@@ -4918,6 +4962,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         cat.insertAdjacentHTML('beforeend', '<option value="'+esc(l.subtipo)+'">'+esc(l.subtipo)+'</option>');
       }
       cat.value = l.subtipo || '';
+      AP.catTocada = true; renderCatChips();
     }
     document.getElementById('apo-desc').value = l.descricao || '';
     setFb('apo-feedback','Preenchido com o último lançamento. Confira o dia e o horário e registre.','ok');
@@ -5192,7 +5237,8 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     if (AP.hist) return AP.hist;
     var q = function(sel){ return window.sb.from('horas_lancadas').select(sel).eq('usuario_id', uid())
       .order('data_lancamento', { ascending:false }).order('hora_fim', { ascending:false }).limit(400); };
-    var r = await q('produto_id,etapa_id,descricao,atividade');
+    var r = await q('produto_id,etapa_id,descricao,atividade,tipo,subtipo');
+    if (r.error) r = await q('produto_id,etapa_id,descricao,tipo,subtipo');
     if (r.error) r = await q('produto_id,etapa_id,descricao');
     AP.hist = r.data || [];
     return AP.hist;
@@ -5285,6 +5331,7 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         cat.insertAdjacentHTML('beforeend', '<option value="'+esc(h.subtipo)+'">'+esc(h.subtipo)+'</option>');
       }
       cat.value = h.subtipo || '';
+      AP.catTocada = true; renderCatChips();
     }
     document.querySelectorAll('.apo-recente').forEach(function(b){ b.classList.toggle('on', b.dataset.rec === String(i)); });
     setFb('apo-feedback','','');
@@ -6172,6 +6219,13 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     document.getElementById('apo-ativ-chips').addEventListener('click', function(e){
       var b = e.target.closest('[data-ativ]'); if (b) setAtividade(b.dataset.ativ);
     });
+    document.getElementById('apo-cat-chips').addEventListener('click', function(e){
+      var b = e.target.closest('[data-cat]'); if (!b) return;
+      var cat = document.getElementById('apo-category');
+      cat.value = b.dataset.cat; AP.catTocada = true;
+      renderCatChips();
+      cat.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     document.getElementById('apo-ajuda-btn').addEventListener('click', function(e){
       e.preventDefault(); e.stopPropagation();
       var pop = document.getElementById('apo-ajuda-pop');
@@ -6202,8 +6256,10 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
     (function(){
       var tip = null;
       function esconder(){ if (tip) tip.style.display = 'none'; }
-      document.getElementById('apo-ativ-chips').addEventListener('mouseover', function(e){
-        var b = e.target.closest('[data-dica]'); if (!b) return;
+      ['apo-ativ-chips', 'apo-cat-chips'].forEach(function(gid){
+      var grupo = document.getElementById(gid); if (!grupo) return;
+      grupo.addEventListener('mouseover', function(e){
+        var b = e.target.closest('[data-dica]'); if (!b || !b.dataset.dica) return;
         if (!tip) { tip = document.createElement('div'); tip.className = 'apo-dica'; document.body.appendChild(tip); }
         tip.innerHTML = '<b>'+esc(b.dataset.dicaT||'')+'</b>'+esc(b.dataset.dica||'');
         tip.style.display = 'block';
@@ -6211,8 +6267,9 @@ body.apo-modo-leitura .lanc-item.lanc-abre{cursor:default}
         tip.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
         tip.style.top = (r.top - h - 6 < 8 ? r.bottom + 6 : r.top - h - 6) + 'px';
       });
-      document.getElementById('apo-ativ-chips').addEventListener('mouseleave', esconder);
-      document.getElementById('apo-ativ-chips').addEventListener('mouseout', function(e){ if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('[data-dica]')) esconder(); });
+      grupo.addEventListener('mouseleave', esconder);
+      grupo.addEventListener('mouseout', function(e){ if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('[data-dica]')) esconder(); });
+      });
     })();
     document.getElementById('apo-costs-form').addEventListener('click', onEvTagClick);
     document.getElementById('apo-recentes').addEventListener('click', function(e){
