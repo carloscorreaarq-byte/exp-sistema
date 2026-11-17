@@ -171,11 +171,32 @@
     return esq.slice(0, -1).concat(dir);
   }
 
+  /* Mantém a camada de marcações exatamente sobre a imagem (mesma posição e tamanho).
+     Sem isso, se o contêiner for mais largo que a imagem, as marcações escorregam para os lados. */
+  function seguir(img, mk) {
+    if (!img || !mk || img._xmSeguir) return;
+    img._xmSeguir = true;
+    var f = function () {
+      if (!img.offsetWidth) return;
+      mk.style.left = img.offsetLeft + 'px';
+      mk.style.top = img.offsetTop + 'px';
+      mk.style.width = img.offsetWidth + 'px';
+      mk.style.height = img.offsetHeight + 'px';
+      mk.style.right = 'auto';
+      mk.style.bottom = 'auto';
+    };
+    if (window.ResizeObserver) new ResizeObserver(f).observe(img);
+    img.addEventListener('load', f);
+    window.addEventListener('resize', f);
+    f();
+  }
+
   /* Liga o lápis a um visualizador.
      o: { canvas, img, marcas, ativo:()=>bool, fim:(pontos, cor)=>void } — elementos ou funções que os devolvem */
   function ligarLapis(o) {
     var el = function (v) { return typeof v === 'function' ? v() : v; };
     var cv = el(o.canvas);
+    seguir(el(o.img), el(o.marcas));
     if (!cv || cv._xmLapis) return;
     cv._xmLapis = true;
     var tr = null;
@@ -268,6 +289,6 @@
     definirCor: definirCor, cor: function () { return corLapis; },
     tracosSvg: tracosSvg, marcaHtml: marcaHtml, botaoApagar: botaoApagar, alvoApagavel: alvoApagavel,
     ultimaMinha: ultimaMinha, ehDesfazer: ehDesfazer,
-    ligarLapis: ligarLapis, novoTraco: novoTraco, simplificar: simplificar
+    ligarLapis: ligarLapis, seguir: seguir, novoTraco: novoTraco, simplificar: simplificar
   };
 })();
