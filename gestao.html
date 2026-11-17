@@ -3913,13 +3913,14 @@ span.tarefa-prio { display: inline-block; cursor: default; }
           </div>
         </div>
 
-        <div class="fgroup mb8" id="lf-subtarefas-wrap">
+        <div class="fgroup mb8" id="lf-subtarefas-wrap" style="display:none">
           <label>Subtarefas (opcional)</label>
           <input type="text" id="lf-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao" oninput="renderSugestoesSubtarefasGestao('novo')" onfocus="renderSugestoesSubtarefasGestao('novo')">
           <div id="lf-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
         </div>
 
-        <div class="fgroup mb14">
+        <!-- Descrição manual retirada das horas (17/11/2026): campo oculto, o código segue lendo vazio -->
+        <div class="fgroup mb14" hidden>
           <label>Descrição (opcional)</label>
           <input type="text" id="lf-desc" placeholder="O que foi feito...">
         </div>
@@ -4846,12 +4847,13 @@ span.tarefa-prio { display: inline-block; cursor: default; }
         <label>Etapa</label>
         <select id="el-etapa" onchange="renderSugestoesSubtarefasGestao('edicao')"></select>
       </div>
-      <div class="fgroup mb8" id="el-subtarefas-wrap">
+      <div class="fgroup mb8" id="el-subtarefas-wrap" style="display:none">
         <label>Subtarefas (opcional)</label>
         <input type="text" id="el-subtarefas" placeholder="Ex: lancamento de projeto, montagem de apresentacao" oninput="renderSugestoesSubtarefasGestao('edicao')" onfocus="renderSugestoesSubtarefasGestao('edicao')">
         <div id="el-subtarefas-sugestoes" style="display:none;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
-      <div class="fgroup">
+      <!-- Oculto (17/11/2026): preserva a descrição de lançamentos antigos ao editar -->
+      <div class="fgroup" hidden>
         <label>Descrição</label>
         <input type="text" id="el-desc" placeholder="O que foi feito...">
       </div>
@@ -8191,7 +8193,7 @@ function atualizarFormLancamento() {
   const tipo = document.getElementById('lf-tipo').value;
   document.getElementById('lf-subtipo-wrap').style.display = tipo !== 'projeto' ? 'block' : 'none';
   document.getElementById('lf-projeto-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
-  document.getElementById('lf-subtarefas-wrap').style.display = tipo === 'projeto' ? 'block' : 'none';
+  document.getElementById('lf-subtarefas-wrap').style.display = 'none';   // subtarefa livre retirada das horas (17/11/2026)
   if (tipo !== 'projeto') {
     document.getElementById('lf-subtipo').innerHTML =
       SUBTIPOS[tipo].map(s => `<option value="${s}">${s}</option>`).join('');
@@ -9369,7 +9371,7 @@ async function abrirEditarLancamento(id) {
 
   if (lanc.tipo === 'projeto') {
     document.getElementById('el-subtipo-wrap').style.display = 'none';
-    document.getElementById('el-subtarefas-wrap').style.display = 'block';
+    document.getElementById('el-subtarefas-wrap').style.display = 'none';   // oculto (17/11/2026); preserva as antigas ao editar
     const prods = (G._prodsGestao || G.todosProdutos || []).filter(p => p.status === 'ativo');
     const selProd = document.getElementById('el-produto');
     selProd.innerHTML = '<option value="">Selecionar produto...</option>' +
@@ -9412,7 +9414,7 @@ function elOnTipoChange() {
   const isProjeto = tipo === 'projeto';
   document.getElementById('el-subtipo-wrap').style.display = isProjeto ? 'none' : 'block';
   document.getElementById('el-produto-wrap').style.display = isProjeto ? 'block' : 'none';
-  document.getElementById('el-subtarefas-wrap').style.display = isProjeto ? 'block' : 'none';
+  document.getElementById('el-subtarefas-wrap').style.display = 'none';   // oculto (17/11/2026)
   if (!isProjeto) {
     document.getElementById('el-etapa-wrap').style.display = 'none';
     document.getElementById('el-subtarefas').value = '';

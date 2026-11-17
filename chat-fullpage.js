@@ -2187,51 +2187,35 @@
     return { user_id:user.auth_id, nome:user.nome, iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(), cor:user.cor||'#4D865C', status:status };
   }
 
-  /* Faixa "Online agora" — renderiza quem está presente, exceto o próprio usuário.
-     Inclui online/foco/ausente (todos conectados), cada um com sua bolinha. */
+  /* Faixa de pessoas (17/11/2026, mesma lógica do chat lateral): toda a equipe lado a lado,
+     quem está conectado primeiro (online, foco, ausente) com a bolinha; offline em cinza e
+     semitransparente. Clicar abre a conversa direta (substitui o botão "Nova mensagem"). */
   function renderPresenceBar() {
     var $bar = document.getElementById('fp-presence-bar');
     if (!$bar || !user) return;
-    var rank = { online:0, foco:1, ausente:2 };
-    var statusLabel = { online:'Online', foco:'Foco', ausente:'Ausente' };
-
-    var others = Object.keys(onlinePresence)
-      .filter(function(uid){ return uid && uid !== user.auth_id; })
-      .map(function(uid){
-        var p   = onlinePresence[uid] || {};
-        var mem = allMembers.find(function(m){ return m.auth_id === uid; });
-        var nome = (mem && mem.nome) || p.nome || '';
-        return {
-          uid: uid,
-          nome: nome,
-          iniciais: (((mem && mem.iniciais) || p.iniciais || nome.substring(0,2)) || '?').toUpperCase(),
-          cor: (mem && mem.cor) || p.cor || '#4D865C',
-          avatar_url: (mem && mem.avatar_url) || null,
-          status: p.status || 'online'
-        };
+    var ordem = { online:0, foco:1, ausente:2, offline:3 };
+    var rot   = { online:'Online', foco:'Foco', ausente:'Ausente', offline:'Offline' };
+    var lista = (allMembers || [])
+      .filter(function(m){ return m.auth_id && m.auth_id !== user.auth_id && m.ativo !== false; })
+      .map(function(m){
+        var p = onlinePresence[m.auth_id];
+        var st = p ? (p.status || 'online') : 'offline';
+        if (!ordem.hasOwnProperty(st)) st = 'online';
+        return { uid: m.auth_id, nome: m.nome || '', iniciais: String(m.iniciais || (m.nome || '?').substring(0,2)).toUpperCase(),
+                 cor: m.cor || '#4D865C', avatar_url: m.avatar_url || null, status: st };
       });
-
-    others.sort(function(a,b){
-      var r = (rank[a.status]||9) - (rank[b.status]||9);
-      return r !== 0 ? r : a.nome.localeCompare(b.nome);
-    });
-
-    if (!others.length) { $bar.className = ''; $bar.innerHTML = ''; return; }
-
-    var avs = others.map(function(o){
+    lista.sort(function(a,b){ return (ordem[a.status] - ordem[b.status]) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+    if (!lista.length) { $bar.className = ''; $bar.innerHTML = ''; return; }
+    $bar.className = 'has-online';
+    $bar.innerHTML = '<div class="fp-presence-avs">' + lista.map(function(o){
       var inner = o.avatar_url ? '<img src="'+escHtml(o.avatar_url)+'" alt="">' : escHtml(o.iniciais||'?');
       var bg    = o.avatar_url ? '' : 'background:'+escHtml(o.cor)+';';
-      return '<div class="fp-presence-av" style="'+bg+'" title="'+escHtml(o.nome)+' · '+(statusLabel[o.status]||'Online')+'"'+
-        ' onclick="fpChat.openDMWith(\''+escHtml(o.uid)+'\')">'+
-        inner +
-        '<span class="fp-presence-dot '+escHtml(o.status)+'"></span>'+
-      '</div>';
-    }).join('');
-
-    $bar.className = 'has-online';
-    $bar.innerHTML =
-      '<div class="fp-presence-label">Online agora <span class="fp-presence-count">· '+others.length+'</span></div>'+
-      '<div class="fp-presence-avs">'+avs+'</div>';
+      var off   = o.status === 'offline';
+      return '<button type="button" class="fp-presence-av'+(off?' off':'')+'" style="'+bg+'" title="'+escHtml(o.nome)+' · '+rot[o.status]+'"'+
+        ' onclick="fpChat.openDMWith(\''+escHtml(o.uid)+'\')">'+ inner +
+        (off ? '' : '<span class="fp-presence-dot '+escHtml(o.status)+'"></span>') +
+      '</button>';
+    }).join('') + '</div>';
   }
 
   /* Abre (ou cria) o DM direto com a pessoa clicada na faixa de presença */

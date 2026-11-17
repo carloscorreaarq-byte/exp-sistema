@@ -310,13 +310,12 @@ body {
 [data-theme="dark"] .fp-toggle-btn { border-color: var(--fp-dk-divider); color: #6B6860; }
 [data-theme="dark"] .fp-toggle-btn.active { background: var(--ca-mid); border-color: var(--ca); color: var(--ca); }
 
-/* ── Faixa "Online agora" — presença ao vivo, fixa acima da lista ── */
+/* ── Faixa de pessoas — toda a equipe lado a lado; offline em cinza (17/11/2026) ── */
 #fp-presence-bar {
-  display: none;                 /* JS exibe só quando há alguém online */
+  display: none;                 /* JS exibe quando a equipe carrega */
   flex-shrink: 0;
-  padding: 10px 14px;
+  padding: 9px 14px;
   border-bottom: 1px solid var(--cinza2);
-  background: rgba(var(--ca-rgb-vals), .06);
 }
 #fp-presence-bar.has-online { display: block; }
 [data-theme="dark"] #fp-presence-bar { border-bottom-color: var(--fp-dk-divider); }
@@ -328,7 +327,8 @@ body {
 }
 [data-theme="dark"] .fp-presence-label { color: #6B6860; }
 .fp-presence-count { font-family: var(--font-ui); font-variant-numeric: lining-nums tabular-nums; color: var(--ca); letter-spacing: 0; }
-.fp-presence-avs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 6px; }
+.fp-presence-avs { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 2px 2px 0; }
+.fp-presence-avs::-webkit-scrollbar { display: none; }
 .fp-presence-av {
   position: relative; flex-shrink: 0;
   width: 30px; height: 30px; border-radius: 50%;
@@ -336,8 +336,11 @@ body {
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-ui); font-variant-numeric: lining-nums tabular-nums; font-size: calc(11px * var(--fp-fz, 1));
   font-weight: 700; color: #fff;
-  cursor: pointer; transition: transform .12s;
+  cursor: pointer; transition: transform .12s, opacity .12s, filter .12s;
+  padding: 0; overflow: visible;
 }
+.fp-presence-av.off { filter: grayscale(1); opacity: .38; }
+.fp-presence-av.off:hover { filter: none; opacity: 1; }
 [data-theme="dark"] .fp-presence-av { border-color: var(--fp-dk-surface); }
 .fp-presence-av:hover { transform: translateY(-2px); z-index: 20; }
 .fp-presence-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
@@ -2124,10 +2127,6 @@ html[data-theme="dark"][data-chat-mono="1"] #fp-typing { color: rgba(255,255,255
             <div id="fp-notif-status" class="fp-notif-box" onclick="event.stopPropagation()"></div>
           </div>
         </div>
-        <!-- Nova mensagem -->
-        <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-new-dm-btn" onclick="fpChat.openNewDM(event)" title="Nova mensagem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
         <!-- Fixar projetos -->
         <button class="fp-sb-icon-btn exp-sb-icon-btn" id="fp-pin-btn" onclick="fpChat.openPinPop(event)" title="Fixar projetos">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg>
@@ -2206,7 +2205,6 @@ html[data-theme="dark"][data-chat-mono="1"] #fp-typing { color: rgba(255,255,255
       <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span class="fp-placeholder-text">Selecione uma conversa</span>
       <div class="fp-placeholder-acts">
-        <button onclick="fpChat.openNewDM(event)">+ Nova conversa</button>
         <button onclick="fpChat.openChannel('general','# geral')"># geral</button>
         <button onclick="fpChat.openChannel('bim','# BIM')"># BIM</button>
       </div>
@@ -2445,7 +2443,7 @@ html[data-theme="dark"][data-chat-mono="1"] #fp-typing { color: rgba(255,255,255
 
 <script src="shared/app-notif.js?v=2026-10-25"></script>
 <script src="shared/marcacoes.js?v=2026-11-06a"></script>
-<script src="chat-fullpage.js?v=2026-11-17a"></script>
+<script src="chat-fullpage.js?v=2026-11-17b"></script>
 <!-- EXP · Painel de Listas e nav compartilhada (mesmos dos outros módulos) -->
 <script src="shared/lists-panel.js?v=2026-10-25"></script>
 <script src="shared/exp-nav.js?v=2026-10-30a"></script>
