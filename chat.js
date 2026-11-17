@@ -117,10 +117,10 @@
     '.chat-back-btn{background:transparent;border:none;color:var(--chat-head-fg,var(--grafite,#111110));cursor:pointer;width:24px;height:24px;border-radius:var(--radius-input,6px);display:flex;align-items:center;justify-content:center;transition:background .12s,opacity .12s;opacity:.78;flex-shrink:0}',
     '.chat-back-btn:hover{background:var(--chat-head-btn,rgba(0,0,0,.07));opacity:1}',
     /* ── Conv list / member list ── */
-    '.chat-conv-list,.chat-member-list{flex:1;overflow-y:auto;padding:4px 6px 6px}',
+    '.chat-conv-list,.chat-member-list{flex:1;overflow-y:auto;padding:6px}',
     '.chat-conv-list::-webkit-scrollbar,.chat-member-list::-webkit-scrollbar{width:3px}',
     '.chat-conv-list::-webkit-scrollbar-thumb,.chat-member-list::-webkit-scrollbar-thumb{background:var(--cinza,#D0CFC9);border-radius:2px}',
-    '.chat-conv-item,.chat-member-item{display:flex;align-items:center;gap:9px;padding:5px 10px;border-radius:var(--radius-card,8px);cursor:pointer;transition:background .1s}',
+    '.chat-conv-item,.chat-member-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-card,8px);cursor:pointer;transition:background .1s}',
     '.chat-conv-item:hover,.chat-member-item:hover{background:var(--off,#F7F6F3)}',
     '.chat-conv-section{padding:8px 10px 4px;font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9)}',
     '.chat-conv-section-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 4px;border:none;background:none;cursor:pointer;font-family:var(--font-ui);font-size:9px;font-weight:700;letter-spacing:.65px;text-transform:uppercase;color:var(--cinza,#D0CFC9);text-align:left}',
@@ -131,8 +131,8 @@
     '.chat-novas-fim{border-top:1px solid var(--cinza,#D0CFC9);margin:6px 10px 2px}',
     '.chat-conv-av-hash{width:28px;height:28px;border-radius:50%;background:var(--verde-bg,#EAF5EE);color:var(--verde,#1D6A4A);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}',
     '.chat-conv-info{flex:1;min-width:0}',
-    '.chat-conv-name{font-size:12px;font-weight:600;line-height:1.3;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-    '.chat-conv-preview{font-size:10px;line-height:1.35;color:#8A867E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:0}',
+    '.chat-conv-name{font-size:12px;font-weight:600;color:var(--preto,#111110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.chat-conv-preview{font-size:10px;color:#8A867E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}',
     '.chat-conv-badge{background:var(--verde,#4D865C);color:#fff;font-size:9px;font-weight:700;font-family:var(--font-mono);min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;flex-shrink:0}',
     /* Quadro semi-transparente atrás da conversa quando há menção não lida a mim */
     /* Menção: fundo cinza neutro, conforme o tema (13/11/2026) */
