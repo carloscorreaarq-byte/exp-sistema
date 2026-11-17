@@ -6,6 +6,12 @@
    • Tarefa aberta: a foto fica (sem prazo).
    • Tarefa concluída ou excluída: a foto sai do bucket (apagar) — e, se quem
      concluiu não puder apagar o arquivo, a "faxina" de quem anexou remove depois.
+   Itens de checklist (17/11/2026): a mesma janela serve para os itens do painel
+   de Listas (contextos checklist_tarefa_item e checklist_etapa_exec_item), com a
+   regra da Gestão: item aberto não vence; concluído vence no prazo de item concluído.
+     ExpTarefaFotos.abrirItem(botao, { sb, usuarioId })  — botão .fp-ck-foto[data-ctx][data-id]
+     ExpTarefaFotos.marcarItens(container, { sb })       — mostra quantas fotos cada item tem
+     ExpTarefaFotos.sincronizarItem(ctx, id, concluido, { sb })
    Uso: ExpTarefaFotos.abrir(tarefaId, titulo, { aoMudar })
         ExpTarefaFotos.contar(ids) → Promise<{ id: n }>
         ExpTarefaFotos.apagar(ids)  ·  ExpTarefaFotos.faxina()
@@ -15,9 +21,13 @@
   var CTX = 'tarefa_livre', BUCKET = 'gestao-anexos-temp';
   var LARG_MAX = 1600, QUALIDADE = 0.8;
 
-  function sb() { return window.sb; }
+  var _sbX = null, _uidX = null;   // cliente e usuário passados por quem chama (painel de Listas)
+  function sb() { return _sbX || window.sb; }
+  var CTX_ITEM = ['checklist_tarefa_item', 'checklist_etapa_exec_item'];
+  function ctxAtual() { return (J && J.ctx) || CTX; }
   /* Usuário da plataforma (id de usuarios, o mesmo de criado_por) */
   function eu() {
+    if (_uidX) return { id: _uidX };
     var u = (window.G && window.G.usuario) || window._dashUsuario || null;
     if (u && u.id) return u;
     try { var s = JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); if (s && s.app_user_id) return { id: s.app_user_id }; } catch (e) {}
@@ -73,7 +83,7 @@
   }
   async function listar(id) {
     var r = await sb().from('gestao_anexos_temporarios').select('id,storage_path,criado_por,created_at')
-      .eq('contexto_tipo', CTX).eq('contexto_id', id).is('removido_em', null).gt('expires_at', new Date().toISOString())
+      .eq('contexto_tipo', ctxAtual()).eq('contexto_id', id).is('removido_em', null).gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: true });
     return r.error ? [] : (r.data || []);
   }
@@ -135,11 +145,12 @@
     if (!u) throw new Error('Usuário não identificado.');
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type || '')) throw new Error('Envie imagens PNG, JPG ou WEBP.');
     var o = await otimizar(file);
-    var path = CTX + '/' + id + '/' + u.id + '-' + Date.now() + '.' + o.ext;
+    var ctx = ctxAtual();
+    var path = ctx + '/' + id + '/' + u.id + '-' + Date.now() + '.' + o.ext;
     var up = await sb().storage.from(BUCKET).upload(path, o.blob, { contentType: o.mime, upsert: false });
     if (up.error) throw up.error;
     var ins = await sb().from('gestao_anexos_temporarios').insert({
-      contexto_tipo: CTX, contexto_id: id, bucket_name: BUCKET, storage_path: path,
+      contexto_tipo: ctx, contexto_id: id, bucket_name: BUCKET, storage_path: path,
       mime_type: o.mime, arquivo_ext: o.ext, size_bytes: o.blob.size, width_px: o.w, height_px: o.h,
       criado_por: u.id, expires_at: semPrazo(), concluido_snapshot: false, concluido_em_snapshot: null,
     });
@@ -222,13 +233,16 @@
   function abrir(id, titulo, opts) {
     if (!id || !sb()) return;
     css(); if (J) fechar();
-    J = { id: String(id), titulo: titulo || 'Tarefa', aoMudar: opts && opts.aoMudar, urls: [], mudou: false };
+    var ehItem = !!(opts && opts.contexto && opts.contexto !== CTX);
+    J = { id: String(id), ctx: ehItem ? opts.contexto : CTX, titulo: titulo || (ehItem ? 'Item' : 'Tarefa'), aoMudar: opts && opts.aoMudar, urls: [], mudou: false };
+    var rotulo = ehItem ? 'Fotos do item' : 'Fotos da tarefa';
+    var nota = ehItem ? 'As fotos ficam enquanto o item estiver aberto. Depois de concluído, somem em alguns dias.' : 'As fotos somem quando a tarefa for concluída.';
     var f = document.createElement('div'); f.id = 'tf-fundo'; f.className = 'tf-fundo';
-    f.innerHTML = '<div class="tf-box" role="dialog" aria-label="Fotos da tarefa">' +
-      '<div class="tf-hd"><div class="tf-hd-tx"><div class="tf-lb">Fotos da tarefa</div><div class="tf-tit">' + esc(J.titulo) + '</div></div>' +
+    f.innerHTML = '<div class="tf-box" role="dialog" aria-label="' + rotulo + '">' +
+      '<div class="tf-hd"><div class="tf-hd-tx"><div class="tf-lb">' + rotulo + '</div><div class="tf-tit">' + esc(J.titulo) + '</div></div>' +
         '<button class="tf-x" type="button" title="Fechar" aria-label="Fechar">&times;</button></div>' +
       '<div class="tf-corpo"><div id="tf-grade" class="tf-vazio">Carregando…</div></div>' +
-      '<div class="tf-pe"><div class="tf-nota">As fotos somem quando a tarefa for concluída.</div>' +
+      '<div class="tf-pe"><div class="tf-nota">' + nota + '</div>' +
         '<input type="file" id="tf-file" accept="image/png,image/jpeg,image/webp" multiple hidden>' +
         '<button class="tf-btn" id="tf-add" type="button">Adicionar foto</button></div>' +
       '</div>';
@@ -245,5 +259,61 @@
     desenhar();
   }
 
-  window.ExpTarefaFotos = { abrir: abrir, contar: contar, apagar: apagar, faxina: faxina };
+  /* ── Itens de checklist no painel de Listas ── */
+  function _opts(o) { if (o && o.sb) _sbX = o.sb; if (o && o.usuarioId) _uidX = o.usuarioId; }
+  var CAM = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  function botaoHtml(ctx, id) {
+    return '<button type="button" class="fp-ck-foto" data-ctx="' + esc(ctx) + '" data-id="' + esc(id) + '" title="Fotos do item">' + CAM + '<span class="fp-ck-foto-n"></span></button>';
+  }
+  function _pintar(btn, n) {
+    btn.classList.toggle('tem', n > 0);
+    var s = btn.querySelector('.fp-ck-foto-n'); if (s) s.textContent = n > 0 ? String(n) : '';
+    btn.title = n > 0 ? n + (n > 1 ? ' fotos' : ' foto') + ' no item' : 'Adicionar foto ao item';
+  }
+  async function marcarItens(container, o) {
+    _opts(o);
+    if (!container || !sb()) return;
+    var btns = Array.from(container.querySelectorAll('.fp-ck-foto[data-ctx][data-id]'));
+    if (!btns.length) return;
+    var porCtx = {};
+    btns.forEach(function (b) { (porCtx[b.dataset.ctx] = porCtx[b.dataset.ctx] || []).push(b.dataset.id); });
+    for (var ctx in porCtx) {
+      var r = await sb().from('gestao_anexos_temporarios').select('contexto_id')
+        .eq('contexto_tipo', ctx).in('contexto_id', porCtx[ctx]).is('removido_em', null).gt('expires_at', new Date().toISOString());
+      if (r.error) continue;
+      var n = {}; (r.data || []).forEach(function (x) { n[x.contexto_id] = (n[x.contexto_id] || 0) + 1; });
+      btns.filter(function (b) { return b.dataset.ctx === ctx; }).forEach(function (b) { _pintar(b, n[b.dataset.id] || 0); });
+    }
+  }
+  function abrirItem(btn, o) {
+    _opts(o);
+    if (!btn || !btn.dataset) return;
+    var linha = btn.closest('.fp-ck-item'), tx = linha && linha.querySelector('.fp-ck-txt');
+    var titulo = tx ? (tx.textContent || '').trim() : 'Item';
+    abrir(btn.dataset.id, titulo, {
+      contexto: btn.dataset.ctx,
+      aoMudar: function () { marcarItens(linha || btn.parentNode); }
+    });
+  }
+  var _diasConcluido = null;
+  async function sincronizarItem(ctx, id, concluido, o) {
+    _opts(o);
+    if (CTX_ITEM.indexOf(ctx) === -1 || !id || !sb()) return;
+    var exp;
+    if (concluido) {
+      if (_diasConcluido == null) {
+        try {
+          var c = await sb().from('plataforma_midia_temporaria_config').select('dias_item_concluido').eq('id', true).maybeSingle();
+          _diasConcluido = Number(c.data && c.data.dias_item_concluido) || 7;
+        } catch (e) { _diasConcluido = 7; }
+      }
+      var d = new Date(); d.setDate(d.getDate() + _diasConcluido); exp = d.toISOString();
+    } else exp = semPrazo();
+    await sb().from('gestao_anexos_temporarios')
+      .update({ concluido_snapshot: !!concluido, expires_at: exp })
+      .eq('contexto_tipo', ctx).eq('contexto_id', String(id)).is('removido_em', null);
+  }
+
+  window.ExpTarefaFotos = { abrir: abrir, contar: contar, apagar: apagar, faxina: faxina,
+    botaoHtml: botaoHtml, marcarItens: marcarItens, abrirItem: abrirItem, sincronizarItem: sincronizarItem };
 })();

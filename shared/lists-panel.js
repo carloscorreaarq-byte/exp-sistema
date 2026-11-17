@@ -721,6 +721,7 @@
     } else if (tipo === 'revisao') {
       var pranchas = (ck.pranchas || []).slice().sort(function(a,b){ return a.ordem-b.ordem; });
       pranchas.forEach(function(pr) {
+        if (pr.nome === 'Ajuste geral' && !(pr.tarefas_revisao || []).length) return;   // vazio: só o revisor vê, na Gestão
         html += '<div class="fp-ck-secao">' + _esc(pr.nome || '') + '</div>';
         (pr.tarefas_revisao || []).forEach(function(t){ html += _ckItemHtml(t, tipo, ck.id); });
       });
@@ -729,6 +730,7 @@
     $items.innerHTML = html;
     _renderCkFooter(tipo, ck);
     _injectCkItemMedia(tipo, ck);
+    _marcarFotosCk($items);
   }
 
   function _ckItemHtml(it, tipo, ckId) {
@@ -750,8 +752,44 @@
       ' onchange="listsPanel.fpToggleCkItem(\'' + tipo + '\',\'' + id + '\',this.checked,\'' + cid + '\')">' +
       prioBadge +
       '<span class="fp-ck-txt' + (checked ? ' done' : '') + '">' + txt + '</span>' +
+      _fotoBtn(tipo, id) +
       editBtn +
       '</div>';
+  }
+
+
+  /* ── Fotos nos itens de checklist (17/11/2026) ──
+     Usa a janela de fotos de shared/tarefa-fotos.js, carregada só quando precisa. */
+  var _CAM = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  var _TF_SRC = 'shared/tarefa-fotos.js?v=2026-11-17b';
+  var _tfFila = null;
+  function _comFotos(cb) {
+    var T = global.ExpTarefaFotos;
+    if (T && T.abrirItem) { cb(T); return; }
+    if (_tfFila) { _tfFila.push(cb); return; }
+    _tfFila = [cb];
+    var s = document.createElement('script'); s.src = _TF_SRC;
+    s.onload = function () { var f = _tfFila || []; _tfFila = null; var T2 = global.ExpTarefaFotos; if (T2 && T2.abrirItem) f.forEach(function (c) { c(T2); }); };
+    s.onerror = function () { _tfFila = null; console.warn('[lists-panel] módulo de fotos não carregou'); };
+    document.head.appendChild(s);
+  }
+  function _fotoOpts() { var u = _user(); return { sb: _sb(), usuarioId: u && (u.app_user_id || u.id) }; }
+  function _fotoBtn(tipo, id) {
+    var ctx = _ckCtxTipo(tipo);
+    if (tipo === 'revisao' || !ctx) return '';
+    return '<button type="button" class="fp-ck-foto" data-ctx="' + ctx + '" data-id="' + id + '" title="Fotos do item" onclick="listsPanel.fotosCkItem(this)">' + _CAM + '<span class="fp-ck-foto-n"></span></button>';
+  }
+  function fotosCkItem(btn) {
+    if (!global.ExpTarefaFotos || !global.ExpTarefaFotos.abrirItem) {
+      btn.style.opacity = '.5';
+      _comFotos(function (T) { btn.style.opacity = ''; T.abrirItem(btn, _fotoOpts()); });
+      return;
+    }
+    global.ExpTarefaFotos.abrirItem(btn, _fotoOpts());
+  }
+  function _marcarFotosCk(el) {
+    if (!el || !el.querySelector('.fp-ck-foto')) return;
+    _comFotos(function (T) { T.marcarItens(el, _fotoOpts()); });
   }
 
   /* ── imagens de apoio (somente visualização) ─────────────── */
@@ -773,6 +811,7 @@
 
   /* Após renderizar os itens, descobre quais têm imagem anexada e injeta o ícone. */
   function _injectCkItemMedia(tipo, ck) {
+    if (tipo !== 'revisao') return;   // checklist: o botão de fotos (.fp-ck-foto) já mostra e permite anexar
     var ctx = _ckCtxTipo(tipo);
     var ids = _ckCollectItemIds(tipo, ck);
     if (!ctx || !ids.length) return;
@@ -1054,6 +1093,8 @@
       : { concluido: checked, concluido_por: checked ? uid : null, concluido_por_nome: checked ? ((u && u.nome) || '') : null, concluido_em: checked ? now : null };
     _sb().from(tbl).update(upd).eq('id', itemId).then(function(r) {
       if (r.error) return;
+      // fotos do item: aberto não vence; concluído passa a valer o prazo de item concluído
+      if (tipo !== 'revisao') _comFotos(function (T) { T.sincronizarItem(_ckCtxTipo(tipo), itemId, checked, _fotoOpts()); });
       var list = tipo === 'abertos' ? _ckAbertosAll : tipo === 'etapa' ? _ckEtapaAll : _ckRevisaoAll;
       list.forEach(function(ck) {
         if (String(ck.id) !== String(ckId)) return;
@@ -1179,6 +1220,7 @@
     restoreTask     : restoreTask,
     editCkItem      : editCkItem,
     viewCkItemMedia : viewCkItemMedia,
+    fotosCkItem     : fotosCkItem,
     openAssignDrop  : openAssignDrop,
     _doAssign       : _doAssign,
     toggleDelegadas : toggleDelegadas,
