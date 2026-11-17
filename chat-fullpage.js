@@ -716,9 +716,9 @@
       _rascTimer = setTimeout(function(){ if (ch === currentChannel) _rascGravar(ch, $input.value); }, 400);
     });
 
-    /* Nome no popover de status */
+    /* Título do popover de status (17/11/2026: "Status" no lugar do nome) */
     var $sn = document.getElementById('fp-sopt-name');
-    if ($sn) $sn.textContent = firstName(user.nome);
+    if ($sn) $sn.textContent = 'Status';
 
     /* Módulos societários na nav */
     if (isSocioLikeRole(user.role)) {
@@ -748,8 +748,12 @@
       scrolledToEnd = $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 48;
       if (scrolledToEnd && _novasAbaixo) esconderNovasToast();
       /* perto do topo: busca o lote anterior */
-      if ($msgs.scrollTop < 80 && hasOlderMessages && !loadingOlder && !isLoading) loadOlderMessages();
+      if ($msgs.scrollTop < 80 && hasOlderMessages && !loadingOlder && !isLoading && Date.now() >= _ancoraAte) loadOlderMessages();
     });
+    if ($msgs) {
+      ['wheel', 'touchstart', 'mousedown', 'keydown'].forEach(function(ev){ $msgs.addEventListener(ev, function(){ _ancoraAte = 0; }, { passive: true }); });
+      $msgs.addEventListener('load', function(e){ var t = e.target && e.target.tagName; if (t === 'IMG' || t === 'VIDEO') _reancorar(); }, true);
+    }
 
     /* Fechar status pop clicando fora */
     document.addEventListener('click', function(e) {
@@ -1053,11 +1057,24 @@
     if (broadcast && presenceCh) presenceCh.track(presencePayload(status));
   }
 
+  /* Popovers da barra (status e som): posição fixa junto ao botão, para não serem cortados
+     pela coluna da lista (17/11/2026). Abre para a direita; se faltar espaço, para a esquerda. */
+  function _posicionarPop(pop, btnId) {
+    var btn = document.getElementById(btnId); if (!pop || !btn) return;
+    pop.style.position = 'fixed';
+    var r = btn.getBoundingClientRect(), w = pop.offsetWidth || 240, h = pop.offsetHeight || 300;
+    var left = r.left;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, r.right - w);
+    var top = r.bottom + 8;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
   function toggleStatusPop() { statusPopOpen ? closeStatusPop() : openStatusPop(); }
   function openStatusPop() {
     var pop = document.getElementById('fp-status-pop');
     if (!pop) return;
     statusPopOpen = true; pop.style.display = 'flex';
+    _posicionarPop(pop, 'fp-status-btn');
   }
   function closeStatusPop() {
     var pop = document.getElementById('fp-status-pop');
@@ -1086,6 +1103,7 @@
     if (!pop) return;
     if (statusPopOpen) closeStatusPop();
     soundPopOpen = true; pop.style.display = 'flex'; _renderSoundBtn(); _renderNotifStatus();
+    _posicionarPop(pop, 'fp-sound-btn');
   }
   var VAPID_PUBLIC_KEY = 'BCRHUrgL16XzJCyEPvkujum8zkDiRpoLbpd5NRUmeeC8wRJM9GvMxxiNkoCRUWokj3JJmIl6ucciYUz_y-n7UK0';
   function _renderNotifStatus(msg) {
@@ -1713,7 +1731,7 @@
   }
   function _aposCarregarMensagens() {
     if (_pularPara) { var p = _pularPara; _pularPara = null; scrollToMessage(p); }
-    else scrollParaNovas();
+    else _ancorarAbertura();
   }
 
   /* ── Rascunho por conversa (fica neste navegador) ── */
@@ -2585,6 +2603,13 @@
       }, function () { done(); });
   }
 
+  /* Abertura da conversa (17/11/2026): fica presa na linha "Novas mensagens" (ou no fim) por alguns
+     segundos, enquanto imagens, arquivos e "visto" carregam e redesenham a lista. Qualquer gesto da
+     pessoa (rolar, clicar, teclar) solta a âncora. */
+  var _ancoraAte = 0;
+  function _ancorarAbertura() { _ancoraAte = Date.now() + 3000; scrollParaNovas(); }
+  function _reancorar() { if (Date.now() < _ancoraAte) scrollParaNovas(); }
+
   function loadMessages() {
     if (isLoading) return;
     hasOlderMessages = false;
@@ -3022,6 +3047,7 @@
 
     $msgs.innerHTML = html;
     renderFixadas();
+    _reancorar();
 
     if (editingMessageId) {
       var $ed = $msgs.querySelector('.fp-msg-edit-input');
