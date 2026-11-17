@@ -1768,7 +1768,21 @@ span.tarefa-prio { display: inline-block; cursor: default; }
 /* Re-revisar */
 .rr-chip{display:inline-block;margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--terracota);border:1px solid var(--terracota);border-radius:999px;padding:0 7px;vertical-align:1px}
 .tarefa-item-tools .rr-btn.on{opacity:1 !important;color:var(--terracota)}
+.rr-chip.ok{color:var(--txt-3);border-color:var(--cinza)}
 .rr-resumo{margin:8px 0 0;font-size:11px;font-weight:700;color:var(--terracota)}
+/* Bloco Re-revisão: pendências da segunda rodada (16/11/2026) */
+.rr-bloco{margin-top:14px;border:1px solid var(--cinza);border-radius:10px;padding:10px 12px 6px}
+.rr-bloco-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.rr-bloco-tt{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-2)}
+.rr-bloco-ct{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-3)}
+.rr-linha{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-top:1px solid var(--cinza)}
+.rr-linha:first-of-type{border-top:0}
+.rr-linha .tarefa-check{margin-top:1px;flex-shrink:0}
+.rr-linha-tx{min-width:0;flex:1}
+.rr-linha-onde{font-size:8px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--txt-3)}
+.rr-linha-desc{font-size:12px;color:var(--txt-1,var(--grafite));line-height:1.35}
+.rr-linha.ok .rr-linha-desc{text-decoration:line-through;color:var(--txt-3)}
+.rr-linha-meta{font-size:10px;color:var(--txt-3);margin-top:1px}
 /* Nota final da revisão */
 .rev-nota{margin:0 0 12px;padding:12px 14px;border:1px solid var(--cinza2);border-left:3px solid var(--grafite);border-radius:0 8px 8px 0;background:var(--off)}
 .rev-nota-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
@@ -10211,14 +10225,27 @@ async function exportarMinhasHorasPDF() {
 // Início/fim reais de uma revisão a partir das tarefas, não do registro em si:
 // "iniciada" = 1ª tarefa criada em qualquer prancha; "finalizada" = quando a ÚLTIMA
 // tarefa é marcada concluída (só existe se 100% das tarefas estiverem concluídas).
+// Re-revisão (16/11/2026): item marcado vira pendência própria; conta como tarefa até alguém dar o check
+function _rrAberta(t) { return !!(t && t.re_revisar && !t.re_revisar_ok); }
+function _revContagem(tarefas) {
+  let total = 0, conc = 0;
+  (tarefas || []).forEach(t => {
+    total++; if (t.concluida) conc++;
+    if (t.re_revisar) { total++; if (t.re_revisar_ok) conc++; }
+  });
+  return { total, conc };
+}
 function _revDatasInfo(pranchas) {
   const tarefas = (pranchas || []).flatMap(pr => pr.tarefas_revisao || []);
   if (!tarefas.length) return null;
   const inicio = tarefas.reduce((min, t) => (t.created_at && (!min || t.created_at < min)) ? t.created_at : min, null);
-  const todasConcluidas = tarefas.every(t => t.concluida);
+  const todasConcluidas = tarefas.every(t => t.concluida && !_rrAberta(t));
   let fim = null;
   if (todasConcluidas) {
-    fim = tarefas.reduce((max, t) => (t.concluida_em && (!max || t.concluida_em > max)) ? t.concluida_em : max, null);
+    fim = tarefas.reduce((max, t) => {
+      [t.concluida_em, t.re_revisar ? t.re_revisar_ok_em : null].forEach(d => { if (d && (!max || d > max)) max = d; });
+      return max;
+    }, null);
   }
   const dias = (inicio && fim) ? Math.max(0, Math.round((new Date(fim) - new Date(inicio)) / 86400000)) : null;
   return { inicio, fim, dias };
@@ -10238,7 +10265,7 @@ async function carregarRevisoesProduto(prodId) {
   }
 
   const { data: revs } = await sb.from('revisoes')
-    .select(`*, etapas(id, nome), pranchas(id, nome, tarefas_revisao(id, concluida, created_at, concluida_em))`)
+    .select(`*, etapas(id, nome), pranchas(id, nome, tarefas_revisao(*))`)
     .in('etapa_id', etapaIds)
     .order('created_at', { ascending: false });
 
@@ -10252,8 +10279,7 @@ async function carregarRevisoesProduto(prodId) {
 
   function _revCard(r, destacar) {
     const etapa = r.etapas;
-    const total = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
-    const conc  = r.pranchas?.reduce((s,p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
+    const { total, conc } = _revContagem((r.pranchas || []).flatMap(p => p.tarefas_revisao || []));
     const pct   = total > 0 ? Math.round(conc / total * 100) : 0;
     const revisor = usuarioPorId(r.aberta_por);
     const chip = revisor
@@ -10289,7 +10315,7 @@ async function carregarRevisoesProduto(prodId) {
 
 async function carregarRevisoes() {
   const { data: revs } = await sb.from('revisoes')
-    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, coordenador_id, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, ordem, tarefas_revisao(id, descricao, concluida, created_at, concluida_em))`)
+    .select(`*, etapas(id, nome, produto_id, produtos(id, nome, coordenador_id, oportunidades(projeto, clientes(nome)))), pranchas(id, nome, ordem, tarefas_revisao(*))`)
     .order('created_at', { ascending: false });
 
   const lista = document.getElementById('rev-lista');
@@ -10305,8 +10331,7 @@ async function carregarRevisoes() {
     const prod = etapa?.produtos;
     const cli = prod?.oportunidades?.clientes;
     const opp = prod?.oportunidades;
-    const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
-    const conc = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
+    const { total, conc } = _revContagem((r.pranchas || []).flatMap(p => p.tarefas_revisao || []));
     const pct = total > 0 ? Math.round(conc / total * 100) : 0;
     const revisor = usuarioPorId(r.aberta_por);
     const isMeu   = r.aberta_por === uid;
@@ -10342,8 +10367,7 @@ async function carregarRevisoes() {
       || (G.etapaDevs[r.etapas?.id] || []).includes(uid);
   }
   function _isCompleta(r) {
-    const total = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.length || 0), 0) || 0;
-    const conc  = r.pranchas?.reduce((s, p) => s + (p.tarefas_revisao?.filter(t => t.concluida).length || 0), 0) || 0;
+    const { total, conc } = _revContagem((r.pranchas || []).flatMap(p => p.tarefas_revisao || []));
     return r.status === 'concluida' || (total > 0 && conc === total);
   }
 
@@ -10728,14 +10752,14 @@ async function selecionarRevisao(id) {
   );
 
   // Calcula resumo geral para as barras de progresso da revisão
-  const _totalTarefas = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao?.length || 0), 0);
-  const _concTarefas  = pranchas.reduce((s, pr) => s + (pr.tarefas_revisao?.filter(t => t.concluida).length || 0), 0);
+  const { total: _totalTarefas, conc: _concTarefas } = _revContagem(pranchas.flatMap(pr => pr.tarefas_revisao || []));
   const _totalPranchas = pranchas.length;
   const _concPranchas  = pranchas.filter(pr => {
-    const tot = pr.tarefas_revisao?.length || 0;
-    const con = pr.tarefas_revisao?.filter(t => t.concluida).length || 0;
-    return tot > 0 && con === tot;
+    const c = _revContagem(pr.tarefas_revisao);
+    return c.total > 0 && c.conc === c.total;
   }).length;
+  G._revTarefas = {};
+  pranchas.forEach(pr => (pr.tarefas_revisao || []).forEach(t => { G._revTarefas[t.id] = t; }));
   const _pctTarefas  = _totalTarefas  > 0 ? Math.round(_concTarefas  / _totalTarefas  * 100) : 0;
   const _pctPranchas = _totalPranchas > 0 ? Math.round(_concPranchas / _totalPranchas * 100) : 0;
 
@@ -10783,7 +10807,38 @@ async function selecionarRevisao(id) {
            <div class="rev-nota-meta">${_autorNota ? _escN(_autorNota.nome) : ''}${rev.nota_final_em ? ' · ' + new Date(rev.nota_final_em).toLocaleDateString('pt-BR') : ''}</div>`
         : '<div class="rev-nota-vazio">Um recado geral para quem foi revisado: o que priorizar, o que mais chamou atenção.</div>'}
     </div>` : '';
-  const reRevHtml = _nReRev ? `<div class="rr-resumo">${_nReRev} ponto${_nReRev > 1 ? 's' : ''} marcado${_nReRev > 1 ? 's' : ''} para re-revisar</div>` : '';
+  // Re-revisão: quem revisou e quem dá os checks podem marcar e fechar (16/11/2026)
+  G._podeRR = G._podeRevisar || podePreencher;
+  const _rrItens = [];
+  pranchas.forEach(pr => {
+    [...(pr.tarefas_revisao || [])].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''))
+      .forEach((t, i) => { if (t.re_revisar) _rrItens.push({ t, pr, num: i + 1 }); });
+  });
+  _rrItens.sort((a, b) => (a.t.re_revisar_ok ? 1 : 0) - (b.t.re_revisar_ok ? 1 : 0));
+  const _rrAbertas = _rrItens.filter(x => !x.t.re_revisar_ok).length;
+  const _fmtDm = iso => iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+  const reRevHtml = _nReRev ? `
+    <div class="rr-bloco" id="rr-bloco">
+      <div class="rr-bloco-hd">
+        <span class="rr-bloco-tt">Re-revisão</span>
+        <span class="rr-bloco-ct">${_rrAbertas ? `${_rrAbertas} aberta${_rrAbertas > 1 ? 's' : ''}` : 'Tudo fechado'}</span>
+      </div>
+      ${_rrItens.map(({ t, pr, num }) => {
+        const ok = !!t.re_revisar_ok;
+        const quem = usuarioPorId(ok ? t.re_revisar_ok_por : t.re_revisar_por);
+        const quando = ok ? t.re_revisar_ok_em : t.re_revisar_em;
+        const meta = (ok ? 'Fechado' : 'Marcado') + (quem ? ' por ' + _escN(quem.nome.split(' ')[0]) : '') + (quando ? ' · ' + _fmtDm(quando) : '');
+        return `<div class="rr-linha${ok ? ' ok' : ''}">
+          <div class="tarefa-check ${ok ? 'done' : ''} ${G._podeRR ? '' : 'readonly'}"
+               ${G._podeRR ? `onclick="alternarReRevisaoOk('${t.id}', ${ok ? 'true' : 'false'})" title="${ok ? 'Reabrir esta re-revisão' : 'Fechar esta re-revisão'}"` : 'title="Apenas quem revisa e quem dá os checks podem fechar"'}></div>
+          <div class="rr-linha-tx">
+            <div class="rr-linha-onde">${_escN(pr.nome || 'Prancha')} · item ${num}</div>
+            <div class="rr-linha-desc">${_escN(t.descricao)}</div>
+            ${(quem || quando) ? `<div class="rr-linha-meta">${meta}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
 
   const detalhe = document.getElementById('rev-detalhe');
   detalhe.innerHTML = `
@@ -10838,8 +10893,7 @@ async function selecionarRevisao(id) {
 }
 
 function renderPrancha(pr, isSocioOrCoord) {
-  const total = pr.tarefas_revisao?.length || 0;
-  const conc = pr.tarefas_revisao?.filter(t => t.concluida).length || 0;
+  const { total, conc } = _revContagem(pr.tarefas_revisao);
   const concluida100 = total > 0 && conc === total;
   const podeExcluirTopico = isSocioRole(G.usuario.role) || G._revisaoAbertaPor === G.usuario.id;
   const podeGerirPrancha  = isSocioRole(G.usuario.role);
@@ -10874,11 +10928,11 @@ function renderPrancha(pr, isSocioOrCoord) {
            ${isSocioOrCoord ? `onclick="toggleTarefaRevisao('${t.id}', ${t.concluida}, '${prId}')"` : 'title="Acompanhe o progresso — apenas participantes do projeto podem marcar"'}></div>
       ${prioControl}
       <span class="tarefa-num" title="Item ${_num} desta prancha">${_num}</span>
-      <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}${t.re_revisar ? '<span class="rr-chip" title="Ponto crítico: volta para uma segunda rodada de conferência">Re-revisar</span>' : ''}</div>
+      <div class="tarefa-desc ${t.concluida ? 'done' : ''}">${_escN(t.descricao)}${t.re_revisar ? (t.re_revisar_ok ? '<span class="rr-chip ok" title="Re-revisão fechada">Re-revisado</span>' : '<span class="rr-chip" title="Ponto crítico: pendente no bloco Re-revisão">Re-revisar</span>') : ''}</div>
       ${mediaViewBtn}
       ${_rcContadorHtml(t.id)}
       <div class="tarefa-item-tools">
-        ${G._podeRevisar && !G._ehCoordRev ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
+        ${G._podeRR ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
         ${`<button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>`}
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">${GI.camera}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">${GI.edit}</button>` : ''}
@@ -10895,7 +10949,7 @@ function renderPrancha(pr, isSocioOrCoord) {
 
   // Preview: até 3 tarefas (mesma ordem)
   const previewTarefas = tarefasOrdenadas.slice(0, 3);
-  const restante = total - previewTarefas.length;
+  const restante = (pr.tarefas_revisao?.length || 0) - previewTarefas.length;
   const previewHtml = previewTarefas.length
     ? `<div class="prancha-preview">
         ${previewTarefas.map(t => `<div class="prancha-preview-task prio-${(t.prioridade || 'P3').toLowerCase()}">
@@ -10977,9 +11031,38 @@ async function salvarNotaFinal(revId) {
   toast(txt ? 'Anotações salvas.' : 'Anotações removidas.');
 }
 async function alternarReRevisar(tarefaId, atual) {
-  const { error } = await sb.from('tarefas_revisao').update({ re_revisar: !atual }).eq('id', tarefaId);
+  const agora = new Date().toISOString();
+  const upd = atual
+    ? { re_revisar: false, re_revisar_por: null, re_revisar_em: null, re_revisar_ok: false, re_revisar_ok_por: null, re_revisar_ok_em: null }
+    : { re_revisar: true, re_revisar_por: G.usuario.id, re_revisar_em: agora, re_revisar_ok: false, re_revisar_ok_por: null, re_revisar_ok_em: null };
+  let { error } = await sb.from('tarefas_revisao').update(upd).eq('id', tarefaId);
+  if (error && /column|schema/i.test(error.message || '')) {
+    // SQL da re-revisão ainda não rodado: grava só a marca
+    ({ error } = await sb.from('tarefas_revisao').update({ re_revisar: !atual }).eq('id', tarefaId));
+  }
   if (error) { toast('Não foi possível marcar: ' + error.message, 4000); return; }
+  // Imagens do item: ficam guardadas enquanto houver re-revisão aberta
+  const t = G._revTarefas?.[tarefaId];
+  if (t?.concluida) await sincronizarExpiracaoTempMedia('revisao_tarefa', tarefaId, atual);
   await selecionarRevisao(G._revisaoAtiva);
+  carregarRevisoes();
+}
+async function alternarReRevisaoOk(tarefaId, atual) {
+  const { error } = await sb.from('tarefas_revisao').update({
+    re_revisar_ok: !atual,
+    re_revisar_ok_por: !atual ? G.usuario.id : null,
+    re_revisar_ok_em: !atual ? new Date().toISOString() : null
+  }).eq('id', tarefaId);
+  if (error) {
+    toast(/column|schema/i.test(error.message || '')
+      ? 'Falta rodar o SQL da re-revisão no Supabase (revisao_rerevisao.sql).'
+      : 'Não foi possível atualizar: ' + error.message, 5000);
+    return;
+  }
+  const t = G._revTarefas?.[tarefaId];
+  if (t?.concluida) await sincronizarExpiracaoTempMedia('revisao_tarefa', tarefaId, !atual);
+  await selecionarRevisao(G._revisaoAtiva);
+  carregarRevisoes();
 }
 
 // ══ Conversas por item da revisão ══
@@ -11118,6 +11201,13 @@ async function excluirPrancha(pranchaId, revisaoId) {
 
 // ── Fechar / Reabrir revisão ───────────────────────────────────────────────
 async function fecharRevisao(id) {
+  // Não fecha com re-revisão aberta (16/11/2026)
+  const { data: prs } = await sb.from('pranchas').select('tarefas_revisao(*)').eq('revisao_id', id);
+  const nAbertas = (prs || []).flatMap(p => p.tarefas_revisao || []).filter(_rrAberta).length;
+  if (nAbertas) {
+    toast(`Ainda há ${nAbertas} re-revis${nAbertas > 1 ? 'ões abertas' : 'ão aberta'}. Feche no bloco Re-revisão antes de concluir.`, 5000);
+    return;
+  }
   const { error } = await sb.from('revisoes').update({ status: 'concluida' }).eq('id', id);
   if (error) { toast('Erro: ' + error.message); return; }
   toast('Revisão marcada como concluída');
@@ -11187,7 +11277,7 @@ async function toggleTarefaRevisao(id, atual, pranchaId) {
     concluida_por: !atual ? G.usuario.id : null,
     concluida_em: !atual ? new Date().toISOString() : null
   }).eq('id', id);
-  await sincronizarExpiracaoTempMedia('revisao_tarefa', id, !atual);
+  await sincronizarExpiracaoTempMedia('revisao_tarefa', id, !atual && !_rrAberta(G._revTarefas?.[id]));
 
   // Verifica se prancha ficou 100% e notifica (placeholder)
   if (!atual) {
@@ -22091,7 +22181,7 @@ else init();
 </script>
 
 <!-- EXP · Chat Widget -->
-<script src="chat.js?v=2026-11-13c"></script>
+<script src="chat.js?v=2026-11-16a"></script>
 <!-- EXP · Timer Widget -->
 <script src="timer.js?v=2026-10-27a"></script>
 <style>
