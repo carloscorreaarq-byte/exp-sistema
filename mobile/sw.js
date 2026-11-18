@@ -1,5 +1,5 @@
 // EXP Mobile — Service Worker v6.0
-const CACHE = 'exp-mobile-v6';
+const CACHE = 'exp-mobile-v7';
 const OFFLINE_URL = './offline.html';
 
 const PRECACHE = [
