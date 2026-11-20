@@ -61,7 +61,7 @@
       background: color-mix(in srgb, var(--m-border) 45%, transparent);
     }
     .hub-brand-sub {
-      font-family: var(--font-mono);
+      font-family: var(--font-ui); font-variant-numeric: tabular-nums;
       font-size: 10px;
       font-weight: 400;
       color: var(--m-text-3);
@@ -71,7 +71,7 @@
 
     /* Respiros do hub */
     #page-content {
-      padding-top: calc(var(--safe-t) + var(--s-md));
+      padding-top: var(--s-md);
       padding-left: var(--gap-md);
       padding-right: var(--gap-md);
       padding-bottom: var(--gap-lg);
@@ -87,7 +87,6 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: var(--s-md);
-      padding-right: 96px;
       display: flex;
       align-items: center;
       gap: var(--s-sm);
@@ -202,7 +201,7 @@
     .hours-big {
       font-size: 32px;
       font-weight: 900;
-      font-family: var(--font-mono);
+      font-family: var(--font-ui); font-variant-numeric: tabular-nums;
       letter-spacing: -1px;
       line-height: 1;
       color: var(--m-text-1);
@@ -430,15 +429,19 @@
 <body>
 
   <!-- Controles flutuantes (tema + sair) — alinhados à saudação -->
-  <div class="hub-controls">
-    <button class="hub-ctrl-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
-    <button class="hub-ctrl-btn" onclick="openSheet('signout')" title="Sair">
+  <header class="app-header">
+    <img class="header-logo-img" src="./assets/exp.png" alt="EXP">
+    <div class="header-title">Início</div>
+    <div class="header-actions">
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
+    <button class="icon-btn" onclick="openSheet('signout')" title="Sair">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
     </button>
-  </div>
+    </div>
+  </header>
 
   <!-- Conteúdo -->
-  <div class="page page--no-header">
+  <div class="page">
     <div class="page-content" id="page-content">
       <div class="loader-page"><div class="loader"></div></div>
     </div>
@@ -648,7 +651,7 @@
     function renderTasksSection(tarefas) {
       const slice = tarefas.slice(0, 5);
       const items = slice.length === 0
-        ? `<div class="hub-empty">Sem tarefas pendentes 🎉</div>`
+        ? `<div class="hub-empty">Sem tarefas pendentes</div>`
         : slice.map(t => {
             const vencida = isVencida(t.data_limite);
             const metaParts = [
@@ -888,7 +891,7 @@
       }
       if (action !== 'enable') return;
       const ok = await requestPushPermission();
-      showToast(ok ? 'Notificações ativadas ✓' : 'Não foi possível ativar', ok ? 'success' : 'error');
+      showToast(ok ? 'Notificações ativadas' : 'Não foi possível ativar', ok ? 'success' : 'error');
       const sections = document.querySelectorAll('.hub-section');
       sections.forEach(sec => {
         if (sec.querySelector('.hub-section-title')?.textContent.trim() === 'Notificações') {
@@ -911,12 +914,6 @@
     function renderPage(data) {
       const { usuario, horasSemana, tarefas, eventos, prios } = data;
       document.getElementById('page-content').innerHTML = `
-        <div class="hub-brand">
-          <img src="./assets/exp.png" alt="EXP">
-          <span class="hub-brand-sep"></span>
-          <span class="hub-brand-sub">Sistema de gestão</span>
-        </div>
-
         ${usuario.viewer_only ? `<div class="viewer-banner">Modo visualização — edição desabilitada</div>` : ''}
 
         <div class="greeting-bar">

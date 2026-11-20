@@ -22,19 +22,26 @@
       padding: var(--gap-sm) var(--gap-md);
       border-bottom: 1px solid color-mix(in srgb, var(--m-border) 20%, transparent);
       display: flex;
+      flex-wrap: wrap;
       gap: var(--gap-sm);
       align-items: center;
     }
+    .toolbar .proj-busca { flex: 1; min-width: 0; margin-bottom: 0; order: -1; }
+    .toolbar .view-toggle { order: -1; }
+    .toolbar .filter-scroll { flex-basis: 100%; padding-bottom: 0; }
     .view-toggle {
       display: flex;
       background: color-mix(in srgb, var(--m-border) 18%, transparent);
-      border-radius: var(--m-radius-input);
+      border-radius: 8px;
       padding: 2px;
+      height: 40px;
+      box-sizing: border-box;
+      align-items: center;
       flex-shrink: 0;
     }
     .view-btn {
-      height: 28px;
-      width: 36px;
+      height: 34px;
+      width: 38px;
       border-radius: 6px;
       display: flex;
       align-items: center;
@@ -47,33 +54,6 @@
     }
     .view-btn.active { background: var(--m-surface); color: var(--m-text); box-shadow: var(--shadow-card); }
     .view-btn svg { width: 15px; height: 15px; stroke-width: 1.8; }
-    .filter-scroll {
-      display: flex;
-      gap: var(--gap-xs);
-      overflow-x: auto;
-      flex: 1;
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .filter-scroll::-webkit-scrollbar { display: none; }
-    .filter-chip {
-      height: 28px;
-      border-radius: var(--m-radius-pill);
-      padding: 0 10px;
-      font-family: var(--font-ui);
-      font-size: var(--mt-label);
-      font-weight: var(--weight-label);
-      letter-spacing: var(--label-spacing);
-      text-transform: uppercase;
-      background: color-mix(in srgb, var(--m-border) 18%, transparent);
-      color: var(--m-text-2);
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: all var(--m-transition);
-    }
-    .filter-chip.active { background: var(--verde-soft); color: var(--verde); }
 
     /* ── Lista de projetos ────────────────────── */
     .projeto-card {
@@ -143,7 +123,6 @@
   <header class="app-header">
     <a href="./gestao.html" class="header-back">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
-      Gestão
     </a>
     <div class="header-title">Projetos</div>
   </header>
@@ -157,6 +136,10 @@
       <button class="view-btn" id="btn-gantt" onclick="setView('gantt')" title="Gantt">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="3" rx="1"/><rect x="3" y="10" width="12" height="3" rx="1"/><rect x="3" y="16" width="15" height="3" rx="1"/></svg>
       </button>
+    </div>
+    <div class="search-input-wrap proj-busca">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" type="search" id="busca-proj" placeholder="Buscar projeto ou coordenador" oninput="G.busca=this.value;(G.view==='lista'?renderLista:renderGantt)()" autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <div class="filter-scroll" id="filter-scroll">
       <button class="filter-chip active" data-nucleo="" onclick="setNucleo(this,'')">Todos</button>
@@ -194,9 +177,13 @@
     let G = { produtos: [], view: 'lista', nucleoFiltro: '', DAY_W: 36 };
 
     // ── Helpers ──────────────────────────────────
+    function _semAc(t) { return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
     function produtosFiltrados() {
-      if (!G.nucleoFiltro) return G.produtos;
-      return G.produtos.filter(p => p.nucleo === G.nucleoFiltro);
+      let lista = G.produtos;
+      if (G.nucleoFiltro) lista = lista.filter(p => p.nucleo === G.nucleoFiltro);
+      const q = _semAc(G.busca).trim();
+      if (q) lista = lista.filter(p => _semAc(p.nome).includes(q) || _semAc(p.coordenador_nome).includes(q));
+      return lista;
     }
 
     function etapaAtiva(produto) {
