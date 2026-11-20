@@ -1040,8 +1040,9 @@ body {
 }
 .cliente-nome { font-size: 11px; font-weight: 700; }
 .cliente-cidade { font-size: 10px; color: var(--txt-3); }
-.cliente-toggle { font-size: 10px; color: var(--txt-3); transition: transform .15s; display: inline-block; flex-shrink: 0; }
+.cliente-toggle { font-size: 10px; color: var(--txt-3); transition: transform .15s; display: inline-flex; align-items: center; flex-shrink: 0; }
 .cliente-toggle.collapsed { transform: rotate(-90deg); }
+.prod-vazio { font-size: 10px; color: var(--txt-3); }
 .cliente-opp-count { font-size: 10px; color: var(--txt-3); margin-left: auto; }
 .cliente-opps.collapsed { display: none; }
 .opp-grupo { border: 1px solid var(--cinza2); margin-bottom: 8px; border-radius: 10px; overflow: hidden; }
@@ -1687,6 +1688,20 @@ body {
 .proc-prog-bar { flex: 1; height: 3px; background: var(--cinza2); border-radius: 2px; }
 .proc-prog-fill { height: 100%; background: var(--azul); border-radius: 2px; transition: width .3s; }
 .proc-prog-fill.done { background: var(--verde); }
+
+/* Prancha: arrastar para reordenar (recolhe tudo e mostra só os títulos) */
+.prancha-tit { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.prancha-grip { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 22px; margin-left: -6px; border-radius: 4px; color: var(--txt-3); cursor: grab; touch-action: none; flex-shrink: 0; }
+.prancha-grip:hover { background: var(--cinza); color: var(--txt-2); }
+#pranchas-wrap.reordenando { user-select: none; -webkit-user-select: none; }
+#pranchas-wrap.reordenando .prancha-card > :not(.prancha-header) { display: none !important; }
+#pranchas-wrap.reordenando .prancha-card { margin-bottom: 6px; transition: none; }
+#pranchas-wrap.reordenando .prancha-header { border-bottom: none; }
+#pranchas-wrap.reordenando .prancha-actions .btn, #pranchas-wrap.reordenando .prancha-actions .prancha-ic { visibility: hidden; }
+#pranchas-wrap.reordenando .prancha-grip { cursor: grabbing; }
+#pranchas-wrap.reordenando .prancha-card.arrastando { border-color: var(--grafite); box-shadow: 0 4px 14px rgba(0,0,0,.14); position: relative; z-index: 2; }
+#pranchas-wrap.reordenando .prancha-card.arrastando .prancha-header { background: var(--branco); }
+body.prancha-arrastando, body.prancha-arrastando * { cursor: grabbing !important; }
 
 /* Prancha */
 .prancha-card {
@@ -4403,7 +4418,7 @@ span.tarefa-cat { display: inline-block; cursor: default; }
       <div class="modal-tabs" style="padding:0 16px;margin-bottom:0">
         <button class="modal-tab active" data-modal="modal-produto" data-panel="mp-visao">Visão Geral</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-registros">Registros</button>
-        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-chk-rev" id="mp-tab-chk-rev">Checklists & Revisões</button>
+        <button class="modal-tab" data-modal="modal-produto" data-panel="mp-chk-rev" id="mp-tab-chk-rev">Checklists e revisões</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-horas" id="mp-tab-horas" style="display:none">Horas</button>
         <button class="modal-tab" data-modal="modal-produto" data-panel="mp-custos" id="mp-tab-custos" style="display:none">Custos</button>
         <button class="modal-tab socio-only" data-modal="modal-produto" data-panel="mp-resultado" id="mp-tab-resultado" style="display:none">Resultado</button>
@@ -6170,11 +6185,34 @@ async function carregarUsuarios(cfg) {
   // "Meus projetos": lembra a escolha neste navegador
   const fm = document.getElementById('fil-meus');
   if (fm) { try { fm.checked = localStorage.getItem('exp_gestao_meus_projetos') === '1'; } catch (e) {} }
+  _restaurarFiltrosProjetos();
 }
 
 function salvarFiltroMeus() {
   const fm = document.getElementById('fil-meus');
   try { localStorage.setItem('exp_gestao_meus_projetos', fm && fm.checked ? '1' : '0'); } catch (e) {}
+}
+
+// Aba Projetos: lembra núcleo, "na gestão", status e a visão (Lista, Gantt, Kanban, Fila) neste navegador
+const _FIL_PROJ_KEY = 'exp_gestao_filtros_projetos';
+function _salvarFiltrosProjetos() {
+  if (!G._filProjRestaurado) return;   // não grava os padrões antes de ler o que estava salvo
+  const v = id => document.getElementById(id)?.value ?? '';
+  const visao = ['lista', 'gantt', 'kanban', 'fila'].find(x => document.getElementById('pvt-' + x)?.classList.contains('active')) || 'lista';
+  try { localStorage.setItem(_FIL_PROJ_KEY, JSON.stringify({ nucleo: v('fil-nucleo'), gestao: v('fil-gestao'), status: v('fil-status'), visao })); } catch (e) {}
+}
+function _restaurarFiltrosProjetos() {
+  if (G._filProjRestaurado) return;
+  G._filProjRestaurado = true;
+  let f = null;
+  try { f = JSON.parse(localStorage.getItem(_FIL_PROJ_KEY) || 'null'); } catch (e) {}
+  if (!f) return;
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val != null && [...el.options].some(o => o.value === val)) el.value = val;
+  };
+  set('fil-nucleo', f.nucleo); set('fil-gestao', f.gestao); set('fil-status', f.status);
+  if (f.visao && f.visao !== 'lista') G._projVisaoRestaurar = f.visao;
 }
 
 // Revisor do projeto: só Carlos ou Thay
@@ -7161,6 +7199,7 @@ function setProjetosView(v) {
   // Na Fila só valem a busca e o núcleo (filtros de projeto não se aplicam a pessoas)
   ['fil-gestao','fil-status'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = v === 'fila' ? 'none' : ''; });
   const meus = document.querySelector('#lista-filters .fil-meus'); if (meus) meus.style.display = v === 'fila' ? 'none' : '';
+  _salvarFiltrosProjetos();
   if (v === 'gantt') renderGantt();
   else if (v === 'kanban') renderKanbanProjetos();
   else if (v === 'fila') carregarFilaEquipe();
@@ -7449,6 +7488,7 @@ function _fqLigarTip(grid) {
 }
 
 function filtrarProjetos() {
+  _salvarFiltrosProjetos();
   if (document.getElementById('pvt-fila')?.classList.contains('active')) renderFilaEquipe();
   else if (document.getElementById('pvt-gantt')?.classList.contains('active')) renderGantt();
   else if (document.getElementById('pvt-kanban')?.classList.contains('active')) renderKanbanProjetos();
@@ -7517,10 +7557,10 @@ function renderKanbanProjetos() {
   const prods = pkFiltrarProds();
 
   const cols = {
-    fila:      { title: 'Fila (não iniciados)', cor: '#aaa',  items: [] },
-    andamento: { title: 'Em andamento', cor: '#4A90D9',       items: [] },
-    revisao:   { title: 'Em revisão',   cor: '#E2B141',       items: [] },
-    encerrado: { title: 'Encerrado',    cor: 'var(--verde)',  items: [] },
+    fila:      { title: 'Fila (não iniciados)', cor: 'var(--cinza)', items: [] },
+    andamento: { title: 'Em andamento', cor: 'var(--txt-3)',         items: [] },
+    revisao:   { title: 'Em revisão',   cor: 'var(--txt-2)',         items: [] },
+    encerrado: { title: 'Encerrado',    cor: 'var(--grafite)',       items: [] },
   };
 
   prods.forEach(p => {
@@ -7551,7 +7591,7 @@ function renderKanbanProjetos() {
       const bgStyle = envolvido
         ? `background:${PK_NUCLEO_TINT[nucleo] || 'rgba(80,80,80,.07)'};`
         : '';
-      const hoverBorder = envolvido ? nc.dot : '#aaa';
+      const hoverBorder = envolvido ? nc.dot : 'var(--txt-3)';
 
       const onClickJs = p._crm ? 'void(0)' : `abrirProduto(${_sqN(p.id)})`;
 
@@ -7593,7 +7633,7 @@ function renderKanbanProjetos() {
         <div class="pk-col-cnt">${col.items.length}</div>
       </div>
       <div class="pk-items">
-        ${items || `<div class="pk-empty">—</div>`}
+        ${items || `<div class="pk-empty">Nenhum projeto</div>`}
       </div>
     </div>`;
   }).join('');
@@ -7653,6 +7693,10 @@ function renderEntregasSemana() {
 }
 
 function renderListaProjetos() {
+  if (G._projVisaoRestaurar) {           // primeira abertura: volta para a visão usada da última vez
+    const v = G._projVisaoRestaurar; G._projVisaoRestaurar = null;
+    setProjetosView(v); return;
+  }
   let prods = pkFiltrarProds();
 
   const grupos = {};
@@ -7684,7 +7728,7 @@ function renderListaProjetos() {
       return `
     <div class="cliente-grupo${recolhido ? ' is-collapsed' : ''}">
       <div class="cliente-header" onclick="toggleClienteGrupo(this, ${cliKeyJs})">
-        <span class="cliente-toggle ${recolhido ? 'collapsed' : ''}">▾</span>
+        <span class="cliente-toggle ${recolhido ? 'collapsed' : ''}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></span>
         <div class="cliente-nome">${clienteNomeDisp}</div>
         <span class="cliente-opp-count">${nOpps} oportunidade${nOpps > 1 ? 's' : ''}</span>
       </div>
@@ -7716,14 +7760,14 @@ function renderListaProjetos() {
               <div class="prod-row-nome" title="${nomeProdDisp}">${nomeProdDisp}${p._crm ? ' <span style="font-size:10px;color:var(--txt-3);font-weight:400">(CRM)</span>' : ''}</div>
               <div class="prod-row-tipo"><span class="badge ${nc.cls}">${nucleoLabelDisp}</span>${p.em_gestao === false ? ` <span class="badge b-gr">Oculto</span>` : ''}</div>
               <div class="prod-row-status"><span class="badge ${stProd.cls}">${stProd.label}</span></div>
-              <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '—'}</div>
+              <div class="prod-row-etapa">${etapaAtiva ? etapaNomeDisp : '<span class="prod-vazio">Sem etapa</span>'}</div>
               <div class="prod-row-coord">
-                ${equipeTxtHtml(p) || '—'}
+                ${equipeTxtHtml(p) || '<span class="prod-vazio">Sem equipe</span>'}
               </div>
               <div class="prod-row-datas">
-                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '—'}
+                ${etapaAtiva?.data_estimada ? `<span class="dtag">${fmtDate(etapaAtiva.data_estimada)}</span>` : '<span class="prod-vazio">Sem prazo</span>'}
               </div>
-              <div class="prod-row-horas">${hProd > 0 ? fmtH(hProd) : '—'}</div>
+              <div class="prod-row-horas">${hProd > 0 ? fmtH(hProd) : '<span class="prod-vazio">0h</span>'}</div>
             </div>`;
           }).join('')}
         </div>
@@ -10979,7 +11023,7 @@ async function selecionarRevisao(id) {
     if (!card) return;
     card.classList.add('expanded');
     const hint = card.querySelector('.prancha-expand-hint');
-    if (hint) hint.textContent = '▴ recolher';
+    if (hint) hint.textContent = 'Recolher';
   });
 
   G._revisaoAtiva = id;
@@ -11110,9 +11154,10 @@ function renderPrancha(pr, isSocioOrCoord) {
     : '';
 
   const ajusteGeral = _ehAjusteGeral(pr);
-  return `<div class="prancha-card${ajusteGeral ? ' ajuste-geral' : ''}" id="prancha-${prId}">
+  return `<div class="prancha-card${ajusteGeral ? ' ajuste-geral' : ''}" id="prancha-${prId}" data-prancha-id="${_escN(prId)}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''} prancha-hd-click" onclick="togglePranchaExpand(${prIdJs})">
-      <div>
+      <div class="prancha-tit">
+        ${isSocioOrCoord && !ajusteGeral ? `<span class="prancha-grip" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" onclick="event.stopPropagation()" onpointerdown="pranchaArrastarInicio(event, ${prIdJs})"><svg viewBox="0 0 10 16" width="8" height="13" fill="currentColor"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></span>` : ''}
         <div class="prancha-nome">${_escN(pr.nome)}${concluida100 ? '' : ''}</div>
       </div>
       <div class="prancha-actions">
@@ -11127,7 +11172,7 @@ function renderPrancha(pr, isSocioOrCoord) {
     <div class="prancha-bar-wrap"><div class="prancha-bar-fill" style="width:${pct}%"></div></div>
     ${previewHtml}
     ${forumPreviewHtml}
-    <div class="prancha-expand-hint" onclick="togglePranchaExpand(${prIdJs})">▾ clique para expandir</div>
+    <div class="prancha-expand-hint" onclick="togglePranchaExpand(${prIdJs})">Clique para expandir</div>
     <div class="prancha-body-full">
       <div class="prancha-body">
         ${tarefasHtml}
@@ -11289,12 +11334,88 @@ async function rcEnviar(tid) {
   toast('Resposta enviada. Os envolvidos foram avisados.');
 }
 
+// ── Arrastar pranchas para reordenar ───────────────────────────────────────
+// Ao segurar a alça, todas as pranchas recolhem (só títulos); ao soltar, voltam e a ordem é salva.
+function _scrollPaiPrancha(el) {
+  for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+    const st = getComputedStyle(n);
+    if (/(auto|scroll)/.test(st.overflowY) && n.scrollHeight > n.clientHeight) return n;
+  }
+  return document.scrollingElement || document.documentElement;
+}
+function pranchaArrastarInicio(ev, pranchaId) {
+  if (ev.button != null && ev.button !== 0) return;
+  const card = document.getElementById('prancha-' + pranchaId);
+  const wrap = document.getElementById('pranchas-wrap');
+  if (!card || !wrap) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  const grip = ev.currentTarget;
+  const scroller = _scrollPaiPrancha(wrap);
+  const ordemAntes = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral)')].map(c => c.dataset.pranchaId);
+  const topoAntes = card.getBoundingClientRect().top;
+  wrap.classList.add('reordenando');
+  card.classList.add('arrastando');
+  document.body.classList.add('prancha-arrastando');
+  // mantém a prancha segurada embaixo do cursor depois de recolher as outras
+  scroller.scrollTop += card.getBoundingClientRect().top - topoAntes;
+  try { grip.setPointerCapture(ev.pointerId); } catch (e) {}
+  let ultimoY = ev.clientY, rolagem = null;
+
+  function reposicionar(y) {
+    const outros = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral):not(.arrastando)')];
+    let antes = null;
+    for (const c of outros) {
+      const r = c.getBoundingClientRect();
+      if (y < r.top + r.height / 2) { antes = c; break; }
+    }
+    if (antes) { if (card.nextElementSibling !== antes) wrap.insertBefore(card, antes); }
+    else {
+      const ultimo = outros[outros.length - 1];
+      if (ultimo && ultimo.nextElementSibling !== card) ultimo.after(card);
+    }
+  }
+  function rolarBorda() {
+    const vh = window.innerHeight, margem = 60;
+    let d = 0;
+    if (ultimoY < margem) d = -12; else if (ultimoY > vh - margem) d = 12;
+    if (d) { scroller.scrollTop += d; reposicionar(ultimoY); }
+    rolagem = requestAnimationFrame(rolarBorda);
+  }
+  rolagem = requestAnimationFrame(rolarBorda);
+  function mover(e) { ultimoY = e.clientY; reposicionar(e.clientY); }
+  async function soltar() {
+    cancelAnimationFrame(rolagem);
+    grip.removeEventListener('pointermove', mover);
+    grip.removeEventListener('pointerup', soltar);
+    grip.removeEventListener('pointercancel', soltar);
+    const topoSolto = card.getBoundingClientRect().top;
+    wrap.classList.remove('reordenando');
+    card.classList.remove('arrastando');
+    document.body.classList.remove('prancha-arrastando');
+    scroller.scrollTop += card.getBoundingClientRect().top - topoSolto;
+    const ordemNova = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral)')].map(c => c.dataset.pranchaId);
+    if (ordemNova.join('|') === ordemAntes.join('|')) return;
+    const sb = getSB();
+    const resps = await Promise.all(ordemNova.map((id, i) => sb.from('pranchas').update({ ordem: i }).eq('id', id)));
+    if (resps.some(r => r.error)) {
+      toast('Não foi possível salvar a nova ordem das pranchas');
+      if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
+      return;
+    }
+    toast('Ordem das pranchas salva');
+  }
+  grip.addEventListener('pointermove', mover);
+  grip.addEventListener('pointerup', soltar);
+  grip.addEventListener('pointercancel', soltar);
+}
+
 function togglePranchaExpand(pranchaId) {
   const card = document.getElementById('prancha-' + pranchaId);
   if (!card) return;
   card.classList.toggle('expanded');
   const hint = card.querySelector('.prancha-expand-hint');
-  if (hint) hint.textContent = card.classList.contains('expanded') ? '▴ recolher' : '▾ clique para expandir';
+  if (hint) hint.textContent = card.classList.contains('expanded') ? 'Recolher' : 'Clique para expandir';
 }
 
 // ── Renomear prancha (inline) ──────────────────────────────────────────────
