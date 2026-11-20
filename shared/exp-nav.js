@@ -211,8 +211,8 @@ window.ExpNav = (() => {
     '<div class="exp-nav-sep"></div>' +
 
     /* ── Ferramentas ────────────────────────────────── */
-    '<div class="exp-nav-room-wrap">' +
-      '<a href="' + ROOM2_URL + '" target="_blank" rel="noopener" class="exp-room2-go-btn" title="EXP Salinha (sala 2)">' +
+    '<div class="exp-nav-room-wrap" onmouseenter="ExpNav.showSalasBanner(event)" onmouseleave="ExpNav.hideSalasBanner()">' +
+      '<a href="' + ROOM2_URL + '" target="_blank" rel="noopener" class="exp-room2-go-btn" id="exp-room2-btn" title="EXP Salinha (sala 2)">' +
         '<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
       '</a>' +
       '<a id="exp-room-btn" href="' + ROOM_URL + '" target="_blank" rel="noopener"' +
@@ -604,6 +604,16 @@ window.ExpNav = (() => {
   /* ── HTML dos painéis flutuantes ─────────────────────────── */
   function _buildPanelsHTML() {
     return `
+<!-- Banner: salas do Meet (ocupada / livre e quem está) -->
+<div id="exp-salas-banner"
+     onmouseenter="ExpNav.showSalasBanner()" onmouseleave="ExpNav.hideSalasBanner()">
+  <div class="exp-hov-hdr">
+    <span class="exp-hov-hdr-title">Salas</span>
+    <span class="exp-hov-hdr-sub" id="exp-salas-banner-sub"></span>
+  </div>
+  <div id="exp-salas-banner-body"></div>
+</div>
+
 <!-- Banner: calendário -->
 <div id="exp-cal-banner"
      onmouseenter="ExpNav.showCalBanner()" onmouseleave="ExpNav.hideCalBanner()">
@@ -930,6 +940,116 @@ window.ExpNav = (() => {
           _fecharLembrete();
         }
       }
+    });
+  }
+
+  /* ── SALAS DO MEET: ocupada / livre e quem está (20/11/2026) ──
+     A função salas-status consulta o Google Meet (no máximo a cada 45 s) e
+     devolve o retrato das duas salas. Atualiza a cada minuto com a aba visível. */
+  var SALAS_CFG = [
+    { sala: 'room',    nome: 'EXP Room', url: ROOM_URL,  btn: 'exp-room-btn' },
+    { sala: 'salinha', nome: 'Salinha',  url: ROOM2_URL, btn: 'exp-room2-btn' },
+  ];
+  var _salas = null, _salasEm = 0, _salasErro = null, _salasPoll = null, _salasTimer = null, _salasBuscando = false, _salasFalhas = 0;
+
+  function _salasEsc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  function _salaPor(id) { return (_salas || []).find(function (s) { return s.sala === id; }) || null; }
+
+  function _carregarSalas() {
+    var sb = _sb();
+    if (!sb || !sb.functions || _salasBuscando) return;
+    _salasBuscando = true;
+    sb.functions.invoke('salas-status', { body: {} }).then(function (r) {
+      _salasBuscando = false;
+      if (r.error || !r.data || !r.data.salas) {
+        _salasFalhas++;
+        _salasErro = 'indisponivel';
+      } else {
+        _salasFalhas = 0;
+        _salas = r.data.salas;
+        _salasErro = r.data.erro || (_salas.every(function (s) { return s.erro; }) ? _salas[0].erro : null);
+      }
+      _salasEm = Date.now();
+      _pintarSalas();
+    }).catch(function () { _salasBuscando = false; _salasFalhas++; _salasErro = 'indisponivel'; _pintarSalas(); });
+  }
+
+  function _pintarSalas() {
+    SALAS_CFG.forEach(function (c) {
+      var el = document.getElementById(c.btn);
+      if (!el) return;
+      var s = _salaPor(c.sala);
+      var ocupada = !!(s && s.ocupada && !s.erro);
+      el.classList.toggle('sala-ocupada', ocupada);
+      el.setAttribute('title', c.nome + (ocupada ? ' · ocupada · ' + (s.pessoas || []).join(', ') : (s && !s.erro ? ' · livre' : '')));
+    });
+    var $b = document.getElementById('exp-salas-banner');
+    if ($b && $b.style.display === 'block') _renderSalasBanner();
+  }
+
+  function _renderSalasBanner() {
+    var $body = document.getElementById('exp-salas-banner-body');
+    var $sub  = document.getElementById('exp-salas-banner-sub');
+    if (!$body) return;
+    if ($sub) {
+      var seg = _salasEm ? Math.round((Date.now() - _salasEm) / 1000) : null;
+      $sub.textContent = seg == null ? '' : (seg < 60 ? 'agora' : 'há ' + Math.floor(seg / 60) + ' min');
+    }
+    $body.innerHTML = SALAS_CFG.map(function (c) {
+      var s = _salaPor(c.sala);
+      var estado, pessoas = '';
+      if (!s && !_salasErro) estado = 'Verificando';
+      else if (!s || s.erro || _salasErro === 'indisponivel') estado = 'Sem informação';
+      else if (s.ocupada) {
+        var desde = s.desde ? ' desde ' + new Date(s.desde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        estado = 'Ocupada' + desde;
+        pessoas = '<div class="exp-sala-pessoas">' + (s.pessoas || []).map(_salasEsc).join(', ') + '</div>';
+      } else estado = 'Livre';
+      var ocupada = !!(s && s.ocupada && !s.erro);
+      return '<div class="exp-sala-item' + (ocupada ? ' ocupada' : '') + '">' +
+          '<span class="exp-sala-dot"></span>' +
+          '<div class="exp-sala-info">' +
+            '<div class="exp-sala-nome">' + _salasEsc(c.nome) + '</div>' +
+            '<div class="exp-sala-estado">' + _salasEsc(estado) + '</div>' +
+            pessoas +
+          '</div>' +
+          '<a class="exp-sala-entrar" href="' + c.url + '" target="_blank" rel="noopener">Entrar</a>' +
+        '</div>';
+    }).join('') + (_salasErro && _salasErro !== 'indisponivel'
+      ? '<div class="exp-sala-aviso">Não foi possível consultar o Meet agora.</div>'
+      : (_salasErro === 'indisponivel' ? '<div class="exp-sala-aviso">O aviso de sala ocupada ainda não está ativo.</div>' : ''));
+  }
+
+  function showSalasBanner(event) {
+    if (_salasTimer) { clearTimeout(_salasTimer); _salasTimer = null; }
+    var $b = document.getElementById('exp-salas-banner');
+    var $btn = document.getElementById('exp-room-btn');
+    if (!$b) return;
+    $b.style.display = 'block';
+    _renderSalasBanner();
+    _positionBanner($b, $btn);
+    if (Date.now() - _salasEm > 30 * 1000) _carregarSalas();
+  }
+  function hideSalasBanner() {
+    _salasTimer = setTimeout(function () {
+      var $b = document.getElementById('exp-salas-banner');
+      if ($b) $b.style.display = 'none';
+    }, 220);
+  }
+
+  function _iniciarSalas() {
+    if (_salasPoll) return;
+    _carregarSalas();
+    _salasPoll = setInterval(function () {
+      if (document.visibilityState !== 'visible') return;
+      // função ainda não publicada: tenta de novo só a cada 10 minutos
+      if (_salasFalhas >= 3 && Date.now() - _salasEm < 10 * 60 * 1000) return;
+      _carregarSalas();
+    }, 60 * 1000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && Date.now() - _salasEm > 30 * 1000 && _salasFalhas < 3) _carregarSalas();
     });
   }
 
@@ -1521,6 +1641,9 @@ window.ExpNav = (() => {
       _bindNotifOutsideClick();
       _bindTarefasOutsideClick();
 
+      /* Salas do Meet: ocupada / livre */
+      _iniciarSalas();
+
       /* Clima ativa — para todos os perfis */
       _checkClimaAtiva(user.id || user.app_user_id, _isSocio(role));
 
@@ -1563,6 +1686,7 @@ window.ExpNav = (() => {
     toggleTheme,
     toggleNotifPanel,
     showCalBanner,  hideCalBanner,
+    showSalasBanner, hideSalasBanner,
     showCrmBanner,  hideCrmBanner,
     showPrioBanner, hidePrioBanner, togglePrioBanner,
     toggleApoioPanel,   closeApoioPanel,   apoioSearchInput,   apoioClear,
