@@ -150,15 +150,6 @@
   }
 
   /* ── Pin: DMs fixadas pelo usuário ── */
-  /* #geral, #BIM e #sócios: fixados por padrão; guarda só os que a pessoa desafixou */
-  var FIXOS_DESAFIX_KEY = 'exp_chat_canais_desafixados';
-  var fixosDesafixados = (function(){ try { return new Set(JSON.parse(localStorage.getItem(FIXOS_DESAFIX_KEY)||'[]')); } catch(e){ return new Set(); } }());
-  function isFixoFixado(ch) { return !fixosDesafixados.has(ch); }
-  function toggleFixoPin(ch) {
-    if (fixosDesafixados.has(ch)) fixosDesafixados.delete(ch); else fixosDesafixados.add(ch);
-    try { localStorage.setItem(FIXOS_DESAFIX_KEY, JSON.stringify(Array.from(fixosDesafixados))); } catch(e) {}
-    renderConvList(true);
-  }
   function toggleDmPin(channel) {
     if (pinnedChannels.has(channel)) pinnedChannels.delete(channel);
     else pinnedChannels.add(channel);
@@ -1314,14 +1305,8 @@
       var agruparNovas = !q && !showOnlyUnread && !showOnlyFlagged;
       var ehNova = {}, novas = [];
       if (agruparNovas) {
-        var _fixos = [['general', 'geral', 'hash-verde', 'Toda a equipe'], ['bim', 'BIM', 'hash-azul', 'Toda a equipe']];
-        if (isSocioLikeRole(user.role)) _fixos.push(['socios', 'sócios', 'hash-ouro', 'Canal privado']);
-        _fixos.forEach(function(f) {
-          if (!(channelUnread[f[0]]||0) || isMuted(f[0])) return;
-          var ult = msgs.find(function(m){ return m.channel===f[0]; });
-          ehNova[f[0]] = true;
-          novas.push({ ts: new Date(ult && ult.created_at || 0).getTime(), tipo: 'fixo', f: f, ult: ult });
-        });
+        /* #geral, #BIM e #sócios não sobem para Novas conversas: ficam sempre nos três
+           primeiros lugares de Fixados, com o contador de não lidas na própria linha. */
         projectItems.forEach(function(i) {
           if (!(channelUnread[i.channel]||i.unread||0) || isMuted(i.channel)) return;
           ehNova[i.channel] = true;
@@ -1336,8 +1321,8 @@
       }
 
       /* ── Lista lateral (22/11/2026): Novas conversas · Fixados · Recentes · Projetos.
-         Fixados reúne canais, projetos, conversas diretas e grupos; #geral, #BIM (e #sócios)
-         já vêm fixados e podem ser desafixados. Recentes = o resto com mensagem nos últimos
+         Fixados reúne canais, projetos, conversas diretas e grupos; #geral, #BIM e #sócios
+         ficam sempre fixados, nesta ordem, nos três primeiros lugares, e não podem ser desafixados. Recentes = o resto com mensagem nos últimos
          14 dias, numa lista só. Projetos parados há mais de 14 dias ficam no grupo recolhido.
          Conversas diretas antigas saem da lista e voltam ao buscar pelo nome. ── */
       var _semFiltro = !q && !showOnlyUnread && !showOnlyFlagged;
@@ -1354,7 +1339,7 @@
         if (q && !c[4].some(function (n) { return n.indexOf(q) !== -1; })) return;
         var ult = msgs.find(function (m) { return m.channel === c[0]; });
         entradas.push({ channel: c[0], tipo: 'canal', c: c, ult: ult, ordem: ordem,
-          fixado: isFixoFixado(c[0]), ts: _ts(ult && ult.created_at) });
+          fixado: true, ts: _ts(ult && ult.created_at) });
       });
       /* projetos */
       projectItems.forEach(function (it) {
@@ -1381,18 +1366,8 @@
           var pres  = oUid ? onlinePresence[oUid] : null;
           if (pres) pStatus = pres.status;
         }
-        var isPinnedDm  = pinnedChannels.has(dm.channel);
-        var chanJson    = dm.channel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        var pinBtn      = '<button class="fp-dm-pin-btn' + (isPinnedDm ? ' is-pinned' : '') + '" ' +
-          'title="' + (isPinnedDm ? 'Desafixar' : 'Fixar conversa') + '" ' +
-          'onclick="event.stopPropagation();fpChat.toggleDmPin(\'' + chanJson + '\')">' +
-          '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (isPinnedDm ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-          '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
-          '</button>';
-        var baseHtml = buildConvItemHtml(dm.channel, meta.label, meta.iniciais, meta.avatarUrl, meta.cor,
+        return buildConvItemHtml(dm.channel, meta.label, meta.iniciais, meta.avatarUrl, meta.cor,
           dm.content, dm._semMensagem ? null : dm, dmU, '', pStatus, meta.members);
-        /* Injeta o botão de pin antes do fechamento do item */
-        return baseHtml.replace('</div>', pinBtn + '</div>');
       }
 
       function linhaEntrada(e) {
@@ -1402,12 +1377,9 @@
           return buildConvItemHtml(it.channel, it.label, it.iniciais, null, it.cor,
             it.preview, null, channelUnread[it.channel] || it.unread || 0, '', '', null, isPinned(it.channel));
         }
-        var c = e.c, fix = e.fixado;
-        var pin = '<button class="fp-dm-pin-btn' + (fix ? ' is-pinned' : '') + '" title="' + (fix ? 'Desafixar' : 'Fixar canal') + '" ' +
-          'onclick="event.stopPropagation();fpChat.toggleFixoPin(\'' + c[0] + '\')">' +
-          '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (fix ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-          '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg></button>';
-        return buildConvItemHtml(c[0], c[1], '#', null, null, c[3], e.ult, channelUnread[c[0]] || 0, c[2]).replace('</div>', pin + '</div>');
+        /* canais da equipe: sempre fixados, sem alfinete (ninguém tira) */
+        var c = e.c;
+        return buildConvItemHtml(c[0], c[1], '#', null, null, c[3], e.ult, channelUnread[c[0]] || 0, c[2]);
       }
       var _porTs = function (a, b) { return b.ts - a.ts; };
 
@@ -1564,9 +1536,6 @@
     var ctxAttr = isProj
       ? ' oncontextmenu="fpChat.openCtxMenu(event,\'' + chanJson + '\')"'
       : '';
-    var pinIco = pinned
-      ? '<div class="fp-conv-pin-ico"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17z"/></svg></div>'
-      : '';
 
     return '<div class="fp-conv-item' + (isUnread?' unread':'') + _mentionCls(channel) + '" data-channel="' + escHtml(channel) + '" onclick="fpChat.openChannel(\'' + chanJson + '\',\'' + labelEsc + '\')"' + ctxAttr + '>' +
       avHtml +
@@ -1577,18 +1546,31 @@
         '</div>' +
         '<div class="fp-conv-preview">' + (_rasc ? '<span class="fp-conv-rasc">Rascunho:</span> ' + escHtml(compactPreviewText(_rasc, 70, '')) : escHtml(preview)) + '</div>' +
       '</div>' +
-      /* Projetos: botão de fixar ao passar o mouse (sempre visível quando já fixado) */
-      (isProj
-        ? '<button class="fp-dm-pin-btn' + (pinned ? ' is-pinned' : '') + '" title="' + (pinned ? 'Desafixar projeto' : 'Fixar projeto') + '" ' +
-            'onclick="event.stopPropagation();fpChat.toggleProjectPin(\'' + chanJson + '\')">' +
-            '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (pinned ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg>' +
-          '</button>'
-        : pinIco) +
-      (unread > 0 ? '' : '<button class="fp-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();fpChat.marcarNaoLida(\'' + chanJson + '\')"><svg width="11" height="11" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>') +
+      _acoesConvHtml(channel, chanJson, unread) +
       (unread > 0 && mentionChannels[channel] ? '<div class="fp-conv-at" title="Você foi mencionado">@</div>' : '') +
       (unread > 0 ? '<div class="fp-conv-badge">' + unread + '</div>' : '') +
       '</div>';
+  }
+
+  /* Ações ao passar o mouse, na lateral direita da linha (22/11/2026): fixar e marcar como não lida.
+     Canais da equipe (#geral, #BIM, #sócios) não têm fixar: são sempre fixados. O alfinete
+     de quem já está fixado fica sempre à vista. */
+  function _acoesConvHtml(channel, chanJson, unread) {
+    var isProj = isProjectChannel(channel);
+    var isConversa = channel.indexOf('dm:') === 0 || channel.indexOf('group:') === 0;
+    var h = '', fixado = false;
+    if (isProj || isConversa) {
+      fixado = isProj ? isPinned(channel) : pinnedChannels.has(channel);
+      var fn = isProj ? 'toggleProjectPin' : 'toggleDmPin';
+      h += '<button class="fp-dm-pin-btn' + (fixado ? ' is-pinned' : '') + '" type="button" title="' + (fixado ? 'Desafixar' : 'Fixar') + '" aria-label="' + (fixado ? 'Desafixar' : 'Fixar') + '" ' +
+        'onclick="event.stopPropagation();fpChat.' + fn + '(\'' + chanJson + '\')">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="' + (fixado ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg></button>';
+    }
+    if (!(unread > 0)) {
+      h += '<button class="fp-conv-nl-btn" type="button" title="Marcar como não lida" aria-label="Marcar como não lida" onclick="event.stopPropagation();fpChat.marcarNaoLida(\'' + chanJson + '\')"><svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></button>';
+    }
+    return h ? '<div class="fp-conv-acoes' + (fixado ? ' tem-fixo' : '') + '">' + h + '</div>' : '';
   }
 
   /* Sino cortado (silenciada) ao lado do nome da conversa */
@@ -5160,7 +5142,7 @@
   }, true);
 
   window.fpChat = {
-    toggleFixoPin, removerPrint,
+    removerPrint,
     abrirGaleria, fecharGaleria, galeriaAbrir, galeriaGrade, galeriaPasso, galeriaIrMensagem,
     ativarNotificacoes, testarNotificacao,
     revResponder, revCancelar,
