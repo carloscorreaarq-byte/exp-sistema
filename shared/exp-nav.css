@@ -966,58 +966,34 @@
 /* ══════════════════════════════════════════════════════════════
    SALAS DO MEET — ocupada / livre e quem está (20/11/2026)
    ══════════════════════════════════════════════════════════════ */
-#exp-salas-banner { width: 300px; }
 #exp-room-btn { position: relative; }
-#exp-room-btn.sala-ocupada::before,
-.exp-room2-go-btn.sala-ocupada::before {
-  content: '';
-  position: absolute;
-  width: 7px; height: 7px; border-radius: 50%;
-  background: #F0EFEC;
-  border: 1.5px solid #2A2926;
+/* Sala ocupada: borda amarela pulsando, mesma cor e ritmo do timer em andamento */
+@keyframes expSalaPulse {
+  0%   { box-shadow: inset 0 0 0 1.5px #E2B141, 0 0 0 0 rgba(226,177,65,.55); }
+  70%  { box-shadow: inset 0 0 0 1.5px #E2B141, 0 0 0 7px rgba(226,177,65,0); }
+  100% { box-shadow: inset 0 0 0 1.5px #E2B141, 0 0 0 0 rgba(226,177,65,0); }
 }
-#exp-room-btn.sala-ocupada::before { top: 7px; right: 9px; }
+#exp-room-btn.sala-ocupada,
+.exp-room2-go-btn.sala-ocupada { animation: expSalaPulse 1.6s ease-out infinite; }
 /* o quadro das salas já aparece ao passar o mouse: sem a dica de texto */
 #exp-room-btn[title]:hover::after { display: none; }
-.exp-room2-go-btn.sala-ocupada::before { top: 3px; left: 3px; width: 5px; height: 5px; border-width: 1px; }
 /* Salinha ocupada: a abinha aparece mesmo sem passar o mouse */
 .exp-room2-go-btn.sala-ocupada { opacity: 1; right: calc(100%); color: rgba(255,255,255,.5); pointer-events: auto; }
 
-.exp-sala-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--cinza2, #ECEAE4);
-}
-.exp-sala-item:last-of-type { border-bottom: none; }
-[data-theme="dark"] .exp-sala-item { border-bottom-color: #2A2927; }
-.exp-sala-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
-  border: 1.5px solid #B9B6AE; background: transparent;
-}
-.exp-sala-item.ocupada .exp-sala-dot { background: var(--grafite, #111110); border-color: var(--grafite, #111110); }
-[data-theme="dark"] .exp-sala-item.ocupada .exp-sala-dot { background: #F0EDE6; border-color: #F0EDE6; }
-.exp-sala-info { flex: 1; min-width: 0; }
-.exp-sala-nome {
-  font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
-  color: var(--grafite, #111110);
-}
-[data-theme="dark"] .exp-sala-nome { color: #F0EDE6; }
-.exp-sala-estado { font-size: 11px; color: #8A867E; margin-top: 2px; }
-.exp-sala-item.ocupada .exp-sala-estado { color: var(--grafite, #111110); }
-[data-theme="dark"] .exp-sala-item.ocupada .exp-sala-estado { color: #F0EDE6; }
-.exp-sala-pessoas { font-size: 11px; color: #8A867E; margin-top: 3px; line-height: 1.4; }
-.exp-sala-entrar {
-  flex-shrink: 0; align-self: center;
-  height: 26px; padding: 0 10px;
-  display: inline-flex; align-items: center;
-  border-radius: 8px;
-  border: 1px solid var(--cinza, #D0CFC9);
-  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--grafite, #111110);
-  text-decoration: none;
-}
-.exp-sala-entrar:hover { background: var(--off, #F7F6F3); }
-[data-theme="dark"] .exp-sala-entrar { color: #F0EDE6; border-color: #3A3936; }
-[data-theme="dark"] .exp-sala-entrar:hover { background: #252523; }
-.exp-sala-aviso { padding: 8px 14px 10px; font-size: 10px; color: #8A867E; border-top: 1px solid var(--cinza2, #ECEAE4); }
-[data-theme="dark"] .exp-sala-aviso { border-top-color: #2A2927; }
+/* Itens: mesmo modelo do quadro Comercial (exp-fu-item); ocupada = faixa à esquerda, neutra */
+.exp-sala-item { border-left: 3px solid transparent; align-items: center; }
+.exp-sala-item.ocupada { border-left-color: var(--grafite, #111110); background: var(--off, #F7F6F3); }
+[data-theme="dark"] .exp-sala-item.ocupada { border-left-color: #F0EDE6; background: #252523; }
+.exp-sala-item .exp-fu-proj { white-space: normal; }
+.exp-sala-item.ocupada .exp-fu-proj { color: var(--grafite, #111110); }
+[data-theme="dark"] .exp-sala-item.ocupada .exp-fu-proj { color: #F0EDE6; }
+.exp-sala-entrar { margin-top: 0; text-decoration: none; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; cursor: pointer; }
+.exp-sala-entrar:hover { color: var(--grafite, #111110); border-color: var(--cinza, #D0CFC9); }
+[data-theme="dark"] .exp-sala-entrar:hover { color: #F0EDE6; }
+.exp-sala-aviso { border-top: 1px solid var(--cinza2, #ECEAE4); border-bottom: none; }
+
+/* ── Alinhamento dos ícones da nav (21/11/2026): mesmo tamanho e mesmo eixo ── */
+.exp-nav-item { padding: 0; margin: 0; line-height: 0; font: inherit; box-sizing: border-box; }
+.exp-nav-item > svg { width: 18px; height: 18px; display: block; flex-shrink: 0; }
+.exp-nav-apoio-wrap, .exp-nav-contatos-wrap, .exp-nav-pessoas-wrap, .exp-nav-room-wrap { height: 34px; flex-shrink: 0; }
+.exp-nav-item[title]:hover::after { line-height: 1.3; }

@@ -113,10 +113,10 @@ window.ExpNav = (() => {
       analise:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
       pessoas:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
       sociedade: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
-      room:      '<svg id="exp-room-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
-      bell:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-      star:      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-      tarefas:   '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
+      room:      '<svg id="exp-room-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+      bell:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+      star:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+      tarefas:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>',
     };
 
     var socStyle = isSocio ? '' : ' style="display:none"';
@@ -955,6 +955,17 @@ window.ExpNav = (() => {
   function _salasEsc(t) {
     return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
   }
+  /* "Carlos Henrique Corrêa - EXP" → "Carlos" (só o primeiro nome, sem repetir) */
+  function _salasPrimeiros(lista) {
+    var vistos = {}, out = [];
+    (lista || []).forEach(function (n) {
+      var p = String(n || '').split(/\s+[-–—|·]\s+/)[0].trim().split(/\s+/)[0] || '';
+      if (!p) return;
+      var k = p.toLowerCase();
+      if (!vistos[k]) { vistos[k] = true; out.push(p); }
+    });
+    return out;
+  }
   function _salaPor(id) { return (_salas || []).find(function (s) { return s.sala === id; }) || null; }
 
   function _carregarSalas() {
@@ -983,7 +994,7 @@ window.ExpNav = (() => {
       var s = _salaPor(c.sala);
       var ocupada = !!(s && s.ocupada && !s.erro);
       el.classList.toggle('sala-ocupada', ocupada);
-      el.setAttribute('title', c.nome + (ocupada ? ' · ocupada · ' + (s.pessoas || []).join(', ') : (s && !s.erro ? ' · livre' : '')));
+      el.setAttribute('title', c.btn === 'exp-room-btn' ? 'EXP Room' : 'EXP Salinha');
     });
     var $b = document.getElementById('exp-salas-banner');
     if ($b && $b.style.display === 'block') _renderSalasBanner();
@@ -997,29 +1008,29 @@ window.ExpNav = (() => {
       var seg = _salasEm ? Math.round((Date.now() - _salasEm) / 1000) : null;
       $sub.textContent = seg == null ? '' : (seg < 60 ? 'agora' : 'há ' + Math.floor(seg / 60) + ' min');
     }
+    var nOcup = (_salas || []).filter(function (s) { return s.ocupada && !s.erro; }).length;
+    if ($sub && _salas && !_salasErro) $sub.textContent = nOcup ? (nOcup + (nOcup > 1 ? ' ocupadas' : ' ocupada')) : 'livres';
     $body.innerHTML = SALAS_CFG.map(function (c) {
       var s = _salaPor(c.sala);
-      var estado, pessoas = '';
-      if (!s && !_salasErro) estado = 'Verificando';
-      else if (!s || s.erro || _salasErro === 'indisponivel') estado = 'Sem informação';
-      else if (s.ocupada) {
-        var desde = s.desde ? ' desde ' + new Date(s.desde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
-        estado = 'Ocupada' + desde;
-        pessoas = '<div class="exp-sala-pessoas">' + (s.pessoas || []).map(_salasEsc).join(', ') + '</div>';
-      } else estado = 'Livre';
       var ocupada = !!(s && s.ocupada && !s.erro);
-      return '<div class="exp-sala-item' + (ocupada ? ' ocupada' : '') + '">' +
-          '<span class="exp-sala-dot"></span>' +
-          '<div class="exp-sala-info">' +
-            '<div class="exp-sala-nome">' + _salasEsc(c.nome) + '</div>' +
-            '<div class="exp-sala-estado">' + _salasEsc(estado) + '</div>' +
-            pessoas +
+      var linha;
+      if (!s && !_salasErro) linha = 'Verificando';
+      else if (!s || s.erro || _salasErro === 'indisponivel') linha = 'Sem informação';
+      else if (ocupada) {
+        var desde = s.desde ? ' desde ' + new Date(s.desde).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+        var nomes = _salasPrimeiros(s.pessoas).join(', ');
+        linha = 'Ocupada' + desde + (nomes ? ' · ' + nomes : '');
+      } else linha = 'Livre';
+      return '<div class="exp-fu-item exp-sala-item' + (ocupada ? ' ocupada' : '') + '">' +
+          '<div class="exp-fu-info">' +
+            '<div class="exp-fu-cliente">' + _salasEsc(c.nome) + '</div>' +
+            '<div class="exp-fu-proj">' + _salasEsc(linha) + '</div>' +
           '</div>' +
-          '<a class="exp-sala-entrar" href="' + c.url + '" target="_blank" rel="noopener">Entrar</a>' +
+          '<a class="exp-fu-date exp-sala-entrar" href="' + c.url + '" target="_blank" rel="noopener">Entrar</a>' +
         '</div>';
     }).join('') + (_salasErro && _salasErro !== 'indisponivel'
-      ? '<div class="exp-sala-aviso">Não foi possível consultar o Meet agora.</div>'
-      : (_salasErro === 'indisponivel' ? '<div class="exp-sala-aviso">O aviso de sala ocupada ainda não está ativo.</div>' : ''));
+      ? '<div class="exp-crm-sec-hdr exp-sala-aviso">Não foi possível consultar o Meet agora</div>'
+      : (_salasErro === 'indisponivel' ? '<div class="exp-crm-sec-hdr exp-sala-aviso">Aviso de sala ocupada ainda não ativo</div>' : ''));
   }
 
   function showSalasBanner(event) {
