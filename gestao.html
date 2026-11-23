@@ -17,7 +17,7 @@
 <script src="shared/marcacoes.js?v=2026-11-06a"></script>
 <script>!function(){var t=localStorage.getItem('exp-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');}();</script>
 <link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
-<link rel="stylesheet" href="shared/exp-nav.css?v=2026-11-20a">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-11-21a">
 <link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
 
 <!-- EXP · MÓDULO 3 · GESTÃO DE PROJETOS E ATIVIDADES -->
@@ -1688,6 +1688,21 @@ body {
 .proc-prog-bar { flex: 1; height: 3px; background: var(--cinza2); border-radius: 2px; }
 .proc-prog-fill { height: 100%; background: var(--azul); border-radius: 2px; transition: width .3s; }
 .proc-prog-fill.done { background: var(--verde); }
+
+/* Revisão: próximo pendente, chaves (abrir todas / ocultar feitos) e comemoração */
+.rev-ocultar-bar { display: flex; justify-content: flex-end; align-items: center; gap: 16px; margin-top: 12px; }
+.rev-ocultar-bar .btn:active, .rev-ocultar-bar .btn:focus { background: var(--branco); color: var(--grafite); }
+.rev-chave { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--txt-2); user-select: none; }
+.rev-chave input { position: absolute; opacity: 0; width: 0; height: 0; }
+.rev-chave-trilho { position: relative; width: 26px; height: 14px; border-radius: 7px; background: var(--cinza); transition: background .15s; flex-shrink: 0; }
+.rev-chave-trilho::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.rev-chave input:checked + .rev-chave-trilho { background: var(--grafite); }
+.rev-chave input:checked + .rev-chave-trilho::after { transform: translateX(12px); }
+.rev-chave input:focus-visible + .rev-chave-trilho { outline: 2px solid var(--grafite); outline-offset: 2px; }
+.tarefa-item.rev-alvo { outline: 2px solid var(--grafite); outline-offset: 2px; border-radius: 6px; }
+.rev-ocultas-nota { font-size: 10px; color: var(--txt-3); text-align: center; padding: 6px 0 2px; }
+.festa-camada { position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden; }
+.festa-pedaco { position: absolute; width: 7px; height: 10px; border-radius: 2px; will-change: transform, opacity; }
 
 /* Prancha: arrastar para reordenar (recolhe tudo e mostra só os títulos) */
 .prancha-tit { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -3713,7 +3728,7 @@ span.tarefa-cat { display: inline-block; cursor: default; }
     </div>
     <button class="btn filled socio-only" id="btn-novo-proj" style="display:none" onclick="abrirModalCadastroProjeto()">+ Novo projeto</button>
     <div class="proj-filters" id="lista-filters">
-      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, oportunidade, cidade ou produto">
+      <input class="filter-select" id="fil-busca" oninput="filtrarProjetos()" placeholder="Buscar cliente, sigla, oportunidade, cidade ou produto">
       <select class="filter-select" id="fil-nucleo" onchange="filtrarProjetos()">
         <option value="">Todos os núcleos</option>
         <option value="urbanismo">Urbanismo</option>
@@ -7521,9 +7536,10 @@ function pkFiltrarProds() {
     if (status && p.status !== status) return false;
     if (soMeus && !pkEuEnvolvido(p)) return false;
     if (busca) {
+      // cada palavra digitada precisa aparecer em algum campo, em qualquer ordem ("casa nova capão")
       const opp = p.oportunidades, cli = opp?.clientes;
-      const hay = normBusca([p.nome, opp?.projeto, cli?.nome, cli?.cidade, cli?.uf, opp?.cidade].filter(Boolean).join(' '));
-      if (!hay.includes(busca)) return false;
+      const hay = normBusca([p.nome, opp?.projeto, cli?.nome, cli?.sigla, opp?.razao_social, cli?.cidade, cli?.uf, opp?.cidade, opp?.uf].filter(Boolean).join(' '));
+      if (!busca.split(/\s+/).filter(Boolean).every(termo => hay.includes(termo))) return false;
     }
     return true;
   });
@@ -11008,8 +11024,18 @@ async function selecionarRevisao(id) {
       ${datasBlockHtml}
       ${summaryBarsHtml}
       ${reRevHtml}
+      ${_totalTarefas > 0 ? `<div class="rev-ocultar-bar">
+        <button class="btn sm" type="button" onclick="revProximoPendente()" title="Vai até o próximo item ainda não marcado">Próximo pendente</button>
+        <label class="rev-chave" title="Abre todas as pranchas de uma vez">
+          <input type="checkbox" ${_revAbrirTodas() ? 'checked' : ''} onchange="alternarAbrirTodas(this.checked)"><span class="rev-chave-trilho"></span>Abrir todas
+        </label>
+        <label class="rev-chave" title="Esconde os itens marcados e as pranchas concluídas, para ver só o que falta">
+          <input type="checkbox" ${_revOcultaFeitos() ? 'checked' : ''} onchange="alternarOcultarFeitos()"><span class="rev-chave-trilho"></span>Ocultar feitos
+        </label>
+      </div>` : ''}
       <div id="pranchas-wrap" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
-        ${(pranchas || []).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
+        ${(pranchas || []).filter(pr => !(_revOcultaFeitos() && _pranchaConcluida(pr))).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
+        ${_revOcultaFeitos() && (pranchas || []).some(_pranchaConcluida) ? `<div class="rev-ocultas-nota">${(pranchas || []).filter(_pranchaConcluida).length} prancha${(pranchas || []).filter(_pranchaConcluida).length > 1 ? 's concluídas ocultas' : ' concluída oculta'}</div>` : ''}
         ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
       </div>
       ${podePreencher ? `<div style="display:flex;justify-content:center;margin-top:14px">
@@ -11017,6 +11043,12 @@ async function selecionarRevisao(id) {
       </div>` : ''}
     </div>
   `;
+  // Guarda o que é preciso para redesenhar uma prancha só, sem buscar de novo (Fase A, 20/11/2026)
+  G._revPranchasAtual = pranchas;
+  G._revComPorPrancha = comentariosPorPrancha;
+  G._revPodePreencher = podePreencher;
+  // "Abrir todas" ligado: todas as pranchas abertas
+  if (_revAbrirTodas()) document.querySelectorAll('#pranchas-wrap .prancha-card').forEach(c => _expandidas.add(c.id.replace('prancha-', '')));
   // Restaura estado expandido das pranchas que estavam abertas
   _expandidas.forEach(prId => {
     const card = document.getElementById('prancha-' + prId);
@@ -11073,7 +11105,9 @@ function renderPrancha(pr, isSocioOrCoord) {
   // Checklist full (dentro de prancha-body-full) — ordenado por data de criação
   const tarefasOrdenadas = [...(pr.tarefas_revisao || [])].sort((a, b) =>
     (a.created_at || '').localeCompare(b.created_at || ''));
+  const _ocultar = _revOcultaFeitos();
   const tarefasHtml = tarefasOrdenadas.map((t, _i) => {
+    if (_ocultar && t.concluida && !_rrAberta(t)) return '';
     const _num = _i + 1;   // número do item na prancha (para citar em comentários: "item 3")
     const tarefaIdJs = _sqN(t.id);
     const tarefaTituloJs = _sqAttr(_sqN(`Tarefa de revisão · ${t.descricao}`));
@@ -11127,8 +11161,9 @@ function renderPrancha(pr, isSocioOrCoord) {
     : '<div style="color:var(--txt-3);font-size:11px;padding:6px 0">Sem comentários nesta prancha.</div>';
 
   // Preview: até 3 tarefas (mesma ordem)
-  const previewTarefas = tarefasOrdenadas.slice(0, 3);
-  const restante = (pr.tarefas_revisao?.length || 0) - previewTarefas.length;
+  const _basePreview = _ocultar ? tarefasOrdenadas.filter(t => !(t.concluida && !_rrAberta(t))) : tarefasOrdenadas;
+  const previewTarefas = _basePreview.slice(0, 3);
+  const restante = _basePreview.length - previewTarefas.length;
   const previewHtml = previewTarefas.length
     ? `<div class="prancha-preview">
         ${previewTarefas.map(t => `<div class="prancha-preview-task prio-${(t.prioridade || 'P3').toLowerCase()}">
@@ -11157,7 +11192,7 @@ function renderPrancha(pr, isSocioOrCoord) {
   return `<div class="prancha-card${ajusteGeral ? ' ajuste-geral' : ''}" id="prancha-${prId}" data-prancha-id="${_escN(prId)}">
     <div class="prancha-header ${concluida100 ? 'concluida-bg' : ''} prancha-hd-click" onclick="togglePranchaExpand(${prIdJs})">
       <div class="prancha-tit">
-        ${isSocioOrCoord && !ajusteGeral ? `<span class="prancha-grip" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" onclick="event.stopPropagation()" onpointerdown="pranchaArrastarInicio(event, ${prIdJs})"><svg viewBox="0 0 10 16" width="8" height="13" fill="currentColor"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></span>` : ''}
+        ${isSocioOrCoord && !ajusteGeral && !_ocultar ? `<span class="prancha-grip" title="Arrastar para reordenar" aria-label="Arrastar para reordenar" onclick="event.stopPropagation()" onpointerdown="pranchaArrastarInicio(event, ${prIdJs})"><svg viewBox="0 0 10 16" width="8" height="13" fill="currentColor"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></span>` : ''}
         <div class="prancha-nome">${_escN(pr.nome)}${concluida100 ? '' : ''}</div>
       </div>
       <div class="prancha-actions">
@@ -11343,14 +11378,15 @@ function _scrollPaiPrancha(el) {
   }
   return document.scrollingElement || document.documentElement;
 }
+let _pranchaDrag = null;   // arraste em andamento (um por vez)
 function pranchaArrastarInicio(ev, pranchaId) {
   if (ev.button != null && ev.button !== 0) return;
+  if (_pranchaDrag) _pranchaDrag.soltar(true);   // segurança: encerra um arraste que ficou pendurado
   const card = document.getElementById('prancha-' + pranchaId);
   const wrap = document.getElementById('pranchas-wrap');
   if (!card || !wrap) return;
   ev.preventDefault();
   ev.stopPropagation();
-  const grip = ev.currentTarget;
   const scroller = _scrollPaiPrancha(wrap);
   const ordemAntes = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral)')].map(c => c.dataset.pranchaId);
   const topoAntes = card.getBoundingClientRect().top;
@@ -11359,10 +11395,10 @@ function pranchaArrastarInicio(ev, pranchaId) {
   document.body.classList.add('prancha-arrastando');
   // mantém a prancha segurada embaixo do cursor depois de recolher as outras
   scroller.scrollTop += card.getBoundingClientRect().top - topoAntes;
-  try { grip.setPointerCapture(ev.pointerId); } catch (e) {}
-  let ultimoY = ev.clientY, rolagem = null;
+  let ultimoY = ev.clientY, rolagem = null, encerrado = false;
 
   function reposicionar(y) {
+    if (!card.isConnected) return;
     const outros = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral):not(.arrastando)')];
     let antes = null;
     for (const c of outros) {
@@ -11383,31 +11419,49 @@ function pranchaArrastarInicio(ev, pranchaId) {
     rolagem = requestAnimationFrame(rolarBorda);
   }
   rolagem = requestAnimationFrame(rolarBorda);
-  function mover(e) { ultimoY = e.clientY; reposicionar(e.clientY); }
-  async function soltar() {
+
+  function mover(e) {
+    if (e.buttons === 0) { soltar(); return; }   // botão já foi solto fora da janela
+    ultimoY = e.clientY;
+    reposicionar(e.clientY);
+  }
+  function soltarEv() { soltar(); }
+  async function soltar(cancelar) {
+    if (encerrado) return;
+    encerrado = true;
+    _pranchaDrag = null;
     cancelAnimationFrame(rolagem);
-    grip.removeEventListener('pointermove', mover);
-    grip.removeEventListener('pointerup', soltar);
-    grip.removeEventListener('pointercancel', soltar);
-    const topoSolto = card.getBoundingClientRect().top;
-    wrap.classList.remove('reordenando');
-    card.classList.remove('arrastando');
+    window.removeEventListener('pointermove', mover, true);
+    window.removeEventListener('pointerup', soltarEv, true);
+    window.removeEventListener('pointercancel', soltarEv, true);
+    window.removeEventListener('blur', soltarEv);
+    const topoSolto = card.isConnected ? card.getBoundingClientRect().top : 0;
+    const w = document.getElementById('pranchas-wrap') || wrap;
+    w.classList.remove('reordenando');
+    document.querySelectorAll('.prancha-card.arrastando').forEach(c => c.classList.remove('arrastando'));
     document.body.classList.remove('prancha-arrastando');
+    if (!card.isConnected || cancelar) return;
     scroller.scrollTop += card.getBoundingClientRect().top - topoSolto;
-    const ordemNova = [...wrap.querySelectorAll('.prancha-card:not(.ajuste-geral)')].map(c => c.dataset.pranchaId);
+    const ordemNova = [...w.querySelectorAll('.prancha-card:not(.ajuste-geral)')].map(c => c.dataset.pranchaId);
     if (ordemNova.join('|') === ordemAntes.join('|')) return;
     const sb = getSB();
-    const resps = await Promise.all(ordemNova.map((id, i) => sb.from('pranchas').update({ ordem: i }).eq('id', id)));
-    if (resps.some(r => r.error)) {
-      toast('Não foi possível salvar a nova ordem das pranchas');
+    // .select() devolve as linhas gravadas: se vier vazio, o banco não deixou gravar (permissão)
+    const resps = await Promise.all(ordemNova.map((id, i) => sb.from('pranchas').update({ ordem: i }).eq('id', id).select('id')));
+    const falhou = resps.find(r => r.error);
+    const semPermissao = !falhou && resps.some(r => !(r.data || []).length);
+    if (falhou || semPermissao) {
+      toast(semPermissao ? 'Você não tem permissão para reordenar estas pranchas' : 'Não foi possível salvar a nova ordem das pranchas');
       if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
       return;
     }
     toast('Ordem das pranchas salva');
   }
-  grip.addEventListener('pointermove', mover);
-  grip.addEventListener('pointerup', soltar);
-  grip.addEventListener('pointercancel', soltar);
+  // escuta na janela inteira: mover a prancha na lista não pode "soltar" o arraste
+  window.addEventListener('pointermove', mover, true);
+  window.addEventListener('pointerup', soltarEv, true);
+  window.addEventListener('pointercancel', soltarEv, true);
+  window.addEventListener('blur', soltarEv);
+  _pranchaDrag = { soltar };
 }
 
 function togglePranchaExpand(pranchaId) {
@@ -11529,27 +11583,168 @@ function renderTopicoComentario(c, podeExcluirTopico) {
   </div>`;
 }
 
-async function toggleTarefaRevisao(id, atual, pranchaId) {
-  await sb.from('tarefas_revisao').update({
-    concluida: !atual,
-    concluida_por: !atual ? G.usuario.id : null,
-    concluida_em: !atual ? new Date().toISOString() : null
-  }).eq('id', id);
-  await sincronizarExpiracaoTempMedia('revisao_tarefa', id, !atual && !_rrAberta(G._revTarefas?.[id]));
+// ── Ocultar feitos (lembrado neste navegador) ─────────────────────────────
+function _revOcultaFeitos() {
+  if (G._revOcultaFeitosVal == null) { try { G._revOcultaFeitosVal = localStorage.getItem('exp_rev_ocultar_feitos') === '1'; } catch (e) { G._revOcultaFeitosVal = false; } }
+  return G._revOcultaFeitosVal;
+}
+function _pranchaConcluida(pr) {
+  const c = _revContagem(pr.tarefas_revisao);
+  return c.total > 0 && c.conc === c.total;
+}
+// ── Abrir todas (chave, lembrada neste navegador) ─────────────────────────
+function _revAbrirTodas() {
+  if (G._revAbrirTodasVal == null) { try { G._revAbrirTodasVal = localStorage.getItem('exp_rev_abrir_todas') === '1'; } catch (e) { G._revAbrirTodasVal = false; } }
+  return G._revAbrirTodasVal;
+}
+function alternarAbrirTodas(ligar) {
+  G._revAbrirTodasVal = !!ligar;
+  try { localStorage.setItem('exp_rev_abrir_todas', ligar ? '1' : '0'); } catch (e) {}
+  document.querySelectorAll('#pranchas-wrap .prancha-card').forEach(c => {
+    c.classList.toggle('expanded', !!ligar);
+    const hint = c.querySelector('.prancha-expand-hint');
+    if (hint) hint.textContent = ligar ? 'Recolher' : 'Clique para expandir';
+  });
+}
 
-  // Verifica se prancha ficou 100% e notifica (placeholder)
-  if (!atual) {
-    const { data: pr } = await sb.from('pranchas').select('*, tarefas_revisao(concluida)').eq('id', pranchaId).single();
-    const total = pr?.tarefas_revisao?.length || 0;
-    const conc = pr?.tarefas_revisao?.filter(t => t.concluida).length || 0;
-    if (total > 0 && conc === total) {
-      // Slack placeholder
-      console.log('[SLACK] Prancha concluída:', pr?.nome);
-    }
-  }
+// ── Próximo pendente: abre a prancha e marca o item com borda ─────────────
+function revProximoPendente() {
+  const itens = [...document.querySelectorAll('#pranchas-wrap .tarefa-item[data-tarefa-id]')].filter(el => {
+    const t = G._revTarefas?.[el.dataset.tarefaId];
+    return t ? (!t.concluida || _rrAberta(t)) : !el.querySelector('.tarefa-check.done');
+  });
+  if (!itens.length) { toast('Nenhum item pendente nesta revisão'); return; }
+  const atual = G._revAlvoId ? itens.findIndex(el => el.dataset.tarefaId === G._revAlvoId) : -1;
+  const el = itens[(atual + 1) % itens.length];
+  document.querySelectorAll('#pranchas-wrap .tarefa-item.rev-alvo').forEach(x => x.classList.remove('rev-alvo'));
+  const card = el.closest('.prancha-card');
+  if (card && !card.classList.contains('expanded')) togglePranchaExpand(card.id.replace('prancha-', ''));
+  el.classList.add('rev-alvo');
+  G._revAlvoId = el.dataset.tarefaId;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 
+function alternarOcultarFeitos() {
+  G._revOcultaFeitosVal = !_revOcultaFeitos();
+  try { localStorage.setItem('exp_rev_ocultar_feitos', G._revOcultaFeitosVal ? '1' : '0'); } catch (e) {}
   if (G._revisaoAtiva) selecionarRevisao(G._revisaoAtiva);
-  carregarRevisoes();
+}
+
+// ── Comemoração ao concluir uma prancha: confete curto nas cores EXP ───────
+function _comemorarPrancha(pranchaId, nome) {
+  toast('Prancha concluída' + (nome ? ': ' + nome : ''));
+  try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+  const card = document.getElementById('prancha-' + pranchaId);
+  const r = card ? card.getBoundingClientRect() : null;
+  const visivel = r && r.bottom > 0 && r.top < window.innerHeight;
+  const ox = visivel ? r.left + r.width / 2 : window.innerWidth / 2;
+  const oy = visivel ? r.top + 20 : window.innerHeight / 3;
+  const cores = ['#4D865C', '#E2B141', '#BC6143', '#5981CC'];
+  const camada = document.createElement('div');
+  camada.className = 'festa-camada';
+  document.body.appendChild(camada);
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('span');
+    p.className = 'festa-pedaco';
+    p.style.background = cores[i % cores.length];
+    p.style.left = ox + 'px';
+    p.style.top = oy + 'px';
+    if (i % 3 === 0) p.style.borderRadius = '50%';
+    camada.appendChild(p);
+    const ang = Math.random() * Math.PI * 2, forca = 120 + Math.random() * 260;
+    const dx = Math.cos(ang) * forca, dy = Math.sin(ang) * forca * 0.7 - 160;
+    p.animate([
+      { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${dx}px, ${dy}px) rotate(${Math.random() * 360}deg)`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${dx * 1.2}px, ${dy + 380}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
+    ], { duration: 1500 + Math.random() * 700, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' });
+  }
+  setTimeout(() => camada.remove(), 2600);
+}
+
+// ── Redesenhar só uma prancha (sem recarregar a revisão) ───────────────────
+function _revRedesenharPrancha(pranchaId) {
+  const pr = (G._revPranchasAtual || []).find(p => p.id === pranchaId);
+  const card = document.getElementById('prancha-' + pranchaId);
+  if (!pr || !card) return false;
+  const aberta = card.classList.contains('expanded');
+  // formulário de item novo aberto: guarda texto, prioridade e categoria
+  const ta = document.getElementById('ti-' + pranchaId);
+  const form = ta ? { txt: ta.value, prio: document.getElementById('tip-' + pranchaId)?.value, cat: document.getElementById('tic-' + pranchaId)?.value, foco: document.activeElement === ta } : null;
+  if (_revOcultaFeitos() && _pranchaConcluida(pr)) { card.remove(); _revAtualizarResumo(); return true; }
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderPrancha({ ...pr, comentarios: (G._revComPorPrancha || {})[pr.id] || [] }, G._revPodePreencher).trim();
+  const novo = tmp.firstElementChild;
+  if (!novo) return false;
+  if (aberta) {
+    novo.classList.add('expanded');
+    const hint = novo.querySelector('.prancha-expand-hint');
+    if (hint) hint.textContent = 'Recolher';
+  }
+  card.replaceWith(novo);
+  if (form) {
+    addTarefaPrancha(pranchaId, { prio: form.prio, cat: form.cat, semFoco: !form.foco });
+    const t2 = document.getElementById('ti-' + pranchaId);
+    if (t2) t2.value = form.txt;
+  }
+  _revAtualizarResumo();
+  return true;
+}
+
+// Barras do topo (tarefas concluídas e pranchas finalizadas), recalculadas sem buscar no banco
+function _revAtualizarResumo() {
+  const pranchas = G._revPranchasAtual || [];
+  const { total, conc } = _revContagem(pranchas.flatMap(pr => pr.tarefas_revisao || []));
+  const contam = pranchas.filter(pr => !(_ehAjusteGeral(pr) && !(pr.tarefas_revisao || []).length));
+  const prConc = contam.filter(_pranchaConcluida).length;
+  const linhas = document.querySelectorAll('#rev-detalhe .rev-summary-bars .rev-summary-bar-row');
+  const pinta = (row, c, t) => {
+    if (!row) return;
+    const fill = row.querySelector('.rev-summary-bar-fill'); if (fill) fill.style.width = (t > 0 ? Math.round(c / t * 100) : 0) + '%';
+    const cnt = row.querySelector('.rev-summary-count'); if (cnt) cnt.textContent = c + '/' + t;
+  };
+  pinta(linhas[0], conc, total);
+  pinta(linhas[1], prConc, contam.length);
+}
+
+// Lista da esquerda: atualiza uma vez, um pouco depois da última ação
+function _revListaDepois() {
+  clearTimeout(G._revListaTimer);
+  G._revListaTimer = setTimeout(() => carregarRevisoes(), 1500);
+}
+
+async function toggleTarefaRevisao(id, atual, pranchaId) {
+  // Check instantâneo: marca na tela na hora e grava por trás (Fase A, 20/11/2026)
+  const t = G._revTarefas?.[id];
+  if (!t || !G._revPranchasAtual) {                       // sem dados locais: caminho antigo
+    await sb.from('tarefas_revisao').update({
+      concluida: !atual, concluida_por: !atual ? G.usuario.id : null, concluida_em: !atual ? new Date().toISOString() : null
+    }).eq('id', id);
+    if (G._revisaoAtiva) await selecionarRevisao(G._revisaoAtiva);
+    carregarRevisoes();
+    return;
+  }
+  if (t._salvando) return;
+  const antes = { concluida: t.concluida, concluida_por: t.concluida_por, concluida_em: t.concluida_em };
+  const nova = !t.concluida;
+  const pr = G._revPranchasAtual.find(p => p.id === pranchaId);
+  const estavaConcluida = pr ? _pranchaConcluida(pr) : false;
+  Object.assign(t, { concluida: nova, concluida_por: nova ? G.usuario.id : null, concluida_em: nova ? new Date().toISOString() : null });
+  t._salvando = true;
+  _revRedesenharPrancha(pranchaId);
+  if (nova && pr && !estavaConcluida && _pranchaConcluida(pr)) _comemorarPrancha(pranchaId, pr.nome || '');
+
+  const { error } = await sb.from('tarefas_revisao')
+    .update({ concluida: t.concluida, concluida_por: t.concluida_por, concluida_em: t.concluida_em }).eq('id', id);
+  t._salvando = false;
+  if (error) {
+    Object.assign(t, antes);
+    _revRedesenharPrancha(pranchaId);
+    toast('Não foi possível salvar o check. Tente de novo.');
+    return;
+  }
+  sincronizarExpiracaoTempMedia('revisao_tarefa', id, nova && !_rrAberta(t));
+  _revListaDepois();
 }
 
 async function mudarPrioridadeTarefa(sel, id, pranchaId) {
@@ -11756,7 +11951,12 @@ function excluirTopicoComentario(comentarioId) {
   });
 }
 
-function addTarefaPrancha(pranchaId) {
+function addTarefaPrancha(pranchaId, opts) {
+  opts = opts || {};
+  // Prioridade e categoria: começa na última escolha (Fase A, 20/11/2026)
+  const ult = G._revUltimaEscolha || {};
+  const prioIni = opts.prio || ult.prio || 'P3';
+  const catIni  = opts.cat != null ? opts.cat : (ult.cat || '');
   // Garante que o card está expandido antes de mostrar o input
   const card = document.getElementById('prancha-' + pranchaId);
   if (card && !card.classList.contains('expanded')) {
@@ -11773,21 +11973,20 @@ function addTarefaPrancha(pranchaId) {
       placeholder="Descreva o ajuste que precisa ser feito..."
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();salvarTarefaInline('${pranchaId}');}if(event.key==='Escape')cancelarTarefaInline('${pranchaId}');"></textarea>
     <div class="tarefa-inline-actions">
-      <select id="tip-${pranchaId}" class="tarefa-prio p3" title="Prioridade — P1 alerta · P2 atenção · P3 normal"
+      <select id="tip-${pranchaId}" class="tarefa-prio ${prioIni.toLowerCase()}" title="Prioridade — P1 alerta · P2 atenção · P3 normal"
         onchange="this.classList.remove('p1','p2','p3');this.classList.add(this.value.toLowerCase())">
-        <option value="P3" selected>P3</option>
-        <option value="P2">P2</option>
-        <option value="P1">P1</option>
+        ${['P3', 'P2', 'P1'].map(p => `<option value="${p}" ${p === prioIni ? 'selected' : ''}>${p}</option>`).join('')}
       </select>
-      <select id="tic-${pranchaId}" class="tarefa-cat vazia" title="Categoria — Projeto · Representação · Documentação"
+      <select id="tic-${pranchaId}" class="tarefa-cat${catIni ? '' : ' vazia'}" title="Categoria — Projeto · Representação · Documentação"
         onchange="this.classList.toggle('vazia', !this.value)">
-        <option value="" selected>—</option>
-        ${REV_CATS.map(c => `<option value="${c.v}">${c.k}</option>`).join('')}
+        <option value="" ${catIni ? '' : 'selected'}>—</option>
+        ${REV_CATS.map(c => `<option value="${c.v}" ${c.v === catIni ? 'selected' : ''}>${c.k}</option>`).join('')}
       </select>
       <button class="btn sm verde" onclick="salvarTarefaInline('${pranchaId}')">Adicionar</button>
       <button class="btn sm" onclick="cancelarTarefaInline('${pranchaId}')">Cancelar</button>
     </div>
   </div>`;
+  if (opts.semFoco) return;
   setTimeout(() => {
     const ta = document.getElementById(`ti-${pranchaId}`);
     ta?.focus();
@@ -11806,12 +12005,27 @@ async function salvarTarefaInline(pranchaId) {
   if(!valor) { cancelarTarefaInline(pranchaId); return; }
   const prioridade = document.getElementById(`tip-${pranchaId}`)?.value || 'P3';
   const categoria = document.getElementById(`tic-${pranchaId}`)?.value || null;
-  let { error } = await sb.from('tarefas_revisao').insert(categoria ? { prancha_id: pranchaId, descricao: valor, prioridade, categoria } : { prancha_id: pranchaId, descricao: valor, prioridade });
-  if (error && categoria && /categoria|column|schema/i.test(error.message || '')) {
-    ({ error } = await sb.from('tarefas_revisao').insert({ prancha_id: pranchaId, descricao: valor, prioridade }));
-    if (!error) toast('Item salvo sem categoria: falta rodar o SQL revisao_categorias.sql no Supabase.', 5000);
-  }
+  G._revUltimaEscolha = { prio: prioridade, cat: categoria || '' };
+  if (ta.dataset.salvando === '1') return;
+  ta.dataset.salvando = '1';
+  let { data: novo, error } = await sb.from('tarefas_revisao')
+    .insert(categoria ? { prancha_id: pranchaId, descricao: valor, prioridade, categoria } : { prancha_id: pranchaId, descricao: valor, prioridade })
+    .select('*').single();
+  ta.dataset.salvando = '';
   if(error) { toast('Erro ao adicionar tarefa'); return; }
+  // Sem recarregar: entra na prancha e só ela é redesenhada; o campo continua aberto para o próximo
+  const prLocal = (G._revPranchasAtual || []).find(p => p.id === pranchaId);
+  if (prLocal && novo) {
+    prLocal.tarefas_revisao = [...(prLocal.tarefas_revisao || []), novo];
+    G._revTarefas = G._revTarefas || {};
+    G._revTarefas[novo.id] = novo;
+    ta.value = '';
+    _revRedesenharPrancha(pranchaId);
+    const t2 = document.getElementById(`ti-${pranchaId}`);
+    if (t2) { t2.value = ''; t2.focus(); }
+    _revListaDepois();
+    return;
+  }
   // Captura quais pranchas estão expandidas antes do re-render
   const expandidas = new Set(
     [...document.querySelectorAll('.prancha-card.expanded')].map(el => el.id.replace('prancha-', ''))
@@ -22483,6 +22697,6 @@ else init();
 
 
 <script src="shared/lists-panel.js?v=2026-11-17b"></script>
-<script src="shared/exp-nav.js?v=2026-11-20a"></script>
+<script src="shared/exp-nav.js?v=2026-11-21a"></script>
 </body>
 </html>

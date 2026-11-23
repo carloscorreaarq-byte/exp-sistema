@@ -68,6 +68,8 @@
   var failedStoragePaths= {};
   var mediaRequestSeq   = 0;
   var mediaUploadBusy   = false;
+  var pendingFila = [];           // mais prints preparados além do pendingAttachment (envio de várias imagens, 22/11/2026)
+  var MAX_PRINTS_ENVIO = 10;
   var pendingAttachment = null;   // { kind:'image'|'audio', blob, mimeType, ext, width, height, durationSeconds, previewUrl } — anexo aguardando confirmação de envio
   var composerStatusTimer = null;
   var mediaRecorder = null;
@@ -148,6 +150,15 @@
   }
 
   /* ── Pin: DMs fixadas pelo usuário ── */
+  /* #geral, #BIM e #sócios: fixados por padrão; guarda só os que a pessoa desafixou */
+  var FIXOS_DESAFIX_KEY = 'exp_chat_canais_desafixados';
+  var fixosDesafixados = (function(){ try { return new Set(JSON.parse(localStorage.getItem(FIXOS_DESAFIX_KEY)||'[]')); } catch(e){ return new Set(); } }());
+  function isFixoFixado(ch) { return !fixosDesafixados.has(ch); }
+  function toggleFixoPin(ch) {
+    if (fixosDesafixados.has(ch)) fixosDesafixados.delete(ch); else fixosDesafixados.add(ch);
+    try { localStorage.setItem(FIXOS_DESAFIX_KEY, JSON.stringify(Array.from(fixosDesafixados))); } catch(e) {}
+    renderConvList(true);
+  }
   function toggleDmPin(channel) {
     if (pinnedChannels.has(channel)) pinnedChannels.delete(channel);
     else pinnedChannels.add(channel);
@@ -772,13 +783,38 @@
     /* Colar imagem — fica em prévia no composer, só envia quando confirmado */
     document.addEventListener('paste', function(event) {
       if (!currentChannel || mediaUploadBusy) return;
-      var item = Array.from((event.clipboardData && event.clipboardData.items)||[])
-        .filter(function(i){ return /^image\/(png|jpeg|webp)$/i.test(i.type||''); })[0];
-      if (!item) return;
+      var itens = Array.from((event.clipboardData && event.clipboardData.items)||[])
+        .filter(function(i){ return /^image\/(png|jpeg|webp)$/i.test(i.type||''); });
+      if (!itens.length) return;
       event.preventDefault();
-      var f = item.getAsFile();
-      if (f) stageMediaFile(f);
+      (async function(){
+        for (var i = 0; i < itens.length; i++) {
+          var f = itens[i].getAsFile();
+          if (f) await stageMediaFile(f, true);
+        }
+      })();
     });
+
+    /* Arrastar e soltar imagens na conversa (22/11/2026) */
+    (function(){
+      var area = document.getElementById('fp-chat-area');
+      if (!area) return;
+      var profundidade = 0;
+      var temArquivos = function(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; };
+      area.addEventListener('dragenter', function(e){ if (!temArquivos(e) || !currentChannel) return; e.preventDefault(); profundidade++; area.classList.add('fp-soltar'); });
+      area.addEventListener('dragover',  function(e){ if (!temArquivos(e) || !currentChannel) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+      area.addEventListener('dragleave', function(e){ if (!temArquivos(e)) return; profundidade = Math.max(0, profundidade - 1); if (!profundidade) area.classList.remove('fp-soltar'); });
+      area.addEventListener('drop', function(e){
+        if (!temArquivos(e)) return;
+        e.preventDefault(); profundidade = 0; area.classList.remove('fp-soltar');
+        if (!currentChannel || mediaUploadBusy) return;
+        var arqs = Array.from(e.dataTransfer.files || []);
+        var imgs = arqs.filter(function(f){ return /^image\/(png|jpeg|webp)$/i.test(f.type || ''); });
+        if (!imgs.length) { setComposerStatus('Por enquanto dá para soltar só imagens PNG, JPG ou WEBP.','warn',true); return; }
+        if (imgs.length < arqs.length) setComposerStatus('Alguns arquivos não são imagens e ficaram de fora.','warn',true);
+        (async function(){ for (var i = 0; i < imgs.length; i++) await stageMediaFile(imgs[i], true); })();
+      });
+    })();
 
     /* Fechar popover de emoji ao clicar fora */
     document.addEventListener('click', function(e) {
@@ -1299,56 +1335,41 @@
         novas.sort(function(a,b){ return b.ts - a.ts; });
       }
 
-      /* ── Canais fixos ── */
-      var genShow = !q || 'geral'.indexOf(q)!==-1;
-      var bimShow = !q || 'bim'.indexOf(q)!==-1;
-      var socShow = isSocioLikeRole(user.role) && (!q || 'sócios'.indexOf(q)!==-1 || 'socios'.indexOf(q)!==-1);
+      /* ── Lista lateral (22/11/2026): Novas conversas · Fixados · Recentes · Projetos.
+         Fixados reúne canais, projetos, conversas diretas e grupos; #geral, #BIM (e #sócios)
+         já vêm fixados e podem ser desafixados. Recentes = o resto com mensagem nos últimos
+         14 dias, numa lista só. Projetos parados há mais de 14 dias ficam no grupo recolhido.
+         Conversas diretas antigas saem da lista e voltam ao buscar pelo nome. ── */
+      var _semFiltro = !q && !showOnlyUnread && !showOnlyFlagged;
+      var _corte14 = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      var _ts = function (v) { var t = v ? new Date(v).getTime() : 0; return isNaN(t) ? 0 : t; };
+      var entradas = [];
 
-      if (genShow && !ehNova['general'] && !(showOnlyUnread && !(channelUnread['general']||0)) && !(showOnlyFlagged)) {
-        html += buildConvItemHtml('general', 'geral', '#', null, null, 'Toda a equipe',
-          msgs.find(function(m){return m.channel==='general';}),
-          channelUnread['general']||0, 'hash-verde');
-      }
-      if (bimShow && !ehNova['bim'] && !(showOnlyUnread && !(channelUnread['bim']||0)) && !(showOnlyFlagged)) {
-        html += buildConvItemHtml('bim', 'BIM', '#', null, null, 'Toda a equipe',
-          msgs.find(function(m){return m.channel==='bim';}),
-          channelUnread['bim']||0, 'hash-azul');
-      }
-      if (socShow && !ehNova['socios'] && !(showOnlyUnread && !(channelUnread['socios']||0)) && !(showOnlyFlagged)) {
-        html += buildConvItemHtml('socios', 'sócios', '#', null, null, 'Canal privado',
-          msgs.find(function(m){return m.channel==='socios';}),
-          channelUnread['socios']||0, 'hash-ouro');
-      }
-
-      /* ── Projetos fixados (sempre visíveis, acima dos demais) ── */
-      var sortedP = projectItems.slice().sort(function(a,b){
-        var ud = (b.unread||0)-(a.unread||0);
-        if (ud) return ud;
-        return new Date(b.lastCreatedAt||0)-new Date(a.lastCreatedAt||0);
+      /* canais da equipe */
+      var _canais = [['general', 'geral', 'hash-verde', 'Toda a equipe', ['geral']], ['bim', 'BIM', 'hash-azul', 'Toda a equipe', ['bim']]];
+      if (isSocioLikeRole(user.role)) _canais.push(['socios', 'sócios', 'hash-ouro', 'Canal privado', ['socios', 'sócios']]);
+      _canais.forEach(function (c, ordem) {
+        if (ehNova[c[0]] || showOnlyFlagged) return;
+        if (showOnlyUnread && !(channelUnread[c[0]] || 0)) return;
+        if (q && !c[4].some(function (n) { return n.indexOf(q) !== -1; })) return;
+        var ult = msgs.find(function (m) { return m.channel === c[0]; });
+        entradas.push({ channel: c[0], tipo: 'canal', c: c, ult: ult, ordem: ordem,
+          fixado: isFixoFixado(c[0]), ts: _ts(ult && ult.created_at) });
       });
-      var projFiltered = sortedP.filter(function(i){ return !ehNova[i.channel] && (!q || _semAc(i.label).indexOf(q)!==-1); });
-      /* projectItems já vem pré-filtrado pelos toggles (showOnlyFlagged / showOnlyUnread) */
-      var pinnedFiltered   = projFiltered.filter(function(i){ return isPinned(i.channel); });
-      var unpinnedFiltered = projFiltered.filter(function(i){ return !isPinned(i.channel); });
-
-      if (pinnedFiltered.length) {
-        if (!q && !showOnlyUnread && !showOnlyFlagged)
-          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Fixados</button>';
-        pinnedFiltered.forEach(function(item) {
-          html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
-            item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, true);
-        });
-      }
-
-      /* ── DMs / Grupos ── */
-      var dmFiltered = dmList.filter(function(dm){
-        if (ehNova[dm.channel]) return false;
-        if (!q) return true;
-        /* Busca pelo nome da conversa E pelo nome de qualquer participante */
-        return channelSearchText(dm.channel, getConversationMeta(dm,uid).label).indexOf(q)!==-1;
+      /* projetos */
+      projectItems.forEach(function (it) {
+        if (ehNova[it.channel]) return;
+        if (q && _semAc(it.label).indexOf(q) === -1) return;
+        entradas.push({ channel: it.channel, tipo: 'proj', item: it, fixado: isPinned(it.channel), ts: _ts(it.lastCreatedAt) });
       });
-      var pinnedDms   = dmFiltered.filter(function(dm){ return pinnedChannels.has(dm.channel); });
-      var regularDms  = dmFiltered.filter(function(dm){ return !pinnedChannels.has(dm.channel); });
+      /* conversas diretas e grupos */
+      var dmTodos = [];
+      dmList.forEach(function (dm) {
+        if (ehNova[dm.channel]) return;
+        if (q && channelSearchText(dm.channel, getConversationMeta(dm, uid).label).indexOf(q) === -1) return;
+        dmTodos.push(dm);
+        entradas.push({ channel: dm.channel, tipo: 'dm', dm: dm, fixado: pinnedChannels.has(dm.channel), ts: _ts(dm.created_at || dm.lastCreatedAt) });
+      });
 
       function buildDmRow(dm) {
         var meta = getConversationMeta(dm, uid);
@@ -1374,23 +1395,68 @@
         return baseHtml.replace('</div>', pinBtn + '</div>');
       }
 
-      if (dmFiltered.length) {
-        if (pinnedDms.length && !q && !showOnlyUnread && !showOnlyFlagged)
-          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Fixados</button>';
-        pinnedDms.forEach(function(dm){ html += buildDmRow(dm); });
+      function linhaEntrada(e) {
+        if (e.tipo === 'dm') return buildDmRow(e.dm);
+        if (e.tipo === 'proj') {
+          var it = e.item;
+          return buildConvItemHtml(it.channel, it.label, it.iniciais, null, it.cor,
+            it.preview, null, channelUnread[it.channel] || it.unread || 0, '', '', null, isPinned(it.channel));
+        }
+        var c = e.c, fix = e.fixado;
+        var pin = '<button class="fp-dm-pin-btn' + (fix ? ' is-pinned' : '') + '" title="' + (fix ? 'Desafixar' : 'Fixar canal') + '" ' +
+          'onclick="event.stopPropagation();fpChat.toggleFixoPin(\'' + c[0] + '\')">' +
+          '<svg width="11" height="11" viewBox="0 0 24 24" fill="' + (fix ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2a6 6 0 0 0-3-5.2V4h1a1 1 0 0 0 0-2H7a1 1 0 0 0 0 2h1v5.8A6 6 0 0 0 5 15v2z"/></svg></button>';
+        return buildConvItemHtml(c[0], c[1], '#', null, null, c[3], e.ult, channelUnread[c[0]] || 0, c[2]).replace('</div>', pin + '</div>');
+      }
+      var _porTs = function (a, b) { return b.ts - a.ts; };
 
-        if (regularDms.length) {
-          if (!q && !showOnlyUnread && !showOnlyFlagged)
-            html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Mensagens diretas</button>';
-          regularDms.forEach(function(dm){ html += buildDmRow(dm); });
+      if (!_semFiltro) {
+        /* busca ou filtros: uma lista só, da mais recente para a mais antiga */
+        entradas.sort(_porTs).forEach(function (e) { html += linhaEntrada(e); });
+      } else {
+        var fixados = entradas.filter(function (e) { return e.fixado; }).sort(function (a, b) {
+          var ca = a.tipo === 'canal' ? 0 : 1, cb = b.tipo === 'canal' ? 0 : 1;
+          if (ca !== cb) return ca - cb;
+          if (ca === 0) return a.ordem - b.ordem;
+          return b.ts - a.ts;
+        });
+        var soltos = entradas.filter(function (e) { return !e.fixado; });
+        var recentes = soltos.filter(function (e) {
+          return e.channel === currentChannel || (channelUnread[e.channel] || 0) > 0 || e.ts >= _corte14;
+        }).sort(_porTs);
+        var _ehRecente = {}; recentes.forEach(function (e) { _ehRecente[e.channel] = true; });
+        var projAntigos = soltos.filter(function (e) { return e.tipo === 'proj' && !_ehRecente[e.channel]; }).sort(_porTs);
+
+        if (fixados.length) {
+          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Fixados</button>';
+          fixados.forEach(function (e) { html += linhaEntrada(e); });
+        }
+        if (recentes.length) {
+          html += '<button class="fp-section-hdr" style="cursor:default;pointer-events:none">Recentes</button>';
+          recentes.forEach(function (e) { html += linhaEntrada(e); });
+        }
+        if (projAntigos.length) {
+          /* Grupo "Projetos": os parados há mais de 14 dias; abre/fecha e é lembrado */
+          var nProj = projAntigos.length;
+          html += '<div class="fp-conv-item fp-proj-grupo' + (projectSectionCollapsed ? '' : ' aberto') + '" onclick="fpChat.toggleProjectSection()" title="' + (projectSectionCollapsed ? 'Mostrar' : 'Recolher') + ' os projetos sem conversa nos últimos 14 dias">' +
+            '<div class="fp-conv-av-wrap"><div class="fp-av-hash fp-proj-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div></div>' +
+            '<div class="fp-conv-body"><div class="fp-conv-top"><span class="fp-conv-name">Projetos</span></div>' +
+              '<div class="fp-conv-preview">' + nProj + (nProj === 1 ? ' projeto' : ' projetos') + ' sem conversa há mais de 14 dias</div></div>' +
+            '<span class="fp-proj-chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
+            '</div>';
+          if (!projectSectionCollapsed) {
+            html += '<div class="fp-proj-lista">';
+            projAntigos.forEach(function (e) { html += linhaEntrada(e); });
+            html += '</div>';
+          }
         }
       }
-
 
       /* ── Pessoas: ao buscar um nome, mostra o usuário mesmo sem conversa aberta ── */
       if (q && !showOnlyUnread && !showOnlyFlagged) {
         var dmComConversa = {};
-        dmFiltered.forEach(function(dm){ if (dm.channel.indexOf('dm:')===0) dmComConversa[dm.channel]=true; });
+        dmTodos.forEach(function(dm){ if (dm.channel.indexOf('dm:')===0) dmComConversa[dm.channel]=true; });
         var pessoas = teamMembers.filter(function(m){
           return _semAc(m.nome||'').indexOf(q)!==-1 && !dmComConversa[dmChannel(uid, m.auth_id)];
         });
@@ -1402,30 +1468,6 @@
               m.avatar_url || null, m.cor || '#4D865C', 'Iniciar conversa', null, 0, '', pres ? pres.status : 'offline', null);
           });
         }
-      }
-
-      /* ── Projetos (não fixados) ── */
-      if (unpinnedFiltered.length) {
-        /* Grupo "Projetos" (13/11/2026): linha com ícone, quantidade e novidades; abre/fecha e é lembrado */
-        var _agrupaProj = !q && !showOnlyUnread && !showOnlyFlagged;
-        if (_agrupaProj) {
-          var nProj = unpinnedFiltered.length;
-          var nProjNL = unpinnedFiltered.filter(function(i){ return (channelUnread[i.channel]||i.unread||0) > 0; }).length;
-          html += '<div class="fp-conv-item fp-proj-grupo' + (projectSectionCollapsed ? '' : ' aberto') + '" onclick="fpChat.toggleProjectSection()" title="' + (projectSectionCollapsed ? 'Mostrar' : 'Recolher') + ' as conversas de projeto">' +
-            '<div class="fp-conv-av-wrap"><div class="fp-av-hash fp-proj-ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div></div>' +
-            '<div class="fp-conv-body"><div class="fp-conv-top"><span class="fp-conv-name">Projetos</span></div>' +
-              '<div class="fp-conv-preview">' + nProj + (nProj === 1 ? ' conversa de projeto' : ' conversas de projeto') + (nProjNL ? ' · ' + nProjNL + ' com novidade' : '') + '</div></div>' +
-            (nProjNL && projectSectionCollapsed ? '<div class="fp-conv-badge">' + nProjNL + '</div>' : '') +
-            '<span class="fp-proj-chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg></span>' +
-            '</div>';
-        }
-        var toShow = !_agrupaProj ? unpinnedFiltered : (projectSectionCollapsed ? [] : unpinnedFiltered);
-        if (_agrupaProj && toShow.length) html += '<div class="fp-proj-lista">';
-        toShow.forEach(function(item) {
-          html += buildConvItemHtml(item.channel, item.label, item.iniciais, null, item.cor,
-            item.preview, null, channelUnread[item.channel]||item.unread||0, '', '', null, false);
-        });
-        if (_agrupaProj && toShow.length) html += '</div>';
       }
 
       if (novas.length) {
@@ -3008,6 +3050,7 @@
       var likeArr= rx.like||[], loveArr=rx.love||[];
       var liked  = likeArr.indexOf(uid)!==-1, loved=loveArr.indexOf(uid)!==-1;
       var likeN  = likeArr.length, loveN=loveArr.length;
+      var feitoArr = rx.feito||[], feito = feitoArr.indexOf(uid)!==-1, feitoN = feitoArr.length;
 
       /* Classe do bloco */
       if (isUnread && !_newDividerShown) {
@@ -3099,8 +3142,9 @@
 
       /* Reações inline */
       /* Só "amei": curtidas antigas não são mais exibidas */
-      if (loveN>0) {
+      if (loveN>0 || feitoN>0) {
         html += '<div class="fp-msg-reactions">';
+        if (feitoN>0) html += '<button class="fp-rxn-btn feito'+(feito?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'feito\')" title="Feito · '+escHtml(reactionTitle(feitoArr, uid))+'"><span class="fp-rxn-feito">'+icoFeito()+'</span> <span class="fp-rxn-count">'+feitoN+'</span></button>';
         if (loveN>0) html += '<button class="fp-rxn-btn heart'+(loved?' active':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="'+escHtml(reactionTitle(loveArr, uid))+'"><span class="fp-rxn-heart">'+icoHeart()+'</span> <span class="fp-rxn-count">'+loveN+'</span></button>';
         html += '</div>';
       }
@@ -3110,6 +3154,7 @@
       /* Botões de ação (hover) */
       html += '<div class="fp-msg-actions">' +
         '<button class="fp-action-btn heart" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'love\')" title="Amei">'+icoHeart()+'</button>' +
+        ((!msg.pending && !msg.failed) ? '<button class="fp-action-btn'+(feito?' feito-on':'')+'" onclick="fpChat.react(\''+escHtml(String(msg.id))+'\',\'feito\')" title="Feito">'+icoFeito()+'</button>' : '') +
         ((!msg.pending && !msg.failed) ? '<button class="fp-action-btn" onclick="fpChat.startReply(\''+escHtml(String(msg.id))+'\')" title="Responder">'+_REPLY+'</button>' : '') +
         ((isOwn && hasText && !msg.pending && !msg.failed) ? '<button class="fp-action-btn" onclick="fpChat.startEditMessage(\''+escHtml(String(msg.id))+'\')" title="Editar">'+_PENCIL+'</button>' : '') +
         '<button class="fp-action-btn'+(isFlagged?' flag-active':'')+'" onclick="fpChat.flagMessage(\''+escHtml(String(msg.id))+'\')" title="Sinalizar">'+icoFlag()+'</button>' +
@@ -3170,9 +3215,20 @@
       });
   }
 
+  /* Links clicáveis (22/11/2026): aceita endereços com &, ? e = (Drive, Maps, planilhas),
+     "www." sem http, e não leva junto a pontuação do fim da frase. Texto já vem escapado. */
   function fpLinkify(html) {
-    return html.replace(/(https?:\/\/[^\s&"<>]+)/g, function(url) {
-      return '<a href="'+url+'" target="_blank" rel="noopener noreferrer" class="fp-link">'+url+'</a>';
+    var des = function (t) { return t.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'); };
+    return html.replace(/(\bhttps?:\/\/[^\s<>"']+|\bwww\.[^\s<>"']+)/gi, function (url) {
+      var fim = '';
+      var m = url.match(/[.,;:!?]+$/);
+      if (m) { fim = m[0]; url = url.slice(0, -fim.length); }
+      /* parêntese de fechamento solto no fim (ex.: "(veja https://...)") fica fora do link */
+      if (/\)$/.test(url) && (url.match(/\(/g) || []).length < (url.match(/\)/g) || []).length) { fim = ')' + fim; url = url.slice(0, -1); }
+      var real = des(url);
+      var href = /^www\./i.test(real) ? 'https://' + real : real;
+      var rotulo = real.length > 70 ? real.slice(0, 50) + '…' + real.slice(-14) : real;
+      return '<a href="' + escHtml(href) + '" target="_blank" rel="noopener noreferrer" class="fp-link" title="' + escHtml(real) + '">' + escHtml(rotulo) + '</a>' + fim;
     });
   }
 
@@ -3186,16 +3242,31 @@
     if (typeof input.showPicker==='function') input.showPicker(); else input.click();
   }
   async function handleMediaInput(input) {
-    var f=input&&input.files?input.files[0]:null; if(!f) return;
-    try { await stageMediaFile(f); } finally { input.value=''; }
+    var fs=input&&input.files?Array.from(input.files):[]; if(!fs.length) return;
+    try { for (var i = 0; i < fs.length; i++) await stageMediaFile(fs[i], i > 0 || !!(pendingAttachment && pendingAttachment.kind==='image')); }
+    finally { input.value=''; }
   }
   function mediaRpcContent(c){ return (isImageOnlySentinel(c)||isAudioOnlySentinel(c))?'':String(c||''); }
 
   /* Prepara o print (colado ou anexado) e mostra uma prévia no composer — NÃO envia.
      O envio só acontece ao confirmar (Enter / botão Enviar), via sendStagedAttachment(). */
-  async function stageMediaFile(file) {
+  async function stageMediaFile(file, adicionar) {
     if (!currentChannel||mediaUploadBusy) return;
     if (!/^image\/(png|jpeg|webp)$/i.test(file.type||'')) { setComposerStatus('Use apenas PNG, JPG ou WEBP.','warn',true); return; }
+    var juntar = adicionar && pendingAttachment && pendingAttachment.kind === 'image';
+    if (juntar && 1 + pendingFila.length >= MAX_PRINTS_ENVIO) { setComposerStatus('Até ' + MAX_PRINTS_ENVIO + ' imagens por envio.','warn',true); return; }
+    if (juntar) {
+      try {
+        setComposerStatus('Otimizando print...','',true);
+        var cfgJ=await loadChatMediaConfig();
+        var optJ=await optimizeChatMediaImage(file,cfgJ);
+        pendingFila.push({ kind:'image', blob:optJ.blob, mimeType:optJ.mimeType, ext:optJ.ext, width:optJ.width, height:optJ.height, previewUrl:URL.createObjectURL(optJ.blob) });
+        setComposerStatus('','',false);
+        renderComposerAttachment();
+        if ($input) $input.focus();
+      } catch(errJ) { setComposerStatus('Falha ao preparar o print para envio.','warn',true); }
+      return;
+    }
     if (pendingAttachment) removePendingAttachment();
     try {
       setComposerStatus('Otimizando print...','',true);
@@ -3216,10 +3287,22 @@
   }
 
   function removePendingAttachment() {
-    if (pendingAttachment && pendingAttachment.previewUrl) {
-      try { URL.revokeObjectURL(pendingAttachment.previewUrl); } catch(e) {}
-    }
+    [pendingAttachment].concat(pendingFila).forEach(function(a){
+      if (a && a.previewUrl) { try { URL.revokeObjectURL(a.previewUrl); } catch(e) {} }
+    });
     pendingAttachment=null;
+    pendingFila=[];
+    renderComposerAttachment();
+  }
+  /* Tira uma imagem só da prévia (0 = a primeira) */
+  function removerPrint(i) {
+    if (i === 0) {
+      if (pendingAttachment && pendingAttachment.previewUrl) { try { URL.revokeObjectURL(pendingAttachment.previewUrl); } catch(e) {} }
+      pendingAttachment = pendingFila.length ? pendingFila.shift() : null;
+    } else {
+      var a = pendingFila.splice(i - 1, 1)[0];
+      if (a && a.previewUrl) { try { URL.revokeObjectURL(a.previewUrl); } catch(e) {} }
+    }
     renderComposerAttachment();
   }
 
@@ -3240,6 +3323,20 @@
     } else {
       $wrap.removeAttribute('data-audio-url');
       $wrap.removeAttribute('data-audio-duration');
+      if (pendingFila.length) {
+        var todos = [pendingAttachment].concat(pendingFila);
+        var xIco = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+        $wrap.innerHTML =
+          '<div class="fp-attach-multi">' + todos.map(function(a, i){
+            return '<span class="fp-attach-th"><img src="'+a.previewUrl+'" alt="Print '+(i+1)+'">' +
+              '<button type="button" class="fp-attach-th-x" onclick="fpChat.removerPrint('+i+')" title="Tirar esta imagem">'+xIco+'</button></span>';
+          }).join('') + '</div>' +
+          '<span class="fp-attach-preview-info">' + todos.length + ' prints prontos para enviar · o texto vai com o primeiro</span>' +
+          '<button type="button" class="fp-attach-remove" onclick="fpChat.removeAttachment()" title="Remover todos">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>' +
+          '</button>';
+        return;
+      }
       $wrap.innerHTML =
         '<img src="'+pendingAttachment.previewUrl+'" alt="Print">' +
         '<span class="fp-attach-preview-info">Print pronto para enviar</span>' +
@@ -3251,7 +3348,19 @@
 
   /* Envia de fato o anexo já preparado (pendingAttachment), com o texto do composer
      como legenda opcional. Chamado pelo send() ao confirmar (Enter / botão Enviar). */
+  /* Várias imagens: envia uma por vez, na ordem; o texto do composer vai com a primeira */
   async function sendStagedAttachment() {
+    if (!currentChannel||mediaUploadBusy||!pendingAttachment) return;
+    var fila = pendingFila.slice(); pendingFila = [];
+    var canal = currentChannel;
+    await _enviarUmAnexo();
+    for (var k = 0; k < fila.length; k++) {
+      if (currentChannel !== canal) { fila.slice(k).forEach(function(a){ try { URL.revokeObjectURL(a.previewUrl); } catch(e) {} }); break; }
+      pendingAttachment = fila[k];
+      await _enviarUmAnexo();
+    }
+  }
+  async function _enviarUmAnexo() {
     if (!currentChannel||mediaUploadBusy||!pendingAttachment) return;
     var staged=pendingAttachment;
     pendingAttachment=null;
@@ -4691,7 +4800,8 @@
     projectThreadMeta[ch]=meta;
   }
   function normalizeReactionList(v){ if(Array.isArray(v)) return v.filter(Boolean).map(function(i){return String(i);}); if(typeof v==='string'&&v) return [v]; return []; }
-  function normalizeReactions(r){ var b=r&&typeof r==='object'&&!Array.isArray(r)?r:{}; return {like:normalizeReactionList(b.like),love:normalizeReactionList(b.love)}; }
+  function icoFeito(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>'; }
+  function normalizeReactions(r){ var b=r&&typeof r==='object'&&!Array.isArray(r)?r:{}; return {like:normalizeReactionList(b.like),love:normalizeReactionList(b.love),feito:normalizeReactionList(b.feito)}; }
   function buildPendingMessage(content,extra){ pendingMessageSeq++; return Object.assign({id:'pending:'+pendingMessageSeq,channel:currentChannel,thread_id:isProjectChannel(currentChannel)?projectThreadIdFromChannel(currentChannel):null,sender_id:user.auth_id,sender_name:user.nome,sender_iniciais:user.iniciais||(user.nome||'').substring(0,2).toUpperCase(),sender_cor:user.cor||'#4D865C',content:content,created_at:new Date().toISOString(),reactions:normalizeReactions(null),pending:true},extra||{}); }
   function isMatchingPendingMessage(e,n){ if(!e||!e.pending||!n) return false; return e.channel===n.channel&&e.sender_id===n.sender_id&&e.content===n.content; }
   function compareMessages(a,b){ return new Date(a.created_at||0)-new Date(b.created_at||0); }
@@ -4879,7 +4989,179 @@
   /* ═══════════════════════════════════════════════════════════════════
      API PÚBLICA
   ═══════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════
+     FOTOS DA CONVERSA (22/11/2026): grade com os prints/fotos da conversa aberta,
+     do mais novo ao mais antigo, agrupados por mês. Clique abre a imagem grande,
+     com anterior/próxima e "Ir para a mensagem".
+  ═══════════════════════════════════════════════════════════════════ */
+  var galState = null;   // { channel, itens:[{msgId, url, quem, quando}], idx:null|n }
+  var GAL_MAX_MSGS = 1500;
+  function _galEsc(t){ return escHtml(String(t == null ? '' : t)); }
+  function _galCss(){
+    if (document.getElementById('fp-gal-css')) return;
+    var st = document.createElement('style'); st.id = 'fp-gal-css';
+    st.textContent = [
+      '#fp-gal{position:fixed;inset:0;background:rgba(17,17,16,.4);z-index:460;display:none;align-items:flex-start;justify-content:center;padding:40px 24px;overflow-y:auto}',
+      '#fp-gal-card{background:var(--branco);border:1px solid var(--cinza2);border-radius:var(--radius-shell,14px);box-shadow:0 24px 64px rgba(0,0,0,.22);width:min(860px,100%);overflow:hidden}',
+      '[data-theme="dark"] #fp-gal-card{background:var(--fp-dk-surface);border-color:var(--fp-dk-divider)}',
+      '#fp-gal-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--cinza2);border-bottom:1px solid rgba(0,0,0,.06)}',
+      '[data-theme="dark"] #fp-gal-head{background:var(--fp-dk-input);border-bottom-color:var(--fp-dk-border)}',
+      '.fp-gal-tit{flex:1;min-width:0;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--grafite)}',
+      '[data-theme="dark"] .fp-gal-tit{color:var(--fp-dk-text)}',
+      '.fp-gal-tit span{font-weight:400;letter-spacing:0;text-transform:none;color:var(--txt-3);margin-left:6px}',
+      '.fp-gal-x{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:var(--txt-3);cursor:pointer;display:flex;align-items:center;justify-content:center}',
+      '.fp-gal-x:hover{background:rgba(0,0,0,.06);color:var(--grafite)}',
+      '#fp-gal-body{padding:14px 16px 18px;max-height:calc(100vh - 160px);overflow-y:auto}',
+      '.fp-gal-mes{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt-3);margin:12px 0 8px}',
+      '.fp-gal-mes:first-child{margin-top:0}',
+      '.fp-gal-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}',
+      '.fp-gal-th{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:1px solid var(--cinza2);background:var(--off);cursor:pointer;padding:0}',
+      '.fp-gal-th img{width:100%;height:100%;object-fit:cover;display:block}',
+      '.fp-gal-th:hover{border-color:var(--grafite)}',
+      '.fp-gal-vazio{padding:28px 8px;text-align:center;font-size:11px;color:var(--txt-3)}',
+      '.fp-gal-big{display:flex;flex-direction:column;gap:10px}',
+      '.fp-gal-big-img{display:flex;align-items:center;justify-content:center;background:var(--off);border-radius:8px;min-height:240px;max-height:calc(100vh - 290px);overflow:hidden}',
+      '[data-theme="dark"] .fp-gal-big-img{background:var(--fp-dk-input)}',
+      '.fp-gal-big-img img{max-width:100%;max-height:calc(100vh - 290px);object-fit:contain;display:block}',
+      '.fp-gal-big-bar{display:flex;align-items:center;gap:8px}',
+      '.fp-gal-meta{flex:1;min-width:0;font-size:11px;color:var(--txt-2)}',
+      '.fp-gal-btn{height:28px;padding:0 12px;border-radius:8px;border:1px solid var(--cinza);background:var(--branco);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--grafite);cursor:pointer}',
+      '.fp-gal-btn:hover{border-color:var(--grafite)}',
+      '.fp-gal-btn:disabled{opacity:.35;cursor:default}',
+      '[data-theme="dark"] .fp-gal-btn{background:transparent;color:var(--fp-dk-text);border-color:var(--fp-dk-border)}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+  function _galDom(){
+    var el = document.getElementById('fp-gal');
+    if (el) return el;
+    _galCss();
+    el = document.createElement('div'); el.id = 'fp-gal';
+    el.innerHTML = '<div id="fp-gal-card"><div id="fp-gal-head"><div class="fp-gal-tit" id="fp-gal-tit">Fotos da conversa</div>' +
+      '<button class="fp-gal-x" type="button" title="Fechar" aria-label="Fechar" onclick="fpChat.fecharGaleria()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></div>' +
+      '<div id="fp-gal-body"></div></div>';
+    el.addEventListener('click', function(e){ if (e.target === el) fecharGaleria(); });
+    document.body.appendChild(el);
+    return el;
+  }
+  function abrirGaleria(){
+    if (!currentChannel || !sb) return;
+    var el = _galDom();
+    var canal = currentChannel;
+    galState = { channel: canal, itens: [], idx: null, carregando: true };
+    el.style.display = 'flex';
+    _galRender();
+    var isPrj = isProjectChannel(canal), ct = isPrj ? 'chat_thread_message' : 'chat_message';
+    var q = isPrj
+      ? sb.from('chat_thread_messages').select('id,created_at,sender_name').eq('thread_id', projectThreadIdFromChannel(canal))
+      : sb.from('chat_messages').select('id,created_at,sender_name').eq('channel', canal);
+    q.order('created_at', { ascending: false }).limit(GAL_MAX_MSGS).then(function(r){
+      if (!galState || galState.channel !== canal) return;
+      var msgs = (r && r.data) || [];
+      var porId = {}; msgs.forEach(function(m){ porId[String(m.id)] = m; });
+      var ids = msgs.map(function(m){ return m.id; });
+      var lotes = []; for (var i = 0; i < ids.length; i += 100) lotes.push(ids.slice(i, i + 100));
+      var agora = new Date().toISOString();
+      return Promise.all(lotes.map(function(lote){
+        return sb.from('gestao_anexos_temporarios').select('contexto_id,storage_path,mime_type,arquivo_ext,created_at')
+          .eq('contexto_tipo', ct).in('contexto_id', lote).is('removido_em', null).gt('expires_at', agora)
+          .then(function(x){ return (x && x.data) || []; });
+      })).then(function(listas){
+        var rows = [].concat.apply([], listas).filter(function(a){
+          var mt = String(a.mime_type || ''), ext = String(a.arquivo_ext || '').toLowerCase();
+          return a.storage_path && (mt.indexOf('image/') === 0 || /^(png|jpe?g|webp|gif)$/.test(ext));
+        });
+        var itens = rows.map(function(a){
+          var m = porId[String(a.contexto_id)] || {};
+          var ex = messageMediaMap[mediaKeyFor(ct, a.contexto_id)];
+          return { msgId: a.contexto_id, path: a.storage_path, url: ex && ex.objectUrl ? ex.objectUrl : null,
+                   quem: firstName(m.sender_name || ''), quando: m.created_at || a.created_at };
+        }).sort(function(a, b){ return String(b.quando).localeCompare(String(a.quando)); });
+        var faltam = itens.filter(function(it){ return !it.url; });
+        var lotesP = []; for (var j = 0; j < faltam.length; j += 100) lotesP.push(faltam.slice(j, j + 100));
+        return Promise.all(lotesP.map(function(lp){
+          return sb.storage.from(TEMP_MEDIA_BUCKET).createSignedUrls(lp.map(function(it){ return it.path; }), SIGNED_URL_EXPIRES).then(function(sres){
+            var urlPor = {}; ((sres && sres.data) || []).forEach(function(x){ if (x && x.path && x.signedUrl) urlPor[x.path] = x.signedUrl; });
+            lp.forEach(function(it){ it.url = urlPor[it.path] || null; });
+          });
+        })).then(function(){
+          if (!galState || galState.channel !== canal) return;
+          galState.itens = itens.filter(function(it){ return it.url; });
+          galState.carregando = false;
+          _galRender();
+        });
+      });
+    }).catch(function(){
+      if (!galState) return;
+      galState.carregando = false; galState.erro = true; _galRender();
+    });
+  }
+  function _galRender(){
+    var $b = document.getElementById('fp-gal-body'), $t = document.getElementById('fp-gal-tit');
+    if (!$b || !galState) return;
+    var n = galState.itens.length;
+    if ($t) $t.innerHTML = 'Fotos da conversa<span>' + (galState.carregando ? 'carregando…' : (n + (n === 1 ? ' imagem' : ' imagens'))) + '</span>';
+    if (galState.carregando) { $b.innerHTML = '<div class="fp-gal-vazio">Carregando as imagens da conversa…</div>'; return; }
+    if (galState.erro) { $b.innerHTML = '<div class="fp-gal-vazio">Não foi possível carregar as imagens agora.</div>'; return; }
+    if (!n) { $b.innerHTML = '<div class="fp-gal-vazio">Nenhuma imagem nesta conversa.</div>'; return; }
+    if (galState.idx != null) {
+      var it = galState.itens[galState.idx], dt = it.quando ? new Date(it.quando) : null;
+      $b.innerHTML = '<div class="fp-gal-big">' +
+        '<div class="fp-gal-big-img"><img src="' + _galEsc(it.url) + '" alt="Imagem da conversa"></div>' +
+        '<div class="fp-gal-big-bar">' +
+          '<button class="fp-gal-btn" type="button" onclick="fpChat.galeriaGrade()">Todas</button>' +
+          '<div class="fp-gal-meta">' + _galEsc(it.quem || '') + (dt ? ' · ' + dt.toLocaleDateString('pt-BR') + ' ' + fmtTime(dt) : '') + ' · ' + (galState.idx + 1) + '/' + n + '</div>' +
+          '<button class="fp-gal-btn" type="button" onclick="fpChat.galeriaPasso(-1)"' + (galState.idx === 0 ? ' disabled' : '') + ' title="Mais nova">Anterior</button>' +
+          '<button class="fp-gal-btn" type="button" onclick="fpChat.galeriaPasso(1)"' + (galState.idx === n - 1 ? ' disabled' : '') + ' title="Mais antiga">Próxima</button>' +
+          '<button class="fp-gal-btn" type="button" onclick="fpChat.galeriaIrMensagem()">Ir para a mensagem</button>' +
+        '</div></div>';
+      return;
+    }
+    var meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    var html = '', mesAtual = null, aberto = false;
+    galState.itens.forEach(function(it, i){
+      var d = it.quando ? new Date(it.quando) : null;
+      var mes = d ? meses[d.getMonth()] + ' ' + d.getFullYear() : 'sem data';
+      if (mes !== mesAtual) {
+        if (aberto) html += '</div>';
+        html += '<div class="fp-gal-mes">' + _galEsc(mes) + '</div><div class="fp-gal-grade">';
+        mesAtual = mes; aberto = true;
+      }
+      html += '<button class="fp-gal-th" type="button" onclick="fpChat.galeriaAbrir(' + i + ')" title="' + _galEsc((it.quem || '') + (d ? ' · ' + d.toLocaleDateString('pt-BR') : '')) + '"><img loading="lazy" src="' + _galEsc(it.url) + '" alt=""></button>';
+    });
+    if (aberto) html += '</div>';
+    $b.innerHTML = html;
+  }
+  function galeriaAbrir(i){ if (!galState) return; galState.idx = i; _galRender(); }
+  function galeriaGrade(){ if (!galState) return; galState.idx = null; _galRender(); }
+  function galeriaPasso(d){
+    if (!galState || galState.idx == null) return;
+    var n = galState.itens.length, i = galState.idx + d;
+    if (i < 0 || i >= n) return;
+    galState.idx = i; _galRender();
+  }
+  function galeriaIrMensagem(){
+    if (!galState || galState.idx == null) return;
+    var it = galState.itens[galState.idx], canal = galState.channel;
+    fecharGaleria();
+    if (canal === currentChannel) scrollToMessage(it.msgId);
+  }
+  function fecharGaleria(){
+    galState = null;
+    var el = document.getElementById('fp-gal'); if (el) el.style.display = 'none';
+  }
+  /* Teclado: Esc volta da imagem para a grade e depois fecha; setas passam as imagens */
+  document.addEventListener('keydown', function(e){
+    if (!galState) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); if (galState.idx != null) galeriaGrade(); else fecharGaleria(); return; }
+    if (galState.idx == null) return;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); galeriaPasso(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); galeriaPasso(1); }
+  }, true);
+
   window.fpChat = {
+    toggleFixoPin, removerPrint,
+    abrirGaleria, fecharGaleria, galeriaAbrir, galeriaGrade, galeriaPasso, galeriaIrMensagem,
     ativarNotificacoes, testarNotificacao,
     revResponder, revCancelar,
     toggleMediaPin,
