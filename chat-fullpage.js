@@ -1481,6 +1481,7 @@
     var preview  = isAnnotSentinel(rawPv)
       ? ((lastMsg && lastMsg.sender_name ? firstName(lastMsg.sender_name) + ' ' : '') + 'revisou uma imagem')
       : compactPreviewText(rawPv, 80, '');
+    if (!preview && lastMsg) preview = _previaMidia(lastMsg);
     var ts = '';
     if (lastMsg && lastMsg.created_at) {
       ts = fmtConvTs(new Date(lastMsg.created_at));
@@ -4760,6 +4761,37 @@
       return {label:names.join(', '),iniciais:'GP',cor:brandColorForKey(ch),avatarUrl:null,members:mems};
     }
     return {label:msg.sender_name||ch,iniciais:msg.sender_iniciais||(msg.sender_name||'??').substring(0,2).toUpperCase(),cor:msg.sender_cor||'#4D865C',avatarUrl:null,members:null};
+  }
+  /* Prévia de mensagem só com anexo (áudio ou print vão com texto vazio):
+     busca o tipo do anexo uma vez e redesenha a lista (24/11/2026) */
+  var _previaMidiaTipo = {}, _previaMidiaFila = {}, _previaMidiaTimer = null;
+  function _previaMidia(msg){
+    var id = msg && msg.id ? String(msg.id) : '';
+    if (!id || id.indexOf('pending:') === 0) return 'Anexo';
+    var t = _previaMidiaTipo[id];
+    if (t === 'audio') return 'Áudio';
+    if (t === 'imagem') return 'Imagem';
+    if (t === undefined) {
+      _previaMidiaFila[id] = 1;
+      if (!_previaMidiaTimer) _previaMidiaTimer = setTimeout(_buscarPreviaMidia, 120);
+    }
+    return 'Anexo';
+  }
+  function _buscarPreviaMidia(){
+    _previaMidiaTimer = null;
+    var ids = Object.keys(_previaMidiaFila); _previaMidiaFila = {};
+    if (!ids.length) return;
+    ids.forEach(function(id){ _previaMidiaTipo[id] = 'buscando'; });
+    sb.from('gestao_anexos_temporarios').select('contexto_id,mime_type')
+      .in('contexto_tipo', ['chat_message', 'chat_thread_message']).in('contexto_id', ids)
+      .then(function(r){
+        if (r.error) { ids.forEach(function(id){ _previaMidiaTipo[id] = 'nenhum'; }); return; }
+        ids.forEach(function(id){ _previaMidiaTipo[id] = 'nenhum'; });
+        (r.data || []).forEach(function(row){
+          _previaMidiaTipo[String(row.contexto_id)] = String(row.mime_type || '').indexOf('audio/') === 0 ? 'audio' : 'imagem';
+        });
+        renderConvList(true);
+      }, function(){ ids.forEach(function(id){ _previaMidiaTipo[id] = 'nenhum'; }); });
   }
   function compactPreviewText(text,maxLen,fb){
     var raw=String(text||'').trim();
