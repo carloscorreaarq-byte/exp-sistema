@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXP · Análise de Eficiência</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/privacidade.js?v=2026-10-26c"></script>
+<script src="shared/dados-cache.js?v=2026-10-30a"></script>
+<script src="shared/nome-curto.js"></script>
+<link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-11-24a">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
+<link rel="stylesheet" href="analise.css">
+<link rel="stylesheet" href="analise-v2.css?v=2026-11-12a">
+<script>
+  (function () {
+    var saved = localStorage.getItem('exp-theme');
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (saved === 'dark' || (!saved && sys)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
+</head>
+<body data-page="analise">
+
+  <!-- ── Loading screen ──────────────────────────────────────── -->
+  <div id="shell-loading" class="analise-loading-screen">
+    <img class="analise-loading-logo" src="exp.png" alt="EXP">
+    <div class="analise-loading-bar"></div>
+  </div>
+
+  <!-- ── App ─────────────────────────────────────────────────── -->
+  <div id="conteudo" style="display:none">
+    <div id="app-shell" class="exp-app-shell">
+
+      <!-- Nav lateral — injetada por shared/exp-nav.js -->
+
+      <!-- ── Painel de Listas (modelo compartilhado) ── -->
+      <aside id="fp-tasks-panel" style="display:none">
+        <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+          <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+          <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+          <button onclick="listsPanel.toggle()" title="Fechar"
+            style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+            onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="fp-lists-tabs">
+          <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+          <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+          <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+          <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
+        </div>
+        <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+          <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:24px">
+            <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+          </div>
+        </div>
+        <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+          <div class="fp-ck-selector" id="fp-ck-selector">
+            <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+              <option value="">— selecionar —</option>
+            </select>
+          </div>
+          <div id="fp-ck-items"></div>
+          <div id="fp-ck-footer" class="fp-ck-footer" style="display:none"></div>
+        </div>
+        <div id="fp-task-form">
+          <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+          <div class="fp-task-form-row">
+            <select id="fp-task-tipo">
+              <option value="">Tipo…</option>
+              <option value="projeto">Projeto</option>
+              <option value="organizacao">Organização</option>
+              <option value="comercial">Comercial</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="sociedade">Sociedade</option>
+            </select>
+            <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+            <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+            <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" aria-label="Atribuir">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── Card principal do módulo ── -->
+      <div id="analise-main">
+
+        <!-- Topbar: título + contexto + ações -->
+        <div id="analise-topbar">
+          <div class="analise-bv">
+            <h1 class="analise-title">Análise</h1>
+            <div class="analise-subtitle" id="analise-user-context">Carregando contexto do módulo…</div>
+          </div>
+          <div class="analise-hd-actions">
+            <button class="btn sm" id="analise-btn-reload" type="button">Atualizar</button>
+          </div>
+        </div>
+
+        <!-- Corpo rolável -->
+        <div id="analise-body">
+
+          <!-- Nova Análise (analise-v2.js): abas e conteúdo montados pelo script -->
+          <div class="analise-shell-card">
+            <div class="analise-tabs-bar" id="analise-tabs-bar"></div>
+            <div class="av-painel" id="analise-panels">
+              <div class="loading-state">Carregando…</div>
+            </div>
+          </div>
+
+        </div><!-- /#analise-body -->
+      </div><!-- /#analise-main -->
+    </div><!-- /#app-shell -->
+  </div><!-- /#conteudo -->
+
+  <!-- ── Modal de drill-down ─────────────────────────────────── -->
+  <div class="analise-modal" id="analise-modal" hidden>
+    <div class="analise-modal-backdrop" data-modal-close="1"></div>
+    <div class="analise-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="analise-modal-title">
+      <div class="analise-modal-body" id="analise-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="shared/app-constants.js?v=2026-10-26e"></script>
+  <script src="shared/app-utils.js"></script>
+  <script src="shared/app-shell.js"></script>
+  <script src="shared/app-notif.js?v=2026-10-25"></script>
+  <script src="shared/lists-panel.js?v=2026-11-17b"></script>
+  <script src="shared/exp-nav.js?v=2026-11-21a"></script>
+  <script src="analise-v2.js?v=2026-11-12a"></script>
+</body>
+</html>

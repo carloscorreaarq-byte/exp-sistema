@@ -1,501 +1,1496 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#3E7858">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>EXP · Contatos</title>
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./assets/exp-mobile.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="../shared/nome-curto.js"></script>
-  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
-  <script src="./assets/exp-mobile-core.js"></script>
-  <style>
-    /* Barra de busca + filtros sticky abaixo do header */
-    .search-bar {
-      position: sticky;
-      top: calc(var(--header-h) + var(--safe-t));
-      z-index: 50;
-      background: var(--m-bg);
-      padding: var(--gap-sm) var(--gap-md) 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 18%, transparent);
-    }
-    .search-input-wrap {
-      position: relative;
-      margin-bottom: var(--gap-sm);
-    }
-    .search-input-wrap svg {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 16px; height: 16px;
-      stroke: var(--m-text-3);
-      stroke-width: 2;
-      pointer-events: none;
-    }
-    .search-input {
-      width: 100%;
-      height: 40px;
-      border-radius: var(--m-radius-card);
-      border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent);
-      background: var(--m-surface);
-      padding: 0 12px 0 36px;
-      font-family: var(--font-ui);
-      font-size: var(--mt-callout);
-      color: var(--m-text);
-      outline: none;
-      transition: border-color var(--m-transition);
-    }
-    .search-input:focus { border-color: var(--verde); }
-    .search-input::placeholder { color: var(--m-text-3); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EXP · Contatos</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared/privacidade.js?v=2026-10-26c"></script>
+<script src="shared/dados-cache.js?v=2026-10-30a"></script>
+<script src="shared/nome-curto.js"></script>
+<link rel="stylesheet" href="exp-design-system.css?v=2026-10-25">
+<link rel="stylesheet" href="shared/exp-nav.css?v=2026-11-24a">
+<link rel="stylesheet" href="shared/lists-panel.css?v=2026-11-17a">
+<script>
+  /* init imediato — antes de qualquer render para evitar flash */
+  (function(){
+    var saved = localStorage.getItem('exp-theme');
+    var sys   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(saved === 'dark' || (!saved && sys))
+      document.documentElement.setAttribute('data-theme','dark');
+  })();
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* aliases curtos — compatibilidade com CSS interno */
+  --preto:  var(--grafite);
+  --az:     var(--azul);
+  --am:     var(--ouro);
+  --tc:     var(--terracota);
+  --f:      var(--font-ui);
+  --fm:     var(--font-mono);
+  --nav-active: var(--roxo);
+  /* foco de input — contatos usa roxo */
+  --mod-focus:      var(--roxo);
+  --mod-focus-soft: var(--roxo-soft);
+  /* Painel de Listas (identidade verde global) */
+  --ca:          var(--verde);
+  --ca-bg:       var(--verde-bg);
+  --ca-mid:      var(--verde-soft);
+  --ca-rgb-vals: 29,106,74;
+}
+body{font-family:var(--f);background:var(--off);color:var(--preto);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
-    .filter-scroll {
-      display: flex;
-      gap: var(--gap-xs);
-      overflow-x: auto;
-      padding-bottom: var(--gap-sm);
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    .filter-scroll::-webkit-scrollbar { display: none; }
-    .filter-pill {
-      height: 28px;
-      border-radius: var(--m-radius-pill);
-      padding: 0 var(--gap-sm);
-      font-family: var(--font-ui);
-      font-size: var(--mt-label);
-      font-weight: var(--weight-label);
-      letter-spacing: var(--label-spacing);
-      text-transform: uppercase;
-      background: color-mix(in srgb, var(--m-border) 18%, transparent);
-      color: var(--m-text-2);
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-      flex-shrink: 0;
-      transition: all var(--m-transition);
-      -webkit-tap-highlight-color: transparent;
-    }
-    .filter-pill.active { background: var(--verde-soft); color: var(--verde); }
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--off);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.loading-logo{height:30px;display:block;mix-blend-mode:multiply}
+[data-theme="dark"] .loading-logo{filter:invert(1) brightness(0.85);mix-blend-mode:screen}
+.loading-bar{width:120px;height:2px;background:var(--cinza);border-radius:2px;overflow:hidden;position:relative;margin-top:4px}
+.loading-bar::after{content:'';position:absolute;top:0;left:0;width:40%;height:100%;background:var(--grafite);border-radius:2px;animation:ldbar 1.4s ease-in-out infinite}
+@keyframes ldbar{0%{transform:translateX(-150%)}100%{transform:translateX(350%)}}
 
-    /* Contador de resultados */
-    .results-count {
-      font-size: var(--mt-label);
-      font-weight: var(--weight-label);
-      letter-spacing: var(--label-spacing);
-      text-transform: uppercase;
-      color: var(--m-text-3);
-      margin-bottom: var(--gap-sm);
-      padding: 0 var(--gap-xs);
-    }
+/* SHELL — flex row com nav lateral */
+#conteudo{display:none;flex:1;min-height:0}
+#app-shell{display:flex;flex:1;padding:20px 72px;gap:11px;align-items:stretch;min-height:0}
+/* MAIN — card flutuante */
+#cont-main{
+  flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;position:relative;
+  background:var(--branco);
+  border:1px solid var(--cinza2);
+  border-radius:var(--radius-shell,14px);
+}
+[data-theme="dark"] #cont-main{background:#1E1E1D;border-color:#2E2D2B;}
+/* Card header — topbar superior do card, borda inferior */
+.ct-card-hd{height:48px;background:var(--branco);border-bottom:1px solid var(--cinza2);display:flex;align-items:center;padding:0 8px 0 4px;flex-shrink:0;gap:0}
+[data-theme="dark"] .ct-card-hd{background:#1E1E1D;border-bottom-color:#2A2926}
+.ct-card-hd #exp-topbar-right{position:static!important;top:auto!important;right:auto!important;display:flex;align-items:center;gap:2px;margin-left:auto}
+.main{flex:1;overflow-y:auto;padding:32px 48px 80px;position:relative;z-index:1}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--cinza);border-radius:2px}
+/* Fade out na borda inferior da lista */
+#cont-main::after{content:'';position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(to bottom,transparent,var(--off));pointer-events:none;z-index:2}
+[data-theme="dark"] #cont-main::after{background:linear-gradient(to bottom,transparent,#141413)}
 
-    /* Card de contato */
-    .contato-card {
-      display: flex;
-      align-items: center;
-      gap: var(--gap-sm);
-      padding: 12px var(--gap-md);
-      background: var(--m-surface);
-      border: 1px solid color-mix(in srgb, var(--m-border) 22%, transparent);
-      border-radius: var(--m-radius-card);
-      margin-bottom: var(--gap-xs);
-      box-shadow: var(--shadow-card);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: transform var(--m-transition);
-    }
-    .contato-card:active { transform: scale(0.98); }
+/* Timer: centrado na nav */
+#exp-timer-widget{left:calc(72px + (66px / 2) - 23px) !important;bottom:30px !important;z-index:9998 !important}
 
-    .contato-avatar {
-      width: 42px; height: 42px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 700;
-      color: #fff;
-      flex-shrink: 0;
-      letter-spacing: -0.5px;
-    }
-    .contato-info { flex: 1; min-width: 0; }
-    .contato-nome {
-      font-size: var(--mt-body);
-      font-weight: 700;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .contato-empresa {
-      font-size: var(--mt-caption);
-      color: var(--m-text-2);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-top: 1px;
-    }
-    .contato-tipo-badge {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      padding: 2px 8px;
-      border-radius: 20px;
-      flex-shrink: 0;
-    }
+/* Feedback icon — padrão app.html */
+#feedback-icon-btn {
+  width: 24px; height: 24px;
+  border: none; background: none;
+  color: #bbb;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: color .12s;
+  padding: 0;
+}
+#feedback-icon-btn:hover { color: var(--grafite, #111110); }
+[data-theme="dark"] #feedback-icon-btn { color: #555; }
+[data-theme="dark"] #feedback-icon-btn:hover { color: #C8C3BA; }
 
-    /* Sheet de detalhe */
-    .detalhe-avatar {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 700;
-      color: #fff;
-      margin: 0 auto var(--gap-md);
-    }
-    .detalhe-nome {
-      font-size: var(--mt-title);
-      font-weight: 800;
-      text-align: center;
-    }
-    .detalhe-empresa {
-      font-size: var(--mt-caption);
-      color: var(--m-text-2);
-      text-align: center;
-      margin-top: 4px;
-    }
-    .detalhe-badge-row {
-      display: flex;
-      justify-content: center;
-      gap: var(--gap-xs);
-      margin-top: var(--gap-sm);
-      flex-wrap: wrap;
-    }
-    .detalhe-actions {
-      display: flex;
-      gap: var(--gap-sm);
-      margin-top: var(--gap-md);
-    }
-    .detalhe-action-btn {
-      flex: 1;
-      height: 48px;
-      border-radius: var(--m-radius-card);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      border: 1px solid color-mix(in srgb, var(--m-border) 30%, transparent);
-      background: var(--m-surface);
-      text-decoration: none;
-      color: var(--m-text);
-      font-size: 10px;
-      font-weight: 600;
-      font-family: var(--font-ui);
-      text-transform: uppercase;
-      letter-spacing: .4px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: all var(--m-transition);
-    }
-    .detalhe-action-btn:active { opacity: 0.7; }
-    .detalhe-action-btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
-    .detalhe-action-btn.verde { background: var(--verde-soft); color: var(--verde); border-color: transparent; }
-    .detalhe-action-btn.azul  { background: var(--azul-soft);  color: var(--azul);  border-color: transparent; }
-    .detalhe-action-btn.disabled { opacity: 0.35; pointer-events: none; }
+/* fgroup — campos de formulário nos popdowns */
+.fgroup { display: flex; flex-direction: column; gap: 4px; }
+.fgroup label { font-size: 8px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #999; }
+.fgroup input, .fgroup select, .fgroup textarea {
+  font-family: var(--f); font-size: 12px; font-weight: 300;
+  border: 1px solid var(--cinza); background: var(--branco); color: var(--preto);
+  padding: 5px 9px; outline: none; transition: border-color .12s;
+  width: 100%; border-radius: 8px; box-sizing: border-box;
+}
+.fgroup input:focus, .fgroup select:focus, .fgroup textarea:focus { border-color: var(--mod-focus); box-shadow: 0 0 0 3px var(--mod-focus-soft); }
+.fgroup textarea { resize: vertical; min-height: 60px; }
+[data-theme="dark"] .fgroup input,
+[data-theme="dark"] .fgroup select,
+[data-theme="dark"] .fgroup textarea { background: #252523; border-color: #3A3836; color: var(--grafite); color-scheme: dark; }
 
-    .detalhe-section { margin-top: var(--gap-md); }
-    .detalhe-section-title {
-      font-size: var(--mt-label);
-      font-weight: var(--weight-label);
-      text-transform: uppercase;
-      letter-spacing: var(--label-spacing);
-      color: var(--m-text-3);
-      margin-bottom: var(--gap-xs);
-    }
-    .detalhe-field {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--gap-sm);
-      padding: 10px 0;
-      border-bottom: 1px solid color-mix(in srgb, var(--m-border) 15%, transparent);
-    }
-    .detalhe-field:last-child { border-bottom: none; }
-    .detalhe-field-icon { color: var(--m-text-3); flex-shrink: 0; margin-top: 1px; }
-    .detalhe-field-icon svg { width: 15px; height: 15px; stroke-width: 2; }
-    .detalhe-field-body { flex: 1; min-width: 0; }
-    .detalhe-field-label { font-size: var(--mt-label); color: var(--m-text-3); margin-bottom: 1px; }
-    .detalhe-field-value { font-size: var(--mt-body); font-weight: 500; word-break: break-word; }
-    .detalhe-field-value a { color: var(--verde); text-decoration: none; }
-  </style>
+.ct-header-right {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+
+/* ct-card-hd: alinha o exp-topbar-right à direita */
+.ct-card-hd { justify-content: flex-end; }
+
+#feedback-icon-wrap .nav-feedback-pop,
+#lemb-wrap .nav-feedback-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0; left: auto; bottom: auto;
+  width: 300px;
+}
+
+/* HEADER */
+.ct-header{display:flex;align-items:center;gap:12px;margin-bottom:20px;justify-content:space-between}
+.ct-header-left{flex:1}
+.ct-title{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.ct-count{font-size:11px;color:#999;margin-top:2px}
+
+/* BUTTONS */
+/* .btn base (tamanho, caixa alta, borda, raio) vem do exp-design-system.css */
+.btn-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--cinza);border-radius:4px;cursor:pointer;font-size:10px;color:#888;transition:all .12s;padding:0;font-family:inherit;flex-shrink:0}
+.btn-icon:hover{border-color:var(--preto);color:var(--preto)}
+.btn-icon.success{color:var(--verde);border-color:#b8d9c8;background:var(--verde-bg)}
+.btn-icon.success:hover{border-color:var(--verde);background:#d0eedd}
+.btn-icon.danger{color:#ccc}
+.btn-icon.danger:hover{border-color:var(--tc);color:var(--tc);background:var(--tc-bg)}
+.btn.verde{background:var(--verde);color:#fff;border-color:var(--verde)}
+.btn.verde:hover{background:#155a3b}
+.btn.outline{background:#fff;color:#555;border-color:var(--cinza)}
+.btn.outline:hover{border-color:var(--preto);color:var(--preto)}
+.btn.xs{padding:2px 8px;font-size:9px;border-radius:4px}
+
+/* SEARCH */
+.ct-search-row{display:flex;gap:10px;align-items:stretch;margin-bottom:6px}
+.ct-search-wrap{position:relative;flex:1;margin-bottom:0}
+.ct-search-wrap input{
+  width:100%;padding:9px 16px 9px 42px;
+  background:#fff;border:1px solid var(--cinza);border-radius:var(--radius-input,6px);
+  font-family:var(--f);font-size:12px;color:var(--preto);
+  transition:border-color .15s,box-shadow .15s;outline:none;
+}
+.ct-search-wrap input:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
+.ct-search-wrap input::placeholder{color:#bbb}
+.ct-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;color:#ccc;pointer-events:none;line-height:1}
+.ct-search-hint{font-size:10px;color:#bbb;font-family:var(--fm);margin-bottom:18px}
+.ct-region-select{
+  min-width:170px;padding:7px 10px;border:1px solid var(--cinza);border-radius:var(--radius-input,6px);
+  font-family:var(--f);font-size:11px;color:var(--preto);background:#fff;outline:none;
+}
+.ct-region-select:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
+
+/* SECTION HEADERS */
+.results-hdr{
+  font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#bbb;
+  display:flex;align-items:center;gap:10px;margin-bottom:10px;margin-top:18px;
+}
+.results-hdr:first-child{margin-top:0}
+.results-hdr::after{content:'';flex:1;height:1px;background:var(--cinza2)}
+.results-hdr span{color:#555;font-size:10px;font-weight:700;letter-spacing:0;text-transform:none}
+
+/* CONTACT CARD */
+.ct-card{
+  background:#fff;border:1px solid var(--cinza);border-radius:8px;
+  padding:12px 16px 10px;margin-bottom:8px;
+  transition:border-color .12s,box-shadow .12s;
+}
+.ct-card:hover{border-color:#bbb;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.ct-card.secundario{opacity:.75;border-style:dashed}
+.ct-card.validado{background:var(--verde-bg);border-color:#9dcfb6}
+.ct-card.validado:hover{border-color:var(--verde);box-shadow:0 2px 8px rgba(29,106,74,.08)}
+.ct-card.desativado-card{background:#f8f8f6;opacity:.7}
+
+.ct-card-row1{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap}
+.ct-nome{font-size:13px;font-weight:700;letter-spacing:-.1px;flex-shrink:0}
+.ct-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap;flex:1}
+
+.tipo-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+.valid-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:var(--sucesso);background:var(--verde-bg);border:1px solid #9dcfb6;padding:2px 7px;border-radius:var(--radius-badge);white-space:nowrap}
+.sem-validacao{display:inline-flex;align-items:center;gap:3px;font-size:9px;color:#bbb;background:var(--off);border:1px solid var(--cinza2);padding:2px 7px;border-radius:var(--radius-badge);white-space:nowrap}
+.desativ-badge{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;color:var(--critico);background:var(--tc-bg);border:1px solid #f0c8c0;padding:2px 7px;border-radius:var(--radius-badge)}
+
+.ct-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto}
+.btn-reativar{background:var(--az-bg);color:var(--az);border:1px solid #b3caea;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:var(--f);font-weight:600;transition:all .12s;white-space:nowrap}
+.btn-reativar:hover{background:#d0dffa}
+
+.ct-card-row2{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:#555;margin-bottom:6px}
+.ct-info-item{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.ct-info-item a{color:var(--verde);text-decoration:none}
+.ct-info-item a:hover{text-decoration:underline}
+.ct-info-icon{font-size:10px;color:#ccc}
+.ct-info-muted{color:#b7b7b0;margin-left:auto;font-size:10px;white-space:nowrap}
+
+.ct-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;margin-bottom:5px}
+.ct-tag{padding:2px 8px;background:var(--cinza2);border-radius:20px;font-size:10px;color:#666;font-weight:500}
+.ct-tag.match{background:var(--verde-bg);color:var(--verde);font-weight:700}
+
+.ct-obs{font-size:10px;color:#999;font-style:italic;line-height:1.5;border-top:1px solid var(--cinza2);padding-top:6px;margin-top:2px}
+
+/* EMPTY STATE */
+.ct-empty{text-align:center;padding:60px 20px}
+.ct-empty-icon{font-size:36px;margin-bottom:10px;opacity:.4}
+.ct-empty-title{font-size:13px;font-weight:600;color:#999;margin-bottom:4px}
+.ct-empty-sub{font-size:11px;color:#bbb}
+
+/* DESATIVADOS */
+.desativados-toggle{
+  display:flex;align-items:center;gap:6px;padding:10px 0;
+  font-size:10px;font-weight:600;color:#ccc;cursor:pointer;user-select:none;
+  border-top:1px solid var(--cinza2);margin-top:24px;
+}
+.desativados-toggle:hover{color:#888}
+#desativados-section{display:none;margin-top:10px;padding:12px;background:var(--off);border:1px solid var(--cinza2);border-radius:8px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:8px;overflow:hidden;width:100%;max-width:620px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.15)}
+.modal-hdr{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--cinza);gap:10px;flex-shrink:0}
+.modal-title{font-size:13px;font-weight:700;flex:1}
+.modal-close{background:none;border:none;font-size:16px;cursor:pointer;color:#bbb;padding:0 4px;line-height:1;font-family:var(--f)}
+.modal-close:hover{color:var(--preto)}
+.modal-body{padding:18px;overflow-y:auto;flex:1}
+.modal-notice{background:var(--am-bg);border:1px solid #e8c07a;border-left:3px solid var(--atencao);border-radius:var(--radius-badge);padding:9px 12px;font-size:11px;color:var(--atencao);margin-bottom:14px;line-height:1.5}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-grid .full{grid-column:1/-1}
+.modal-field{display:flex;flex-direction:column;gap:4px}
+.modal-field label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#888}
+.modal-field input,.modal-field select,.modal-field textarea{
+  padding:7px 10px;border:1px solid var(--cinza);border-radius:6px;
+  font-family:var(--f);font-size:12px;color:var(--preto);background:#fff;
+  transition:border-color .15s;outline:none;
+}
+.modal-field input:hover,.modal-field select:hover,.modal-field textarea:hover{border-color:#aaa}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--mod-focus);box-shadow:0 0 0 3px var(--mod-focus-soft)}
+.modal-field textarea{resize:vertical;min-height:70px;line-height:1.5}
+.modal-ftr{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--cinza);background:#fafaf8;flex-shrink:0}
+.tag-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:64px;overflow:hidden}
+.tag-suggestion{
+  padding:4px 9px;border:1px solid #b8d9c8;background:var(--verde-bg);color:var(--verde);
+  border-radius:999px;font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;
+}
+.tag-suggestion:hover{background:#d0eedd;border-color:var(--verde)}
+
+/* DUPLICATA AVISO */
+.dup-warn{background:var(--am-bg);border:1px solid #e8c07a;border-left:3px solid var(--atencao);border-radius:var(--radius-badge);padding:7px 10px;font-size:10px;color:#7a5810;margin-top:5px;line-height:1.5}
+.dup-warn strong{font-weight:700}
+.issue-bar{
+  position:fixed;left:18px;right:18px;bottom:18px;z-index:900;
+  background:#111110;color:#fff;border-radius:8px;border:1px solid #2d2d2a;
+  padding:12px 16px;display:none;align-items:center;gap:12px;
+  box-shadow:0 12px 32px rgba(0,0,0,.28)
+}
+.issue-bar.open{display:flex}
+.issue-bar-text{flex:1;font-size:11px;line-height:1.5}
+.issue-bar-close{
+  background:none;border:none;color:#fff;cursor:pointer;font-size:14px;line-height:1;
+  padding:0 2px;font-family:var(--f)
+}
+@media (max-width:700px){
+  .ct-search-row{flex-direction:column}
+  .ct-region-select{min-width:0}
+  .issue-bar{left:10px;right:10px;bottom:10px}
+}
+
+/* ── DARK MODE — variáveis locais do módulo ─────────────────── */
+[data-theme="dark"]{
+  --cinza2:   #2A2A28;
+  --verde-bg: #1A2B22;
+  --verde-l:  #52A676;
+  --az-bg:    #1A2232;
+  --am-bg:    #2A2212;
+  --tc-bg:    #2A1A14;
+  --roxo-bg:  #221A32;
+}
+
+/* ── DARK MODE — componentes do módulo ──────────────────────── */
+/* [data-theme="dark"] body::before — tratado em exp-design-system.css */
+[data-theme="dark"] #loading{background:var(--off)}
+
+[data-theme="dark"] .ct-search-wrap input{background:#1e1e1c;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ct-search-wrap input::placeholder{color:#555}
+[data-theme="dark"] .ct-search-wrap input:focus{border-color:#666;box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+[data-theme="dark"] .ct-region-select{background:#1e1e1c;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .ct-card{background:#1e1e1c;border-color:var(--cinza)}
+[data-theme="dark"] .ct-card:hover{border-color:#555;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+[data-theme="dark"] .ct-card.validado{background:#192A20;border-color:#2D4D38}
+[data-theme="dark"] .ct-card.validado:hover{border-color:var(--verde)}
+[data-theme="dark"] .ct-card.desativado-card{background:#1a1a18}
+[data-theme="dark"] .ct-card-row2{color:#999}
+[data-theme="dark"] .ct-obs{border-top-color:var(--cinza);color:#666}
+[data-theme="dark"] .ct-tag{background:#2a2a28;color:#888}
+[data-theme="dark"] .ct-tag.match{background:#1A2B22;color:var(--verde)}
+[data-theme="dark"] .sem-validacao{background:#252523;border-color:#3a3a38;color:#666}
+[data-theme="dark"] .tipo-badge{background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.1)}
+[data-theme="dark"] .results-hdr{color:#555}
+[data-theme="dark"] .results-hdr::after{background:var(--cinza)}
+[data-theme="dark"] .results-hdr span{color:#888}
+[data-theme="dark"] .desativados-toggle{color:#555;border-top-color:var(--cinza)}
+[data-theme="dark"] .desativados-toggle:hover{color:#888}
+[data-theme="dark"] #desativados-section{background:#1a1a18;border-color:var(--cinza)}
+[data-theme="dark"] .modal-box{background:#1e1e1c}
+[data-theme="dark"] .modal-hdr{border-bottom-color:var(--cinza)}
+[data-theme="dark"] .modal-title{color:var(--grafite)}
+[data-theme="dark"] .modal-close{color:#555}
+[data-theme="dark"] .modal-close:hover{color:var(--grafite)}
+[data-theme="dark"] .modal-field label{color:#AAA}
+[data-theme="dark"] .modal-field input::placeholder,
+[data-theme="dark"] .modal-field textarea::placeholder{color:#4A4A48}
+[data-theme="dark"] .modal-field input,
+[data-theme="dark"] .modal-field select,
+[data-theme="dark"] .modal-field textarea{background:#252523;border-color:var(--cinza);color:var(--grafite)}
+[data-theme="dark"] .modal-field input:hover,
+[data-theme="dark"] .modal-field select:hover,
+[data-theme="dark"] .modal-field textarea:hover{border-color:#555}
+[data-theme="dark"] .modal-ftr{background:#181816;border-top-color:var(--cinza)}
+[data-theme="dark"] .btn.outline{background:#252523;color:#aaa;border-color:var(--cinza)}
+[data-theme="dark"] .btn.outline:hover{border-color:#888;color:var(--grafite)}
+[data-theme="dark"] .btn-icon{background:#252523;border-color:var(--cinza);color:#777}
+[data-theme="dark"] .btn-icon:hover{border-color:#888;color:var(--grafite)}
+[data-theme="dark"] .btn-icon.success{background:#1A2B22;border-color:#2D4D38;color:var(--verde)}
+[data-theme="dark"] .btn-icon.success:hover{background:#223A2A;border-color:var(--verde);color:#8AD4A4}
+[data-theme="dark"] .btn-icon.danger:hover{border-color:var(--terracota);color:var(--terracota);background:#2A1A14}
+[data-theme="dark"] .tag-suggestion{background:#1A2B22;border-color:#2D4D38;color:var(--verde)}
+[data-theme="dark"] .tag-suggestion:hover{background:#223A2A;border-color:var(--verde)}
+
+/* ── CHAT — isolado do dark mode ───────────────────────────
+   O chat tem CSS próprio injetado e não acompanha o tema.
+   Resetamos as variáveis dentro do container para light.
+─────────────────────────────────────────────────────────── */
+[data-theme="dark"] #exp-chat-widget,
+[data-theme="dark"] #exp-chat-toggle {
+  --off:       #F7F6F3;
+  --grafite:   #141414;
+  --cinza:     #BDBDBD;
+  --branco:    #FFFFFF;
+  --verde:     #4D865C;
+  --preto:     #111110;
+  --cinza2:    #ECEAE4;
+  color:       #141414;
+  color-scheme: light;
+}
+</style>
 </head>
 <body>
 
-  <header class="app-header">
-    <a href="./app.html" class="header-back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="15 18 9 12 15 6"/></svg>
-    </a>
-    <div class="header-title">Contatos</div>
-  </header>
+<div id="loading">
+  <img class="loading-logo" src="exp.png" alt="EXP">
+  <div class="loading-bar"></div>
+</div>
 
-  <!-- Busca + filtros sticky -->
-  <div class="search-bar">
-    <div class="search-input-wrap">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" type="search" id="busca" placeholder="Buscar nome, empresa, produto…"
-             oninput="filtrar()" autocomplete="off" autocorrect="off" spellcheck="false">
+<div id="conteudo">
+
+
+<!-- Shell: nav lateral (injetada) + card principal -->
+<div id="app-shell">
+  <!-- #exp-nav injetada pelo ExpNav.init() -->
+
+  <!-- ── Painel de Listas ── -->
+  <aside id="fp-tasks-panel" style="display:none">
+    <div style="padding:12px 14px 10px;display:flex;align-items:center;flex-shrink:0">
+      <span style="font-size:calc(14px * var(--fp-lists-scale,1));font-weight:800;color:var(--ca);letter-spacing:-.2px;flex:1">Listas</span>
+      <span id="fp-tasks-panel-count" style="font-size:calc(10px * var(--fp-lists-scale,1));font-family:var(--font-mono);color:var(--ca);opacity:.6;margin-right:6px"></span>
+      <button onclick="listsPanel.toggle()" title="Fechar"
+        style="width:24px;height:24px;border:none;background:none;color:var(--grafite,#111110);opacity:.4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:6px;transition:opacity .12s"
+        onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.4'">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
     </div>
-    <div class="filter-scroll" id="filter-row"></div>
-  </div>
-
-  <div class="page page--no-header" style="padding-top:0">
-    <div class="page-content" id="page-content" style="padding-top:var(--gap-md)">
-      <div class="loader-page"><div class="loader"></div></div>
+    <div class="fp-lists-tabs">
+      <button class="fp-lists-tab active" data-tab="tarefas"  onclick="listsPanel.switchListsTab('tarefas')">Tarefas</button>
+      <button class="fp-lists-tab"        data-tab="abertos"  onclick="listsPanel.switchListsTab('abertos')">Checklists</button>
+      <button class="fp-lists-tab"        data-tab="etapa"    onclick="listsPanel.switchListsTab('etapa')">Guidelines</button>
+      <button class="fp-lists-tab"        data-tab="revisao"  onclick="listsPanel.switchListsTab('revisao')">Revisões</button>
     </div>
-  </div>
 
-  <nav class="bottom-nav" id="bottom-nav"></nav>
+    <div id="fp-tasks-list" style="flex:1;overflow-y:auto;padding:8px 10px 4px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;padding:24px">
+        <div class="fp-loading-dot"></div><div class="fp-loading-dot"></div><div class="fp-loading-dot"></div>
+      </div>
+    </div>
 
-  <!-- Sheet: detalhe do contato -->
-  <div class="sheet-overlay" id="detalhe-overlay" onclick="closeSheet('detalhe')"></div>
-  <div class="sheet" id="detalhe-sheet" style="max-height:88dvh;overflow-y:auto">
-    <div class="sheet-handle"></div>
-    <div id="detalhe-content"></div>
-  </div>
+    <div id="fp-ck-view" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+      <div class="fp-ck-selector" id="fp-ck-selector">
+        <select class="fp-ck-select" id="fp-ck-select" onchange="listsPanel.selectCkByIndex(listsPanel._listsActiveTab, this.value)">
+          <option value="">— selecionar —</option>
+        </select>
+      </div>
+      <div id="fp-ck-items"></div>
+      <div id="fp-ck-footer" class="fp-ck-footer" style="display:none"></div>
+    </div>
 
-  <script>
-    const TIPO_INFO = {
-      fornecedor: { label: 'Fornecedor', color: 'var(--verde)',     bg: 'var(--verde-soft)' },
-      cliente:    { label: 'Cliente',    color: 'var(--azul)',      bg: 'var(--azul-soft)' },
-      parceiro:   { label: 'Parceiro',   color: '#6B4FA0',          bg: '#f3effe' },
-      arquiteto:  { label: 'Arquiteto',  color: 'var(--ouro)',      bg: 'var(--ouro-soft)' },
-      projetista: { label: 'Projetista', color: 'var(--terracota)', bg: 'var(--terracota-soft)' },
-      consultor:  { label: 'Consultor',  color: 'var(--m-text-2)',  bg: 'color-mix(in srgb, var(--m-border) 25%, transparent)' },
-    };
-
-    const FILTROS = [
-      { key: '', label: 'Todos' },
-      { key: 'fornecedor', label: 'Fornecedores' },
-      { key: 'cliente',    label: 'Clientes' },
-      { key: 'parceiro',   label: 'Parceiros' },
-      { key: 'arquiteto',  label: 'Arquitetos' },
-      { key: 'projetista', label: 'Projetistas' },
-      { key: 'consultor',  label: 'Consultores' },
-    ];
-
-    let G = { contatos: [], filtroTipo: '', busca: '' };
-
-    // ── Avatar ────────────────────────────────────
-    function iniciais(nome) {
-      return (nome || '').trim().split(' ').filter(Boolean)
-        .slice(0, 2).map(p => p[0]).join('').toUpperCase() || '?';
-    }
-    function avatarColor(nome) {
-      const colors = ['#4A72B5','#3E7858','#C49A27','#B85638','#6B4FA0','#4A9B8A','#B54A72'];
-      let h = 0;
-      for (const c of (nome || '')) h = (h * 31 + c.charCodeAt(0)) & 0xffffffff;
-      return colors[Math.abs(h) % colors.length];
-    }
-
-    // ── Filtro + busca ────────────────────────────
-    function filtrar() {
-      G.busca = document.getElementById('busca').value.trim().toLowerCase();
-      renderLista();
-    }
-
-    function setFiltroTipo(tipo) {
-      G.filtroTipo = tipo;
-      document.querySelectorAll('.filter-pill').forEach(b => {
-        b.classList.toggle('active', b.dataset.tipo === tipo);
-      });
-      renderLista();
-    }
-
-    function contatosFiltrados() {
-      return G.contatos.filter(c => {
-        if (G.filtroTipo && c.tipo !== G.filtroTipo) return false;
-        if (G.busca) {
-          const haystack = [c.nome, c.empresa, c.tipo_produto, c.cidade, c.estado, c.telefone, c.email]
-            .filter(Boolean).join(' ').toLowerCase();
-          return G.busca.split(/\s+/).every(t => haystack.includes(t));
-        }
-        return true;
-      });
-    }
-
-    // ── Render ─────────────────────────────────────
-    function buildFilterRow() {
-      const el = document.getElementById('filter-row');
-      el.innerHTML = FILTROS.map(f => `
-        <button class="filter-pill ${f.key === '' ? 'active' : ''}" data-tipo="${f.key}" onclick="setFiltroTipo('${f.key}')">
-          ${f.label}
+    <div id="fp-task-form">
+      <textarea id="fp-task-desc" placeholder="Nova tarefa…" rows="2" oninput="listsPanel.taskDescInput(this)"></textarea>
+      <div class="fp-task-form-row">
+        <select id="fp-task-tipo">
+          <option value="">Tipo…</option>
+          <option value="projeto">Projeto</option>
+          <option value="organizacao">Organização</option>
+          <option value="comercial">Comercial</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="sociedade">Sociedade</option>
+        </select>
+        <input id="fp-task-data" type="date" title="Prazo" placeholder="Prazo">
+        <button class="fp-task-add-btn" onclick="listsPanel.addTask()" title="Adicionar para mim">+ Adicionar</button>
+        <button class="fp-task-assign-btn" id="fp-task-assign-btn" onclick="listsPanel.openAssignDrop(this)" aria-label="Atribuir">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </button>
-      `).join('');
-    }
+      </div>
+    </div>
+  </aside>
 
-    function renderLista() {
-      const lista = contatosFiltrados();
-      const el = document.getElementById('page-content');
-
-      if (lista.length === 0) {
-        el.innerHTML = `
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <div class="empty-state-title">Nenhum contato encontrado</div>
-            <div class="empty-state-desc">Tente ajustar a busca ou o filtro</div>
-          </div>`;
-        return;
-      }
-
-      el.innerHTML = `
-        <div class="results-count">${lista.length} contato${lista.length !== 1 ? 's' : ''}</div>
-        ${lista.map(c => renderCard(c)).join('')}
-      `;
-    }
-
-    function renderCard(c) {
-      const ti   = TIPO_INFO[c.tipo] ?? { label: c.tipo ?? '—', color: 'var(--m-text-2)', bg: 'var(--m-border)' };
-      const cor  = avatarColor(c.nome);
-      const loc  = [c.cidade, c.estado].filter(Boolean).join(' · ');
-      return `
-        <div class="contato-card" onclick="abrirDetalhe('${c.id}')">
-          <div class="contato-avatar" style="background:${cor}">${iniciais(c.nome)}</div>
-          <div class="contato-info">
-            <div class="contato-nome">${c.nome}</div>
-            <div class="contato-empresa">${[c.empresa, loc].filter(Boolean).join(' — ') || '—'}</div>
+  <div id="cont-main">
+    <!-- Card header: topbar superior com user chip + ações padrão -->
+    <div class="ct-card-hd">
+      <div id="exp-topbar-right">
+        <button class="exp-tr-btn" id="exp-tr-theme" onclick="ExpNav.toggleTheme()" title="Alternar tema claro/escuro">
+          <svg class="exp-tr-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="exp-tr-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <div id="feedback-icon-wrap" style="position:relative;display:flex;align-items:center">
+          <button class="exp-tr-btn" id="feedback-icon-btn" onclick="toggleToolFeedbackPopover(event)" title="Reportar problema ou sugestão">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </button>
+          <div class="nav-feedback-pop" id="nav-feedback-pop">
+            <div class="nav-feedback-title">Problema ou sugestão</div>
+            <div class="nav-feedback-sub">Envio direto para a Gestão de plataforma.</div>
+            <div class="fgroup">
+              <label for="tool-feedback-type">Tipo</label>
+              <select id="tool-feedback-type">
+                <option value="problema">Problema</option>
+                <option value="sugestao">Sugestão</option>
+              </select>
+            </div>
+            <div class="fgroup">
+              <label for="tool-feedback-message">Mensagem</label>
+              <textarea id="tool-feedback-message" rows="3" placeholder="Descreva o erro, comportamento inesperado ou a sugestão de melhoria."></textarea>
+            </div>
+            <div class="nav-feedback-status" id="tool-feedback-status">Seu registro será encaminhado para a Gestão de plataforma.</div>
+            <div class="nav-feedback-actions">
+              <button type="button" class="btn outline" onclick="fecharToolFeedbackPopover()">Fechar</button>
+              <button type="button" class="btn verde" onclick="enviarToolFeedback()">Enviar</button>
+            </div>
           </div>
-          <span class="contato-tipo-badge" style="background:${ti.bg};color:${ti.color}">${ti.label}</span>
         </div>
-      `;
-    }
-
-    // ── Detalhe ───────────────────────────────────
-    function abrirDetalhe(id) {
-      const c = G.contatos.find(x => x.id === id);
-      if (!c) return;
-      const ti  = TIPO_INFO[c.tipo] ?? { label: c.tipo ?? '—', color: 'var(--m-text-2)', bg: 'transparent' };
-      const cor = avatarColor(c.nome);
-      const tags = (c.tipo_produto || '').split(',').map(t => t.trim()).filter(Boolean);
-
-      const temTel   = Boolean(c.telefone);
-      const temEmail = Boolean(c.email);
-      const temSite  = Boolean(c.site);
-
-      document.getElementById('detalhe-content').innerHTML = `
-        <div class="detalhe-avatar" style="background:${cor}">${iniciais(c.nome)}</div>
-        <div class="detalhe-nome">${c.nome}</div>
-        ${c.empresa ? `<div class="detalhe-empresa">${c.empresa}</div>` : ''}
-
-        <div class="detalhe-badge-row">
-          <span class="contato-tipo-badge" style="background:${ti.bg};color:${ti.color}">${ti.label}</span>
-          ${tags.map(t => `<span class="contato-tipo-badge" style="background:color-mix(in srgb,var(--m-border) 22%,transparent);color:var(--m-text-2)">${t}</span>`).join('')}
+        <div id="lemb-wrap" style="position:relative;display:flex;align-items:center">
+          <button class="exp-tr-btn" id="exp-tr-lembrete" onclick="toggleLembretePopdown(event)" title="Enviar lembrete para a equipe">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="nav-feedback-pop" id="lemb-popdown">
+            <div class="nav-feedback-title">Lembrete para a equipe</div>
+            <div class="fgroup">
+              <label>Para</label>
+              <select id="lemb-para"><option value="">Carregando…</option></select>
+            </div>
+            <div class="fgroup">
+              <label>Mensagem</label>
+              <textarea id="lemb-msg" rows="3" placeholder="Ex: Lembrete de preencher o reembolso mensal até sexta-feira."></textarea>
+            </div>
+            <div class="nav-feedback-status" id="lemb-status"></div>
+            <div class="nav-feedback-actions">
+              <button class="btn outline" onclick="fecharLembretePopdown()">Fechar</button>
+              <button class="btn verde" onclick="_enviarLembrete()">Enviar lembrete</button>
+            </div>
+          </div>
         </div>
-
-        <!-- Botões de ação -->
-        <div class="detalhe-actions">
-          <a class="detalhe-action-btn verde ${temTel ? '' : 'disabled'}" href="${temTel ? `tel:${c.telefone.replace(/\D/g,'')}` : '#'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l1.41-1.41a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            Ligar
-          </a>
-          <a class="detalhe-action-btn azul ${temEmail ? '' : 'disabled'}" href="${temEmail ? `mailto:${c.email}` : '#'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-            E-mail
-          </a>
-          ${temSite ? `
-            <a class="detalhe-action-btn" href="${c.site.startsWith('http') ? c.site : 'https://'+c.site}" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              Site
-            </a>
-          ` : ''}
+        <div class="user-pill-wrap" style="position:relative">
+          <div class="user-chip" onclick="toggleUserMenu()">
+            <div class="user-av" id="exp-nav-user"></div>
+            <div>
+              <div class="u-nome" id="exp-user-nome">—</div>
+              <div class="u-role" id="exp-user-role"></div>
+            </div>
+            <span class="user-chip-arrow">▾</span>
+          </div>
+          <div class="user-dropdown" id="user-dropdown">
+            <button type="button" onclick="window.location.href='app.html'">Meus dados</button>
+            <button type="button" id="user-menu-platform" hidden onclick="window.location.href='app.html'">Gestão de plataforma</button>
+            <div class="user-dropdown-sep"></div>
+            <div class="user-term-state pending" id="user-term-state" onclick="window.abrirTermoCompromisso?.()">
+              <span id="user-term-state-icon" class="user-term-state-icon">ℹ</span>
+              <span class="term-state-normal" id="user-term-state-text">Termo de compromisso pendente.</span>
+              <span class="term-state-hover">ver termo →</span>
+            </div>
+            <div class="user-dropdown-note" id="user-dropdown-note"></div>
+            <div class="user-dropdown-sep"></div>
+            <button onclick="ExpNav._sair()">Sair do sistema</button>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px 4px">
+              <div class="conn-dot" id="conn-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0"></div>
+              <span id="exp-conn-label" style="font-size:10px;color:#bbb">conectando…</span>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Informações detalhadas -->
-        <div class="detalhe-section">
-          <div class="detalhe-section-title">Informações</div>
+    <div class="main">
 
-          ${temTel ? `
-            <div class="detalhe-field">
-              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6 6l1.41-1.41a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
-              <div class="detalhe-field-body">
-                <div class="detalhe-field-label">Telefone</div>
-                <div class="detalhe-field-value"><a href="tel:${c.telefone.replace(/\D/g,'')}">${c.telefone}</a></div>
-              </div>
-            </div>
-          ` : ''}
+  <!-- HEADER: título + ação principal -->
+  <div class="ct-header">
+    <div class="ct-header-left">
+      <div class="ct-title">EXP.contatos</div>
+      <div class="ct-count" id="ct-count">carregando…</div>
+    </div>
+    <div class="ct-header-right">
+      <button class="btn verde" onclick="abrirModal(null)">+ Novo contato</button>
+    </div>
+  </div>
 
-          ${temEmail ? `
-            <div class="detalhe-field">
-              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-              <div class="detalhe-field-body">
-                <div class="detalhe-field-label">E-mail</div>
-                <div class="detalhe-field-value"><a href="mailto:${c.email}">${c.email}</a></div>
-              </div>
-            </div>
-          ` : ''}
+  <!-- BUSCA -->
+  <div class="ct-search-row">
+  <div class="ct-search-wrap">
+    <span class="ct-search-icon">⊙</span>
+    <input type="text" id="ct-search"
+      placeholder="Buscar por nome, empresa, produto, tipo, cidade, estado…"
+      oninput="buscarDebounce(this.value)"
+      autocomplete="off">
+  </div>
+    <select id="ct-regiao" class="ct-region-select" onchange="atualizarBuscaFiltros()">
+      <option value="">Filtrar região</option>
+      <option value="norte">Norte</option>
+      <option value="nordeste">Nordeste</option>
+      <option value="centro-oeste">Centro-Oeste</option>
+      <option value="sudeste">Sudeste</option>
+      <option value="sul">Sul</option>
+    </select>
+  </div>
+  <div class="ct-search-hint">Separe termos com vírgula para filtrar por múltiplos critérios — ex: &ldquo;Tidelli, SP&rdquo;</div>
 
-          ${c.cidade || c.estado ? `
-            <div class="detalhe-field">
-              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-              <div class="detalhe-field-body">
-                <div class="detalhe-field-label">Localização</div>
-                <div class="detalhe-field-value">${[c.cidade, c.estado].filter(Boolean).join(', ')}</div>
-              </div>
-            </div>
-          ` : ''}
+  <!-- RESULTADOS -->
+  <div id="ct-results"></div>
 
-          ${temSite ? `
-            <div class="detalhe-field">
-              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
-              <div class="detalhe-field-body">
-                <div class="detalhe-field-label">Site</div>
-                <div class="detalhe-field-value"><a href="${c.site.startsWith('http') ? c.site : 'https://'+c.site}" target="_blank" rel="noopener">${c.site}</a></div>
-              </div>
-            </div>
-          ` : ''}
+  <!-- DESATIVADOS — só sócios -->
+  <div id="desativados-wrap" style="display:none">
+    <div class="desativados-toggle" onclick="toggleDesativados()">
+      <span id="desativ-chevron">▶</span>
+      <span id="desativ-lbl">Ver contatos desativados</span>
+    </div>
+    <div id="desativados-section"></div>
+  </div>
 
-          ${c.observacao ? `
-            <div class="detalhe-field">
-              <div class="detalhe-field-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-              <div class="detalhe-field-body">
-                <div class="detalhe-field-label">Observação</div>
-                <div class="detalhe-field-value" style="white-space:pre-wrap">${c.observacao}</div>
-              </div>
-            </div>
-          ` : ''}
+</div>
+</div>
+
+<!-- MODAL ADD/EDIT -->
+<div class="modal-overlay" id="modal-overlay" onclick="fecharModalOverlay(event)">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title">Novo contato</div>
+      <button class="modal-close" onclick="fecharModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-notice" class="modal-notice" style="display:none">
+        Edições neste módulo são aplicadas diretamente e ficam disponíveis para toda a equipe.
+      </div>
+      <div class="modal-grid">
+        <div class="modal-field">
+          <label>Nome completo *</label>
+          <input type="text" id="f-nome" placeholder="Nome Sobrenome" autocomplete="off" oninput="checkDuplicateNome(this.value)">
+          <div id="dup-warn" class="dup-warn" style="display:none"></div>
         </div>
-      `;
+        <div class="modal-field">
+          <label>Empresa</label>
+          <input type="text" id="f-empresa" placeholder="Nome da empresa">
+        </div>
+        <div class="modal-field full">
+          <label>Tipo de produto / serviço</label>
+          <input type="text" id="f-tipo-produto" placeholder="mobiliário, luminárias, tapetes  (separar com vírgula cria tags individuais de busca)" oninput="renderTagSuggestions(this.value)" autocomplete="off">
+          <div id="tag-suggestions" class="tag-suggestions" style="display:none"></div>
+        </div>
+        <div class="modal-field">
+          <label>Cidade</label>
+          <input type="text" id="f-cidade" placeholder="Cidade">
+        </div>
+        <div class="modal-field">
+          <label>Estado (UF)</label>
+          <select id="f-estado">
+            <option value="">— selecionar —</option>
+            <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
+            <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+            <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
+            <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
+            <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+            <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
+            <option>SE</option><option>SP</option><option>TO</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Telefone</label>
+          <input type="text" id="f-telefone" placeholder="(11) 99999-9999">
+        </div>
+        <div class="modal-field">
+          <label>E-mail</label>
+          <input type="email" id="f-email" placeholder="contato@empresa.com.br">
+        </div>
+        <div class="modal-field">
+          <label>Site</label>
+          <input type="text" id="f-site" placeholder="https://empresa.com.br">
+        </div>
+        <div class="modal-field">
+          <label>Tipo de contato *</label>
+          <select id="f-tipo">
+            <option value="">— selecionar —</option>
+            <option value="fornecedor">Fornecedor</option>
+            <option value="cliente">Cliente</option>
+            <option value="parceiro">Parceiro</option>
+            <option value="arquiteto">Arquiteto</option>
+            <option value="projetista">Projetista</option>
+            <option value="consultor">Consultor</option>
+          </select>
+        </div>
+        <div class="modal-field full">
+          <label>Observação</label>
+          <textarea id="f-observacao" placeholder="Anotações livres sobre este contato…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn verde" id="modal-save-btn" onclick="salvarContato()">Salvar contato</button>
+    </div>
+  </div>
+</div>
 
-      openSheet('detalhe');
-    }
+<div class="issue-bar" id="issue-bar" role="status" aria-live="polite">
+  <div class="issue-bar-text" id="issue-bar-text"></div>
+  <button class="issue-bar-close" onclick="hideIssueBar()" aria-label="Fechar aviso">×</button>
+</div>
 
-    // ── Init ──────────────────────────────────────
-    window.addEventListener('DOMContentLoaded', async () => {
-      const u = await requireAuth('./index.html');
-      if (!u) return;
+<script>
+/* ─── SUPABASE SETUP ─────────────────────────────────────────────────────────
+   Tabelas necessárias — rodar no Supabase SQL Editor:
 
-      buildBottomNav('contatos', isSocio(u));
-      buildFilterRow();
+   CREATE TABLE exp_contatos (
+     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     nome         text NOT NULL,
+     empresa      text,
+     tipo_produto text,
+     cidade       text,
+     estado       text,
+     telefone     text,
+     email        text,
+     site         text,
+     tipo         text,
+     observacao   text,
+     validado_em  timestamptz,
+     validado_por uuid,
+     validado_por_nome text,
+     desativado   boolean DEFAULT false,
+     desativado_em timestamptz,
+     criado_em    timestamptz DEFAULT now(),
+     criado_por   uuid
+   );
 
-      const sb = getSB();
-      const { data, error } = await sb
-        .from('exp_contatos')
-        .select('id,nome,empresa,tipo_produto,cidade,estado,telefone,email,site,tipo,observacao,validado_em')
-        .eq('desativado', false)
-        .order('nome');
+   CREATE TABLE exp_contatos_pendentes (
+     id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+     contato_id       uuid REFERENCES exp_contatos(id) ON DELETE CASCADE,
+     dados_novos      jsonb NOT NULL,
+     editado_por      uuid,
+     editado_por_nome text,
+     editado_em       timestamptz DEFAULT now(),
+     status           text DEFAULT 'pendente'
+   );
+──────────────────────────────────────────────────────────────────────────── */
 
-      if (error) {
-        document.getElementById('page-content').innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-title">Erro ao carregar</div>
-            <div class="empty-state-desc">${error.message}</div>
-          </div>`;
-        return;
-      }
+const SUPABASE_URL      = 'https://pgnydwsjntaezdhkgvpu.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnbnlkd3NqbnRhZXpkaGtndnB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODk3MTMsImV4cCI6MjA5MDY2NTcxM30.ykOuoOONh31Ws2A2BJMG_WZzr5TBcu3fQCB8APICbBo';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.sb = sb;
+function buildExpUsuarioPayload(authId, usuario) {
+  const nome = (usuario && usuario.nome) || '';
+  return {
+    auth_id: authId || null,
+    id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
+    app_user_id: usuario && typeof usuario.id !== 'undefined' ? usuario.id : null,
+    nome,
+    apelido: (usuario && usuario.apelido) || (nome ? nome.split(' ')[0] : ''),
+    iniciais: (usuario && usuario.iniciais) || '',
+    cor: (usuario && usuario.cor) || '#888',
+    avatar_url: (usuario && usuario.avatar_url) || null,
+    role: (usuario && usuario.role) || '',
+    viewer_only: !!(usuario && usuario.viewer_only),
+    is_platform_manager: !!(usuario && usuario.is_platform_manager),
+    can_coordinate_projects: !!(usuario && usuario.can_coordinate_projects),
+    termo_status: (usuario && usuario.termo_status) || null,
+    termo_assinado_em: (usuario && usuario.termo_assinado_em) || null,
+    termo_expira_em: (usuario && usuario.termo_expira_em) || null,
+    status_acesso: (usuario && usuario.status_acesso) || null
+  };
+}
 
-      G.contatos = data ?? [];
-      renderLista();
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const TIPO_INFO = {
+  fornecedor: { label:'Fornecedor', bg:'#eaf5ee', color:'#4D865C' },  /* --verde */
+  cliente:    { label:'Cliente',    bg:'#eaf0fb', color:'#5981CC' },  /* --azul */
+  parceiro:   { label:'Parceiro',   bg:'#f3effe', color:'#6B4FA0' },
+  arquiteto:  { label:'Arquiteto',  bg:'#fbf3e8', color:'#E2B141' },  /* --ouro */
+  projetista: { label:'Projetista', bg:'#fbf0ee', color:'#BC6143' },  /* --terracota */
+  consultor:  { label:'Consultor',  bg:'#f2f2f0', color:'#666'    },
+};
+
+const CAMPO_LABELS = {
+  nome:'Nome', empresa:'Empresa', tipo_produto:'Produto/Serviço',
+  cidade:'Cidade', estado:'Estado', telefone:'Telefone',
+  email:'E-mail', site:'Site', tipo:'Tipo', observacao:'Observação',
+};
+const CAMPOS = Object.keys(CAMPO_LABELS);
+const CONTATO_SELECT_FIELDS = [
+  'id',
+  'nome',
+  'empresa',
+  'tipo_produto',
+  'cidade',
+  'estado',
+  'telefone',
+  'email',
+  'site',
+  'tipo',
+  'observacao',
+  'validado_em',
+  'desativado',
+  'desativado_em'
+].join(',');
+const REGIOES = {
+  norte: ['AC','AM','AP','PA','RO','RR','TO'],
+  nordeste: ['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+  'centro-oeste': ['DF','GO','MS','MT'],
+  sudeste: ['ES','MG','RJ','SP'],
+  sul: ['PR','RS','SC'],
+};
+const UF_TO_REGIAO = Object.entries(REGIOES).reduce((acc, [regiao, ufs]) => {
+  ufs.forEach(uf => { acc[uf] = regiao; });
+  return acc;
+}, {});
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let G = {
+  usuario:    null,
+  contatos:   [],
+  desativados:[],
+  busca:      '',
+  regiao:     '',
+  issueTimer: null,
+};
+const isSocio = () => (typeof window.isSocioRole === 'function'
+  ? window.isSocioRole(G.usuario?.role)
+  : ['socio', 'socio_adm', 'socio_admin'].includes((G.usuario?.role || '').toLowerCase()));
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtData(iso) {
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+function fmtMesAno(iso) {
+  if(!iso) return '';
+  const dt = new Date(iso);
+  const mes = String(dt.getMonth() + 1).padStart(2, '0');
+  const ano = String(dt.getFullYear()).slice(-2);
+  return `${mes}.${ano}`;
+}
+function nomeCurto(nome) {
+  return String(nome || '').trim().split(' ')[0] || 'Equipe';
+}
+function isAtivo(c) {
+  if(!c.validado_em) return false;
+  const limite = new Date(); limite.setDate(limite.getDate() - 90);
+  return new Date(c.validado_em) > limite;
+}
+function getTags(c) {
+  return (c.tipo_produto||'').split(',').map(t=>t.trim()).filter(Boolean);
+}
+function singleQuote(s) {
+  return "'" + String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'") + "'";
+}
+function showIssueBar(message) {
+  const bar = document.getElementById('issue-bar');
+  const text = document.getElementById('issue-bar-text');
+  if(!bar || !text) return;
+  text.textContent = message;
+  bar.classList.add('open');
+  clearTimeout(G.issueTimer);
+  G.issueTimer = setTimeout(() => hideIssueBar(), 9000);
+}
+function hideIssueBar() {
+  const bar = document.getElementById('issue-bar');
+  if(bar) bar.classList.remove('open');
+  clearTimeout(G.issueTimer);
+  G.issueTimer = null;
+}
+
+// ─── DUPLICATE CHECK ─────────────────────────────────────────────────────────
+function _norm(s) {
+  return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+}
+function _words(s) {
+  return _norm(s).split(' ').filter(w => w.length >= 3);
+}
+function checkDuplicateNome(val) {
+  const el = document.getElementById('dup-warn');
+  if(!el) return;
+  const norm = _norm(val);
+  if(norm.length < 3) { el.style.display='none'; return; }
+  const inputWords = _words(val);
+  const source = [...(G.contatos || []), ...(G.desativados || [])].filter(c => !_edicaoId || c.id !== _edicaoId);
+  const matches = source.filter(c => {
+    const cn = _norm(c.nome);
+    if(cn === norm) return true;                                      // exact
+    if(cn.includes(norm) || norm.includes(cn)) return true;          // substring
+    const cWords = _words(c.nome);
+    return inputWords.length > 0 && inputWords.some(w => cWords.includes(w)); // shared word
+  });
+  if(matches.length === 0) { el.style.display='none'; return; }
+  const m = matches[0];
+  const extra = matches.length > 1 ? ` e mais ${matches.length-1} similar${matches.length>2?'es':''}.` : '';
+  el.style.display = 'block';
+  el.innerHTML = `⚠ Possível duplicata: <strong>${esc(m.nome)}</strong>${m.empresa?' · '+esc(m.empresa):''}${m.cidade||m.estado?' · '+esc([m.cidade,m.estado].filter(Boolean).join(', ')):''}${extra} Verifique antes de salvar.`;
+}
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+let _buscarTimer = null;
+function buscarDebounce(v) {
+  G.busca = v;
+  clearTimeout(_buscarTimer);
+  _buscarTimer = setTimeout(() => buscar(v), 140);
+}
+
+function parseTermos(query) {
+  return query.split(',').map(t=>_norm(t)).filter(Boolean);
+}
+
+function tokensContato(c) {
+  return [c.nome, c.empresa, c.cidade, c.estado, c.telefone, c.email, c.site, c.tipo, c.observacao, ...getTags(c)]
+    .filter(Boolean).map(t=>_norm(t));
+}
+
+function matchTerm(c, term) {
+  return tokensContato(c).some(tok => tok.includes(term));
+}
+
+function contatoNaRegiao(c) {
+  if(!G.regiao) return true;
+  const uf = String(c.estado || '').toUpperCase();
+  return UF_TO_REGIAO[uf] === G.regiao;
+}
+
+function filtrarContatosAtivos() {
+  return (G.contatos || []).filter(contatoNaRegiao);
+}
+
+function atualizarBuscaFiltros() {
+  G.regiao = document.getElementById('ct-regiao')?.value || '';
+  buscar(G.busca);
+}
+
+function getTagCatalog() {
+  // conta frequência de cada tag para ordenar as mais usadas primeiro
+  const freq = new Map();
+  const label = new Map();
+  const all = [...(G.contatos || []), ...(G.desativados || [])];
+  all.forEach(c => {
+    getTags(c).forEach(tag => {
+      const clean = tag.trim();
+      if(!clean) return;
+      const key = _norm(clean);
+      if(!key) return;
+      freq.set(key, (freq.get(key) || 0) + 1);
+      if(!label.has(key)) label.set(key, clean);
     });
-  </script>
+  });
+  return [...freq.entries()]
+    .sort((a, b) => b[1] - a[1])   // mais frequentes primeiro
+    .map(([key]) => label.get(key));
+}
 
+function renderTagSuggestions(value) {
+  const wrap = document.getElementById('tag-suggestions');
+  if(!wrap) return;
+  const raw = String(value || '');
+  const parts = raw.split(',');
+  const current = parts[parts.length - 1].trim();
+  const usados = new Set(parts.slice(0, -1).map(item => _norm(item)).filter(Boolean));
+  const catalog = getTagCatalog().filter(tag => {
+    const key = _norm(tag);
+    if(usados.has(key)) return false;
+    if(!current) return true;
+    return key.includes(_norm(current));
+  }).slice(0, 8);
+
+  if(catalog.length === 0) {
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.innerHTML = catalog.map(tag => `<button type="button" class="tag-suggestion" onclick="applyTagSuggestion(${singleQuote(tag)})">${esc(tag)}</button>`).join('');
+  wrap.style.display = '';
+}
+
+function applyTagSuggestion(tag) {
+  const input = document.getElementById('f-tipo-produto');
+  if(!input) return;
+  const parts = String(input.value || '').split(',');
+  parts[parts.length - 1] = ' ' + tag;
+  const value = parts.join(',').replace(/^ /, '').replace(/\s+,/g, ',').trim();
+  input.value = value.endsWith(',') ? value : value + ', ';
+  renderTagSuggestions(input.value);
+  input.focus();
+}
+
+function buscar(query) {
+  const termos = parseTermos(query);
+  const el = document.getElementById('ct-results');
+  const base = filtrarContatosAtivos();
+
+  if(termos.length === 0) {
+    renderResultados(base, [], [], el);
+    return;
+  }
+  const primarios   = base.filter(c => termos.every(t => matchTerm(c, t)));
+  const primIds     = new Set(primarios.map(c=>c.id));
+  const secundarios = base.filter(c => !primIds.has(c.id) && termos.some(t => matchTerm(c, t))).slice(0, 10);
+  renderResultados(primarios, secundarios, termos, el);
+}
+
+// ─── RENDER RESULTADOS ───────────────────────────────────────────────────────
+function renderResultados(primarios, secundarios, termos, el) {
+  if(!el) return;
+
+  if(primarios.length === 0 && secundarios.length === 0) {
+    el.innerHTML = termos.length > 0
+      ? `<div class="ct-empty"><div class="ct-empty-icon">⊙</div><div class="ct-empty-title">Nenhum contato encontrado</div><div class="ct-empty-sub">Tente outros termos ou adicione um novo contato.</div></div>`
+      : `<div class="ct-empty"><div class="ct-empty-icon">⊙</div><div class="ct-empty-title">Nenhum contato cadastrado</div><div class="ct-empty-sub">Clique em "Novo contato" para começar.</div></div>`;
+    return;
+  }
+
+  let html = '';
+
+  if(primarios.length > 0) {
+    const lbl = termos.length > 0
+      ? `<span>${primarios.length} resultado${primarios.length>1?'s':''}</span> para "${esc(termos.join(', '))}"`
+      : `<span>${primarios.length} contato${primarios.length>1?'s ativos':' ativo'}</span>`;
+    html += `<div class="results-hdr">${lbl}</div>`;
+    html += primarios.map(c => renderCard(c, false, termos)).join('');
+  }
+
+  if(secundarios.length > 0) {
+    html += `<div class="results-hdr" style="margin-top:${primarios.length>0?'18px':'0'}">Outros resultados relacionados <span>${secundarios.length}</span></div>`;
+    html += secundarios.map(c => renderCard(c, true, termos)).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── RENDER CARD ─────────────────────────────────────────────────────────────
+function renderCard(c, secundario, termos) {
+  const ti     = TIPO_INFO[c.tipo] || { label: c.tipo||'—', bg:'#f2f2f0', color:'#666' };
+  const ativo  = isAtivo(c);
+  const tags   = getTags(c);
+  const id     = singleQuote(c.id);
+
+  const tipoBadge = c.tipo
+    ? `<span class="tipo-badge" style="background:${ti.bg};color:${ti.color}">${esc(ti.label)}</span>`
+    : '';
+
+  let statusBadge = `<span class="sem-validacao">não validado</span>`;
+  if(c.validado_em) {
+    statusBadge = ativo
+      ? ''
+      : `<span class="sem-validacao">validado antes</span>`;
+  }
+
+  const btnValidar  = `<button class="btn-icon success" title="${ativo ? 'Revalidar contato' : 'Validar contato'}" onclick="validarContato(${id})">✓</button>`;
+  const btnEditar   = `<button class="btn-icon" title="Editar contato" onclick="abrirModal(${id})">✎</button>`;
+  const btnDesativ  = isSocio()
+    ? `<button class="btn-icon danger" title="Desativar contato" onclick="desativarContato(${id})">✕</button>`
+    : '';
+
+  // Info row
+  const infos = [];
+  if(c.empresa) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">🏢</span>${esc(c.empresa)}</span>`);
+  if(c.cidade||c.estado) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">📍</span>${esc([c.cidade,c.estado].filter(Boolean).join(', '))}</span>`);
+  if(c.telefone) {
+    const numLimpo = c.telefone.replace(/\D/g,'');
+    const waUrl    = `https://web.whatsapp.com/send?phone=55${numLimpo}`;
+    infos.push(`<span class="ct-info-item"><span class="ct-info-icon">📞</span><a href="${esc(waUrl)}" target="_blank" rel="noopener" title="Abrir no WhatsApp Web" style="color:inherit;text-decoration:none">${esc(c.telefone)}</a>&ensp;<a href="${esc(waUrl)}" target="_blank" rel="noopener" style="color:#25D366;font-size:9px;font-weight:700;text-decoration:none;letter-spacing:.2px" title="WhatsApp">WA ↗</a></span>`);
+  }
+  if(c.email) infos.push(`<span class="ct-info-item"><span class="ct-info-icon">✉</span><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></span>`);
+  if(c.site) {
+    const url = c.site.startsWith('http') ? c.site : 'https://' + c.site;
+    infos.push(`<span class="ct-info-item"><span class="ct-info-icon">🔗</span><a href="${esc(url)}" target="_blank" rel="noopener">${esc(c.site)}</a></span>`);
+  }
+  if(c.validado_em) infos.push(`<span class="ct-info-item ct-info-muted">validado ${esc(fmtMesAno(c.validado_em))}</span>`);
+
+  // Tags
+  const tagsHtml = tags.length > 0
+    ? `<div class="ct-tags">${tags.map(t => {
+        const isMatch = termos.some(term => _norm(t).includes(term));
+        return `<span class="ct-tag${isMatch?' match':''}">${esc(t)}</span>`;
+      }).join('')}</div>`
+    : '';
+
+  // Observação
+  const obsHtml = c.observacao
+    ? `<div class="ct-obs">${esc(c.observacao)}</div>`
+    : '';
+
+  return `
+  <div class="ct-card${secundario?' secundario':''}${ativo?' validado':''}">
+    <div class="ct-card-row1">
+      <div class="ct-nome">${esc(c.nome)}</div>
+      <div class="ct-badges">${tipoBadge}${statusBadge}</div>
+      <div class="ct-actions">${btnValidar}${btnEditar}${btnDesativ}</div>
+    </div>
+    ${infos.length > 0 ? `<div class="ct-card-row2">${infos.join('')}</div>` : ''}
+    ${tagsHtml}
+    ${obsHtml}
+  </div>`;
+}
+
+// ─── DESATIVADOS (sócios) ────────────────────────────────────────────────────
+function toggleDesativados() {
+  const sec  = document.getElementById('desativados-section');
+  const chev = document.getElementById('desativ-chevron');
+  const lbl  = document.getElementById('desativ-lbl');
+  const open = sec.style.display === 'block';
+  if(open) {
+    sec.style.display = 'none';
+    chev.textContent = '▶';
+    lbl.textContent  = `Ver contatos desativados (${G.desativados.length})`;
+  } else {
+    sec.style.display = 'block';
+    chev.textContent = '▼';
+    lbl.textContent  = 'Ocultar contatos desativados';
+    renderDesativados();
+  }
+}
+
+function renderDesativados() {
+  const el = document.getElementById('desativados-section');
+  if(G.desativados.length === 0) {
+    el.innerHTML = `<div style="font-size:11px;color:#bbb;padding:4px 0">Nenhum contato desativado.</div>`;
+    return;
+  }
+  el.innerHTML = G.desativados.map(c => {
+    const ti = TIPO_INFO[c.tipo] || { label:c.tipo||'—', bg:'#f2f2f0', color:'#666' };
+    const id = singleQuote(c.id);
+    return `
+    <div class="ct-card desativado-card">
+      <div class="ct-card-row1">
+        <div class="ct-nome" style="opacity:.7">${esc(c.nome)}</div>
+        <div class="ct-badges">
+          ${c.tipo ? `<span class="tipo-badge" style="background:${ti.bg};color:${ti.color}">${esc(ti.label)}</span>` : ''}
+          <span class="desativ-badge">✕ desativado</span>
+        </div>
+        <div class="ct-actions">
+          <button class="btn-reativar" onclick="reativarContato(${id})">↩ reativar</button>
+          <button class="btn-icon" title="Editar contato" onclick="abrirModal(${id})">✎</button>
+        </div>
+      </div>
+      <div class="ct-card-row2">
+        ${c.empresa ? `<span class="ct-info-item"><span class="ct-info-icon">🏢</span>${esc(c.empresa)}</span>` : ''}
+        ${c.cidade||c.estado ? `<span class="ct-info-item"><span class="ct-info-icon">📍</span>${esc([c.cidade,c.estado].filter(Boolean).join(', '))}</span>` : ''}
+        ${c.desativado_em ? `<span class="ct-info-item" style="color:#ccc">desativado em ${fmtData(c.desativado_em)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+let _edicaoId = null;
+
+function abrirModal(id) {
+  _edicaoId = id;
+  const isNovo = !id;
+  const c = id
+    ? (G.contatos.find(x=>x.id===id) || G.desativados.find(x=>x.id===id) || {})
+    : {};
+
+  document.getElementById('modal-title').textContent = isNovo ? 'Novo contato' : 'Editar contato';
+  document.getElementById('f-nome').value        = c.nome         || '';
+  document.getElementById('f-empresa').value     = c.empresa      || '';
+  document.getElementById('f-tipo-produto').value= c.tipo_produto || '';
+  document.getElementById('f-cidade').value      = c.cidade       || '';
+  document.getElementById('f-estado').value      = c.estado       || '';
+  document.getElementById('f-telefone').value    = c.telefone     || '';
+  document.getElementById('f-email').value       = c.email        || '';
+  document.getElementById('f-site').value        = c.site         || '';
+  document.getElementById('f-tipo').value        = c.tipo         || '';
+  document.getElementById('f-observacao').value  = c.observacao   || '';
+
+  const notice = document.getElementById('modal-notice');
+  notice.style.display = 'block';
+
+  const saveBtn = document.getElementById('modal-save-btn');
+  if(isNovo)       saveBtn.textContent = 'Salvar contato';
+  else             saveBtn.textContent = 'Salvar alterações';
+
+  const dw = document.getElementById('dup-warn');
+  if(dw) dw.style.display = 'none';
+  renderTagSuggestions(document.getElementById('f-tipo-produto').value);
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-nome').focus(), 80);
+}
+
+function fecharModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  _edicaoId = null;
+}
+
+function fecharModalOverlay(e) {
+  if(e.target === document.getElementById('modal-overlay')) fecharModal();
+}
+
+async function salvarContato() {
+  const nome = document.getElementById('f-nome').value.trim();
+  const tipo = document.getElementById('f-tipo').value;
+  if(!nome) { showIssueBar('Falha ao salvar contato: o nome é obrigatório.'); document.getElementById('f-nome').focus(); return; }
+
+  const dados = {
+    nome,
+    empresa:      document.getElementById('f-empresa').value.trim(),
+    tipo_produto: document.getElementById('f-tipo-produto').value.trim(),
+    cidade:       document.getElementById('f-cidade').value.trim(),
+    estado:       document.getElementById('f-estado').value,
+    telefone:     document.getElementById('f-telefone').value.trim(),
+    email:        document.getElementById('f-email').value.trim(),
+    site:         document.getElementById('f-site').value.trim(),
+    tipo,
+    observacao:   document.getElementById('f-observacao').value.trim(),
+  };
+
+  const btn = document.getElementById('modal-save-btn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Salvando…';
+
+  try {
+    if(!_edicaoId) {
+      const { error } = await sb.from('exp_contatos').insert({
+        ...dados, criado_por: G.usuario.id, criado_em: new Date().toISOString(),
+      });
+      if(error) throw error;
+    } else {
+      const { error } = await sb.from('exp_contatos').update(dados).eq('id', _edicaoId);
+      if(error) throw error;
+    }
+    fecharModal();
+    await carregarContatos();
+    buscar(G.busca);
+  } catch(err) {
+    showIssueBar('Falha ao salvar contato: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+
+// ─── AÇÕES DB ────────────────────────────────────────────────────────────────
+async function validarContato(id) {
+  const now = new Date().toISOString();
+  let error = null;
+
+  const tentativaCompleta = await sb.from('exp_contatos').update({
+    validado_em: now,
+    validado_por: G.usuario.id,
+    validado_por_nome: G.usuario.nome,
+  }).eq('id', id);
+
+  error = tentativaCompleta.error || null;
+
+  if(error && /validado_por|validado_por_nome/i.test(String(error.message || ''))) {
+    const tentativaCompat = await sb.from('exp_contatos').update({
+      validado_em: now,
+    }).eq('id', id);
+    error = tentativaCompat.error || null;
+  }
+
+  if(error) { showIssueBar('Falha ao validar contato: ' + error.message); return; }
+
+  const c = G.contatos.find(x=>x.id===id);
+  if(c) {
+    c.validado_em = now;
+    c.validado_por = G.usuario.id;
+    c.validado_por_nome = G.usuario.nome;
+  }
+  buscar(G.busca);
+}
+
+async function desativarContato(id) {
+  if(!isSocio()) return;
+  if(!confirm('Desativar este contato? Ele ficará visível apenas para sócios.')) return;
+  const { error } = await sb.from('exp_contatos').update({
+    desativado: true, desativado_em: new Date().toISOString(),
+  }).eq('id', id);
+  if(error) { showIssueBar('Falha ao desativar contato: ' + error.message); return; }
+  await carregarContatos();
+  buscar(G.busca);
+}
+
+async function reativarContato(id) {
+  if(!isSocio()) return;
+  const { error } = await sb.from('exp_contatos').update({ desativado: false, desativado_em: null }).eq('id', id);
+  if(error) { showIssueBar('Falha ao reativar contato: ' + error.message); return; }
+  await carregarContatos();
+  buscar(G.busca);
+}
+
+
+
+// ─── CARREGAR DADOS ───────────────────────────────────────────────────────────
+async function carregarContatos() {
+  const { data: ativos, error: ativosError } = await sb
+    .from('exp_contatos').select(CONTATO_SELECT_FIELDS).eq('desativado', false).order('nome');
+  if(ativosError) {
+    G.contatos = [];
+    showIssueBar('Falha ao carregar contatos ativos: ' + ativosError.message);
+    return;
+  }
+  G.contatos = ativos || [];
+
+  if(isSocio()) {
+    const { data: inativos, error: inativosError } = await sb
+      .from('exp_contatos').select(CONTATO_SELECT_FIELDS).eq('desativado', true).order('nome');
+    if(inativosError) {
+      G.desativados = [];
+      showIssueBar('Falha ao carregar contatos desativados: ' + inativosError.message);
+    } else {
+      G.desativados = inativos || [];
+    }
+
+    if(G.desativados.length > 0) {
+      document.getElementById('desativados-wrap').style.display = 'block';
+      document.getElementById('desativ-lbl').textContent = `Ver contatos desativados (${G.desativados.length})`;
+    } else {
+      document.getElementById('desativados-wrap').style.display = 'none';
+    }
+  } else {
+    G.desativados = [];
+    document.getElementById('desativados-wrap').style.display = 'none';
+  }
+
+  const n = filtrarContatosAtivos().length;
+  document.getElementById('ct-count').textContent = `${n} contato${n!==1?'s ativos':' ativo'}`;
+}
+
+// ─── SINETA ──────────────────────────────────────────────────────────────────
+
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next   = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('exp-theme', next);
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function toggleNavDropdown() {
+  document.getElementById('nav-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('feedback-icon-wrap')?.contains(e.target))
+    document.getElementById('nav-feedback-pop')?.classList.remove('open');
+  if (!document.getElementById('lemb-wrap')?.contains(e.target))
+    document.getElementById('lemb-popdown')?.classList.remove('open');
+  if (!e.target.closest('.user-pill-wrap'))
+    document.getElementById('user-dropdown')?.classList.remove('open');
+});
+
+/* ── FEEDBACK ────────────────────────────────────────────────── */
+function toggleToolFeedbackPopover(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('nav-feedback-pop');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) pop.classList.add('open');
+}
+function fecharToolFeedbackPopover() {
+  document.getElementById('nav-feedback-pop')?.classList.remove('open');
+}
+async function enviarToolFeedback() {
+  const tipo     = document.getElementById('tool-feedback-type')?.value || 'problema';
+  const mensagem = document.getElementById('tool-feedback-message')?.value?.trim() || '';
+  const statusEl = document.getElementById('tool-feedback-status');
+  if (!mensagem) { if (statusEl) statusEl.textContent = 'Escreva uma mensagem antes de enviar.'; return; }
+  if (statusEl) statusEl.textContent = 'Enviando…';
+  const { error } = await sb.from('plataforma_feedback').insert({
+    usuario_id: G.usuario?.id, tipo, mensagem, status: 'novo',
+    origem_modulo: 'Contatos', url_origem: 'contatos.html',
+    criado_em: new Date().toISOString(), atualizado_em: new Date().toISOString()
+  });
+  if (error) { if (statusEl) statusEl.textContent = 'Não foi possível enviar. Tente novamente.'; return; }
+  document.getElementById('tool-feedback-message').value = '';
+  if (statusEl) statusEl.textContent = 'Enviado! Obrigado pelo registro.';
+  setTimeout(fecharToolFeedbackPopover, 1800);
+}
+
+/* ── LEMBRETE ────────────────────────────────────────────────── */
+let _lembUsuarios = [];
+async function toggleLembretePopdown(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('lemb-popdown');
+  if (!pop) return;
+  const isOpen = pop.classList.contains('open');
+  document.querySelectorAll('.nav-feedback-pop.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  document.getElementById('lemb-msg').value = '';
+  document.getElementById('lemb-status').textContent = '';
+  pop.classList.add('open');
+  const sel = document.getElementById('lemb-para');
+  if (sel && _lembUsuarios.length === 0) {
+    const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+    const { data } = await sb.from('usuarios').select('id,nome').eq('ativo', true).order('nome');
+    _lembUsuarios = (data || []).filter(u => u.id !== (_me.app_user_id || _me.id));
+    sel.innerHTML = '<option value="todos">Toda a equipe</option>' +
+      _lembUsuarios.map(u => `<option value="${esc(u.id)}">${esc((u.nome||'').split(' ')[0])}</option>`).join('');
+  }
+}
+function fecharLembretePopdown() {
+  document.getElementById('lemb-popdown')?.classList.remove('open');
+}
+async function _enviarLembrete() {
+  const msg    = document.getElementById('lemb-msg')?.value.trim();
+  const para   = document.getElementById('lemb-para')?.value;
+  const status = document.getElementById('lemb-status');
+  if (!msg) { if (status) status.textContent = 'Escreva a mensagem do lembrete.'; return; }
+  if (status) status.textContent = 'Enviando…';
+  const _me = (() => { try { return JSON.parse(sessionStorage.getItem('exp_usuario') || '{}'); } catch { return {}; } })();
+  const targets = para === 'todos' ? _lembUsuarios : _lembUsuarios.filter(u => u.id === para);
+  for (const u of targets) {
+    await sb.from('notificacoes').insert({
+      usuario_id: u.id, tipo: 'lembrete',
+      titulo: `Lembrete de ${(_me.nome||'').split(' ')[0]}`,
+      corpo: msg, link_tipo: 'lembrete', modulo: 'contatos',
+      criado_por: _me.app_user_id || _me.id, criado_por_nome: _me.nome,
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+  fecharLembretePopdown();
+}
+
+/* ── USER MENU ───────────────────────────────────────────────── */
+function toggleUserMenu() {
+  document.getElementById('user-dropdown')?.classList.toggle('open');
+}
+
+/* ── TERM STATE (dropdown do user chip) ──────────────────────── */
+function renderTermState(usuario) {
+  const el   = document.getElementById('user-term-state');
+  const text = document.getElementById('user-term-state-text');
+  const icon = document.getElementById('user-term-state-icon');
+  const note = document.getElementById('user-dropdown-note');
+  if (!el || !text) return;
+  const status = (usuario.termo_status || '').toLowerCase();
+  const isOk   = ['assinado','vigente','ok','signed'].includes(status);
+  el.classList.remove('pending', 'ok');
+  if (note) note.textContent = '';
+  if (isOk) {
+    el.classList.add('ok');
+    if (icon) icon.textContent = '✓';
+    const dateStr = usuario.termo_assinado_em
+      ? new Date(usuario.termo_assinado_em).toLocaleDateString('pt-BR')
+      : 'data não registrada';
+    text.textContent = 'Termo de uso e proteção de dados pessoais assinado em ' + dateStr;
+  } else {
+    el.classList.add('pending');
+    if (icon) icon.textContent = '⚠';
+    text.textContent = 'Termo de uso e proteção de dados pessoais pendente.';
+  }
+  const platform = document.getElementById('user-menu-platform');
+  if (platform) platform.hidden = !usuario.is_platform_manager;
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') fecharModal(); });
+
+// ─── AUTH & INIT ──────────────────────────────────────────────────────────────
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('exp_usuario');
+  window.location.href = 'index.html';
+}
+
+async function carregarUsuarioSessao(authId) {
+  const selects = [
+    'id, nome, iniciais, role, cor, avatar_url, viewer_only, apelido, is_platform_manager, can_coordinate_projects, termo_status, termo_assinado_em, termo_expira_em, status_acesso',
+    'id, nome, iniciais, role, cor, avatar_url, viewer_only',
+    'id, nome, iniciais, role, cor'
+  ];
+
+  let lastError = null;
+  for (const fields of selects) {
+    const { data, error } = await sb.from('usuarios').select(fields).eq('auth_id', authId).single();
+    if (!error && data) return data;
+    lastError = error || lastError;
+  }
+
+  throw lastError || new Error('Usuário não encontrado');
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session) { window.location.href = 'index.html'; return; }
+
+  let u = null;
+  try {
+    u = await carregarUsuarioSessao(session.user.id);
+  } catch {
+    window.location.href = 'index.html';
+    return;
+  }
+  G.usuario = u;
+  sessionStorage.setItem('exp_usuario', JSON.stringify(buildExpUsuarioPayload(session.user.id, u)));
+  renderTermState(u);
+  if ((typeof window.isSocioRole === 'function' ? window.isSocioRole(u.role) : ['socio', 'socio_adm', 'socio_admin'].includes((u.role || '').toLowerCase()))) {
+    document.querySelectorAll('.nd-soc').forEach(el => el.style.display = '');
+  }
+
+
+  await carregarContatos();
+  buscar('');
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('conteudo').style.display = 'flex';  /* flex para o shell funcionar */
+});
+</script>
+
+    </div><!-- /.main -->
+  </div><!-- /#cont-main -->
+</div><!-- /#app-shell -->
+</div><!-- /#conteudo -->
+
+<!-- EXP · Chat Widget -->
+<script src="chat.js?v=2026-11-17k"></script>
+<!-- EXP · Nav compartilhada -->
+<script src="shared/app-notif.js?v=2026-10-25"></script>
+<script src="shared/lists-panel.js?v=2026-11-17b"></script>
+<script src="shared/exp-nav.js?v=2026-11-21a"></script>
+<script>
+  ExpNav.init({
+    module: 'contatos',
+    onUserMenu: function() { window.location.href = 'app.html'; },
+  });
+
+  /* ── Substitui botão exp-nav-tarefas pelo painel de Listas ── */
+  (function() {
+    var oldBtn = document.getElementById('exp-nav-tarefas');
+    if (oldBtn) {
+      var nav = oldBtn.parentNode;
+      var btn = document.createElement('button');
+      btn.id        = 'fp-nav-lists';
+      btn.className = 'exp-nav-item';
+      btn.title     = 'Minhas listas';
+      btn.style.cssText = 'position:relative';
+      btn.innerHTML =
+        '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>' +
+          '<line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>' +
+        '</svg>' +
+        '<span id="fp-lists-badge" style="display:none;position:absolute;top:4px;right:4px;background:var(--ca,#1D6A4A);color:#fff;font-size:8px;font-weight:700;font-family:\'DM Mono\',monospace;min-width:14px;height:14px;border-radius:7px;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #2A2926;line-height:1"></span>';
+      btn.onclick = function() { listsPanel.toggle(); };
+      nav.replaceChild(btn, oldBtn);
+    }
+
+    listsPanel.init({
+      getSb: function() { return window.sb; },
+      getUser: function() {
+        try { return JSON.parse(sessionStorage.getItem('exp_usuario') || 'null'); } catch(e) { return null; }
+      },
+      getMembers: function() { return window._listsMembersCache || []; },
+      escHtml: window.escHtml,
+    });
+
+    /* pré-carrega membros para atribuição de tarefas */
+    window.sb.from('usuarios').select('id,nome,iniciais,cor,apelido').eq('ativo', true)
+      .then(function(r) { window._listsMembersCache = r.data || []; });
+  })();
+</script>
+<!-- EXP · Timer Widget -->
+<script src="timer.js?v=2026-11-23a"></script>
 </body>
 </html>
