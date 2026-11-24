@@ -1,5 +1,5 @@
 // EXP Mobile — Service Worker v6.0
-const CACHE = 'exp-mobile-v8';
+const CACHE = 'exp-mobile-v9';
 const OFFLINE_URL = './offline.html';
 
 const PRECACHE = [
@@ -17,9 +17,9 @@ const PRECACHE = [
   './custos.html',
   './revisoes.html',
   './manifest.json',
-  './assets/exp-mobile.css',
-  './assets/exp-mobile-core.js',
-  './assets/exp-mobile-supabase-fallback.js',
+  './assets/exp-mobile.css?v=2026-11-24a',
+  './assets/exp-mobile-core.js?v=2026-11-24a',
+  './assets/exp-mobile-supabase-fallback.js?v=2026-11-24a',
   './assets/exp.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
@@ -64,6 +64,21 @@ async function staleWhileRevalidate(req) {
   return cached || networkPromise;
 }
 
+async function networkFirstAsset(req) {
+  try {
+    const fresh = await fetch(req);
+    if (fresh && fresh.ok) {
+      const cache = await caches.open(CACHE);
+      cache.put(req, fresh.clone());
+    }
+    return fresh;
+  } catch (_) {
+    const cached = await caches.match(req, { ignoreSearch: true });
+    if (cached) return cached;
+    throw _;
+  }
+}
+
 async function networkFirstPage(req) {
   try {
     const fresh = await fetch(req);
@@ -101,6 +116,11 @@ self.addEventListener('fetch', (e) => {
 
   if (isNavigation) {
     e.respondWith(networkFirstPage(e.request));
+    return;
+  }
+
+  if (isSameOrigin && /\.(css|js)$/.test(url.pathname)) {
+    e.respondWith(networkFirstAsset(e.request));
     return;
   }
 

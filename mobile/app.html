@@ -9,11 +9,11 @@
   <title>EXP</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
-  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <link rel="stylesheet" href="./assets/exp-mobile.css?v=2026-11-24a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../shared/nome-curto.js"></script>
-  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
-  <script src="./assets/exp-mobile-core.js"></script>
+  <script src="./assets/exp-mobile-supabase-fallback.js?v=2026-11-24a"></script>
+  <script src="./assets/exp-mobile-core.js?v=2026-11-24a"></script>
   <style>
     /* ── Controles flutuantes do hub (tema + sair) ── */
     .hub-controls {
@@ -424,14 +424,44 @@
       border-color: var(--verde);
     }
     .sheet-field textarea { resize: none; min-height: 72px; }
+
+    /* ════ Início: identidade revista (24/11/2026) ════
+       Saudação solta (sem caixa), títulos de seção como rótulos,
+       cartões planos com borda fina, números retos. */
+    .greeting-bar { background: none; border: none; padding: 6px 2px 0; margin-bottom: 22px; }
+    .greeting-sub { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--m-text-3); margin: 0 0 6px; }
+    .greeting-title { font-size: 24px; font-weight: 700; letter-spacing: -.3px; line-height: 1.15; color: var(--m-text); }
+
+    .hub-section { margin-bottom: 22px; }
+    .hub-section-header { align-items: center; margin-bottom: 8px; padding: 0 2px; }
+    .hub-section-title { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--m-text-3); }
+    .hub-section-actions { gap: 14px; margin-right: 0; }
+    .hub-section-actions .hub-action-btn { min-height: 28px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--m-text-2); }
+    .hub-section-actions .hub-action-btn svg { width: 12px; height: 12px; stroke-width: 2.4; }
+    .hub-section-actions .hub-action-btn.accent { color: var(--verde); }
+
+    .hub-card { box-shadow: none; border: 1px solid color-mix(in srgb, var(--m-border) 26%, transparent); border-radius: 8px; }
+
+    .hours-card { padding: 16px; gap: 18px; }
+    .hours-big { font-size: 30px; font-weight: 700; letter-spacing: -.6px; }
+    .hours-meta { font-size: 11px; margin-top: 6px; }
+    .hours-bar-seg { height: 4px; }
+    .hours-bar-day-lbl { font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+
+    .hub-task-item, .hub-event-item, .hub-prio-item { padding: 12px 14px; }
+    .hub-task-desc, .hub-event-title, .hub-prio-name { font-size: 14px; font-weight: 500; }
+    .hub-task-meta, .hub-event-when, .hub-prio-sub { font-size: 11px; margin-top: 3px; }
+    .hub-task-check { width: 18px; height: 18px; border-radius: 4px; border-width: 1.5px; }
+    .hub-event-dot { width: 6px; height: 6px; }
+    .hub-empty { font-size: 12px; padding: 18px 14px; }
   </style>
 </head>
 <body>
 
   <!-- Controles flutuantes (tema + sair) — alinhados à saudação -->
   <header class="app-header">
-    <img class="header-logo-img" src="./assets/exp.png" alt="EXP">
-    <div class="header-title">Início</div>
+    <img class="header-logo-img" src="./assets/exp.png" alt="EXP" width="59" height="20" style="height:20px;width:auto;max-width:72px">
+    <div class="header-title"></div>
     <div class="header-actions">
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Tema"></button>
     <button class="icon-btn" onclick="openSheet('signout')" title="Sair">
@@ -571,6 +601,9 @@
       return min === 0 ? `${hrs}h` : `${hrs}h${String(min).padStart(2,'0')}`;
     }
 
+    function hojeExtenso() {
+      return new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
     function greetingText(nome) {
       const h = new Date().getHours();
       const name = nome.split(' ')[0];
@@ -837,6 +870,7 @@
 
     function renderNotificationsSection() {
       const meta = getPushStatusMeta();
+      if (meta.action === 'none') return `<div data-hub-section="push" hidden></div>`;
       return `
         <div class="hub-section">
           <div class="hub-section-header">
@@ -859,6 +893,7 @@
 
     function renderInstallSection() {
       const meta = getInstallMeta();
+      if (meta.action === 'none') return `<div data-hub-section="install" hidden></div>`;
       return `
         <div class="hub-section" data-hub-section="install">
           <div class="hub-section-header">
@@ -918,8 +953,8 @@
 
         <div class="greeting-bar">
           <div class="greeting-text">
+            <div class="greeting-sub">${hojeExtenso()}</div>
             <div class="greeting-title">${greetingText(usuario.nome)}</div>
-            <div class="greeting-sub">Crie com propósito</div>
           </div>
         </div>
 

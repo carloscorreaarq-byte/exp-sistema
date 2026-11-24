@@ -7,11 +7,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>EXP · Horas</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./assets/exp-mobile.css">
+  <link rel="stylesheet" href="./assets/exp-mobile.css?v=2026-11-24a">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../shared/nome-curto.js"></script>
-  <script src="./assets/exp-mobile-supabase-fallback.js"></script>
-  <script src="./assets/exp-mobile-core.js"></script>
+  <script src="./assets/exp-mobile-supabase-fallback.js?v=2026-11-24a"></script>
+  <script src="./assets/exp-mobile-core.js?v=2026-11-24a"></script>
   <style>
     .week-nav {
       display: flex;
@@ -108,6 +108,13 @@
       font-size: var(--mt-caption);
       color: var(--m-text-2);
       margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .lancamento-desc {
+      font-size: var(--mt-caption);
+      color: var(--m-text-3);
+      margin-top: 2px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .lancamento-dur {
       font-size: var(--mt-caption);
@@ -284,7 +291,7 @@
         { data: semanaData },
       ] = await Promise.all([
         sb.from('horas_lancadas')
-          .select('id, data_lancamento, dia_semana, hora_inicio, hora_fim, tipo, subtipo, descricao, produto_id, etapa_id, produtos(nome), etapas(nome)')
+          .select('id, data_lancamento, dia_semana, hora_inicio, hora_fim, tipo, subtipo, descricao, produto_id, etapa_id, produtos(nome, oportunidades(projeto, clientes(nome))), etapas(nome)')
           .eq('usuario_id', G.usuario.id)
           .gte('data_lancamento', range.start)
           .lte('data_lancamento', range.end)
@@ -350,8 +357,9 @@
               ${itens.length === 0 ? `<div style="padding:var(--gap-sm) var(--gap-xs);font-size:var(--mt-caption);color:var(--m-text-3)">Sem lançamentos</div>` : ''}
               ${itens.map(l => {
                 const dur = calcDur(l.hora_inicio, l.hora_fim);
-                const titulo = l.descricao || l.produtos?.nome || l.subtipo || l.tipo;
-                const sub = [l.produtos?.nome, l.etapas?.nome].filter(Boolean).join(' · ');
+                const cliOp = rotuloClienteOp(l.produtos);
+                const titulo = cliOp || l.produtos?.nome || l.subtipo || l.tipo;
+                const sub = [cliOp ? l.produtos?.nome : null, l.etapas?.nome].filter(Boolean).join(' · ');
                 return `
                   <div class="lancamento-item" onclick="${semanaFinalizada ? '' : `abrirEditar('${l.id}')`}">
                     <div class="lancamento-time">
@@ -360,6 +368,7 @@
                     <div class="lancamento-body">
                       <div class="lancamento-titulo">${titulo || '—'}</div>
                       ${sub ? `<div class="lancamento-sub">${sub}</div>` : ''}
+                      ${l.descricao ? `<div class="lancamento-desc">${escHtmlH(l.descricao)}</div>` : ''}
                     </div>
                     <div class="lancamento-dur">${fmtDur(dur)}</div>
                   </div>
@@ -392,13 +401,24 @@
       }
     }
 
+    // Cliente | Oportunidade: o que identifica o projeto para quem lança (24/11/2026)
+    function rotuloClienteOp(p) {
+      const op = p?.oportunidades;
+      if (!op) return '';
+      return [op.clientes?.nome, op.projeto].filter(Boolean).join(' | ');
+    }
+    function escHtmlH(t) {
+      return String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
     function populaProdutos() {
       const sel = document.getElementById('f-produto');
       sel.innerHTML = '<option value="">Selecionar projeto…</option>';
       G.produtos.forEach(p => {
         const opt = document.createElement('option');
         opt.value = p.id;
-        opt.textContent = p.nome;
+        const co = rotuloClienteOp(p);
+        opt.textContent = co ? co + ' · ' + p.nome : p.nome;
         sel.appendChild(opt);
       });
     }
@@ -522,8 +542,9 @@
 
       const sb = getSB();
       const { data: produtos } = await sb
-        .from('produtos').select('id, nome').eq('status','ativo').order('nome');
-      G.produtos = produtos ?? [];
+        .from('produtos').select('id, nome, oportunidades(projeto, clientes(nome))').eq('status','ativo').order('nome');
+      G.produtos = (produtos ?? []).slice().sort((a, b) =>
+        (rotuloClienteOp(a) || a.nome || '').localeCompare(rotuloClienteOp(b) || b.nome || '', 'pt-BR'));
       populaProdutos();
 
       loadSemana();
