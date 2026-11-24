@@ -72,6 +72,7 @@
     /* Panel base */
     '.tmr-panel{position:absolute;bottom:50px;left:0;background:#fff;border-radius:10px;box-shadow:0 6px 28px rgba(0,0,0,.13);border:1px solid ' + CINZA + ';padding:12px;display:none;flex-direction:column;gap:8px;min-width:220px;max-width:250px;animation:tmrIn .14s ease-out}',
     '.tmr-panel.open{display:flex}',
+    '.tmr-trecho-pausa{font-size:10px;color:#8A867E;text-align:center;padding:1px 0}',
     '@keyframes tmrIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}',
 
     /* Panel sizes */
@@ -369,7 +370,8 @@
         '<div class="tmr-sel-lbl">Data</div>',
         '<input type="date" class="tmr-input" id="tmr-cf-data">',
       '</div>',
-      '<div class="tmr-row">',
+      '<div id="tmr-cf-trechos" style="display:none;flex-direction:column;gap:4px"></div>',
+      '<div class="tmr-row" id="tmr-cf-hora-unica">',
         '<div class="tmr-field">',
           '<div class="tmr-sel-lbl">In&#237;cio</div>',
           '<input type="time" class="tmr-input" id="tmr-cf-ini">',
@@ -474,6 +476,53 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
   function _isTimeRangeValid(ini, fim) { return !!ini && !!fim && ini < fim; }
+  /* Trechos trabalhados (23/11/2026): do início ao fim, tirando as pausas (intervalo de almoço etc.).
+     Cada trecho vira um lançamento. Devolve [{ini:'HH:MM', fim:'HH:MM'}], sem trechos de menos de 1 min. */
+  function _trechosTrabalhados(state, fimIso) {
+    if (!state || !state.originalStart) return [];
+    var fim = new Date(fimIso || Date.now()).getTime();
+    var cursor = new Date(state.originalStart).getTime();
+    var pausas = (state.pausas || []).slice().sort(function (a, b) { return String(a.ini).localeCompare(String(b.ini)); });
+    var out = [];
+    pausas.forEach(function (p) {
+      var pi = new Date(p.ini).getTime(), pf = p.fim ? new Date(p.fim).getTime() : fim;
+      if (isNaN(pi)) return;
+      if (pi > cursor) out.push([cursor, Math.min(pi, fim)]);
+      cursor = Math.max(cursor, pf);
+    });
+    if (fim > cursor) out.push([cursor, fim]);
+    return out.map(function (t) { return { ini: _fmtTime(new Date(t[0])), fim: _fmtTime(new Date(t[1])) }; })
+      .filter(function (t) { return t.ini < t.fim; });
+  }
+  function _renderTrechos(trechos) {
+    var unica = document.getElementById('tmr-cf-hora-unica');
+    var box = document.getElementById('tmr-cf-trechos');
+    if (!box || !unica) return;
+    if (!trechos || trechos.length < 2) {
+      box.style.display = 'none'; box.innerHTML = ''; unica.style.display = '';
+      return;
+    }
+    unica.style.display = 'none';
+    box.style.display = 'flex';
+    var html = '<div class="tmr-sel-lbl">Trechos trabalhados · pausas descontadas</div>';
+    trechos.forEach(function (t, i) {
+      if (i > 0) html += '<div class="tmr-trecho-pausa">pausa ' + trechos[i - 1].fim + ' a ' + t.ini + '</div>';
+      html += '<div class="tmr-row tmr-trecho">' +
+        '<div class="tmr-field"><input type="time" class="tmr-input tmr-tr-ini" value="' + t.ini + '" aria-label="Início do trecho ' + (i + 1) + '"></div>' +
+        '<div class="tmr-field"><input type="time" class="tmr-input tmr-tr-fim" value="' + t.fim + '" aria-label="Fim do trecho ' + (i + 1) + '"></div>' +
+      '</div>';
+    });
+    box.innerHTML = html;
+  }
+  function _lerTrechos() {
+    var box = document.getElementById('tmr-cf-trechos');
+    if (box && box.style.display !== 'none' && box.querySelector('.tmr-trecho')) {
+      return Array.prototype.map.call(box.querySelectorAll('.tmr-trecho'), function (row) {
+        return { ini: (row.querySelector('.tmr-tr-ini') || {}).value || '', fim: (row.querySelector('.tmr-tr-fim') || {}).value || '' };
+      });
+    }
+    return [{ ini: (document.getElementById('tmr-cf-ini') || {}).value || '', fim: (document.getElementById('tmr-cf-fim') || {}).value || '' }];
+  }
   function _parseSubtarefas(raw) {
     var seen = {};
     return String(raw || '')
@@ -1195,6 +1244,7 @@
         startedAt:     now,
         pausedMs:      0,
         pausedAt:      null,
+        pausas:        [],
         tipo:          item.tipo,
         subtipo:       item.subtipo || null,
         produtoId:     item.produtoId || null,
@@ -1263,6 +1313,7 @@
         startedAt:     now,
         pausedMs:      0,
         pausedAt:      null,
+        pausas:        [],
         tipo:          tipo,
         subtipo:       subtipo,
         produtoId:     produtoId,
@@ -1291,11 +1342,14 @@
         state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
+        state.pausas    = (state.pausas || []).concat([{ ini: state.pausedAt, fim: null }]);
         clearInterval(_tickInterval); // para som + cronômetro
       } else {
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
+        var _ab = (state.pausas || []).filter(function (p) { return !p.fim; });
+        if (_ab.length) _ab[_ab.length - 1].fim = state.startedAt;
         _startTick();
         _scheduleCollapse();
       }
@@ -1323,10 +1377,12 @@
         state.running   = false;
         state.startedAt = null;
         state.pausedAt  = new Date().toISOString();
+        state._congeladoEm = state.pausedAt;   // fim do trabalho (não é pausa)
       }
       _saveState(state);
       _renderFab();
       var endDate   = state.pausedAt ? new Date(state.pausedAt) : new Date();
+      var _trechos  = _trechosTrabalhados(state, endDate.toISOString());
       var startDate = state.originalStart ? new Date(state.originalStart) : new Date(endDate.getTime() - (state.pausedMs || 0));
 
       /* Textos display — hierarquia */
@@ -1340,6 +1396,8 @@
       setVal('tmr-cf-data', _fmtDate(startDate));
       setVal('tmr-cf-ini',  _fmtTime(startDate));
       setVal('tmr-cf-fim',  _fmtTime(endDate));
+      if (_trechos.length === 1) { setVal('tmr-cf-ini', _trechos[0].ini); setVal('tmr-cf-fim', _trechos[0].fim); }
+      _renderTrechos(_trechos);
       setVal('tmr-cf-desc', '');
       setVal('tmr-cf-subtarefas', '');
       var subtWrap = document.getElementById('tmr-cf-subtarefas-wrap');
@@ -1370,6 +1428,8 @@
         state.running   = true;
         state.startedAt = new Date().toISOString();
         state.pausedAt  = null;
+        if (state._congeladoEm) state.pausas = (state.pausas || []).concat([{ ini: state._congeladoEm, fim: state.startedAt }]);
+        delete state._congeladoEm;
         _saveState(state);
         _renderFab();
         _startTick();
@@ -1394,8 +1454,10 @@
 
       var state   = _loadState();
       var dataISO = (document.getElementById('tmr-cf-data') || {}).value || '';
-      var ini     = (document.getElementById('tmr-cf-ini')  || {}).value || '';
-      var fim     = (document.getElementById('tmr-cf-fim')  || {}).value || '';
+      /* Um ou mais trechos (com pausas, cada trecho vira um lançamento) */
+      var trechos = _lerTrechos();
+      var ini     = trechos[0] ? trechos[0].ini : '';
+      var fim     = trechos.length ? trechos[trechos.length - 1].fim : '';
       var desc    = ((document.getElementById('tmr-cf-desc') || {}).value || '').trim();
       /* As subtarefas são as atividades escolhidas (nomes completos); as horas se dividem entre elas */
       var _selA = _tmrAtivLista();
@@ -1406,8 +1468,11 @@
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
-      if (!_isTimeRangeValid(ini, fim)) {
-        _toast('Hora fim deve ser maior que início');
+      var _trInval = trechos.some(function (t, i) {
+        return !_isTimeRangeValid(t.ini, t.fim) || (i > 0 && t.ini < trechos[i - 1].fim);
+      });
+      if (_trInval) {
+        _toast(trechos.length > 1 ? 'Confira os trechos: cada fim depois do início, sem sobrepor' : 'Hora fim deve ser maior que início');
         if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
         return;
       }
@@ -1460,61 +1525,69 @@
         semDb = scRes.data;
       }
 
-      var dupQuery = client.from('horas_lancadas')
-        .select('id')
-        .eq('usuario_id', user.id)
-        .eq('data_lancamento', dataISO)
-        .eq('hora_inicio', ini)
-        .eq('hora_fim', fim)
-        .eq('tipo', state.tipo || 'projeto');
-      dupQuery = state.subtipo ? dupQuery.eq('subtipo', state.subtipo) : dupQuery.is('subtipo', null);
-      dupQuery = state.produtoId ? dupQuery.eq('produto_id', state.produtoId) : dupQuery.is('produto_id', null);
-      dupQuery = state.etapaId ? dupQuery.eq('etapa_id', state.etapaId) : dupQuery.is('etapa_id', null);
-      var dupRes = await dupQuery.limit(1);
-      if (dupRes.data && dupRes.data.length) {
-        _toast('Já existe um lançamento idêntico neste horário');
-        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
-        return;
-      }
+      var subtarefasOk = true, gravados = 0;
+      for (var _k = 0; _k < trechos.length; _k++) {
+        var tIni = trechos[_k].ini, tFim = trechos[_k].fim;
+        var dupQuery = client.from('horas_lancadas')
+          .select('id')
+          .eq('usuario_id', user.id)
+          .eq('data_lancamento', dataISO)
+          .eq('hora_inicio', tIni)
+          .eq('hora_fim', tFim)
+          .eq('tipo', state.tipo || 'projeto');
+        dupQuery = state.subtipo ? dupQuery.eq('subtipo', state.subtipo) : dupQuery.is('subtipo', null);
+        dupQuery = state.produtoId ? dupQuery.eq('produto_id', state.produtoId) : dupQuery.is('produto_id', null);
+        dupQuery = state.etapaId ? dupQuery.eq('etapa_id', state.etapaId) : dupQuery.is('etapa_id', null);
+        var dupRes = await dupQuery.limit(1);
+        if (dupRes.data && dupRes.data.length) {
+          if (trechos.length === 1) {
+            _toast('Já existe um lançamento idêntico neste horário');
+            if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+            return;
+          }
+          continue;   // trecho já gravado (ex.: segunda tentativa): segue para o próximo
+        }
 
-      /* ── Insere lançamento ── */
-      var payloadL = {
-        usuario_id:      user.id,
-        semana_id:       semDb.id,
-        data_lancamento: dataISO,
-        dia_semana:      isoDia,
-        hora_inicio:     ini,
-        hora_fim:        fim,
-        tipo:            state.tipo || 'projeto',
-        subtipo:         state.subtipo || null,
-        produto_id:      state.produtoId || null,
-        etapa_id:        state.etapaId   || null,
-        descricao:       desc || null,
-        atividade:       (state.tipo || 'projeto') === 'projeto' ? (_tmrAtiv || null) : null,
-      };
-      var lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
-      /* colunas de atividade ainda não criadas no banco: grava sem elas */
-      if (lancRes.error && /atividade/.test(lancRes.error.message || '')) {
-        delete payloadL.atividade;
-        lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
-      }
+        /* ── Insere lançamento ── */
+        var payloadL = {
+          usuario_id:      user.id,
+          semana_id:       semDb.id,
+          data_lancamento: dataISO,
+          dia_semana:      isoDia,
+          hora_inicio:     tIni,
+          hora_fim:        tFim,
+          tipo:            state.tipo || 'projeto',
+          subtipo:         state.subtipo || null,
+          produto_id:      state.produtoId || null,
+          etapa_id:        state.etapaId   || null,
+          descricao:       desc || null,
+          atividade:       (state.tipo || 'projeto') === 'projeto' ? (_tmrAtiv || null) : null,
+        };
+        var lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
+        /* colunas de atividade ainda não criadas no banco: grava sem elas */
+        if (lancRes.error && /atividade/.test(lancRes.error.message || '')) {
+          delete payloadL.atividade;
+          lancRes = await client.from('horas_lancadas').insert(payloadL).select('id').single();
+        }
 
-      if (lancRes.error) {
-        _toast('Erro: ' + lancRes.error.message);
-        if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
-        return;
-      }
+        if (lancRes.error) {
+          _toast((gravados ? gravados + ' trecho(s) salvos, mas houve erro: ' : 'Erro: ') + lancRes.error.message);
+          if (btn) { btn.disabled = false; btn.textContent = 'Salvar lançamento'; }
+          return;
+        }
+        gravados++;
 
-      var subtarefasOk = true;
-      try {
-        subtarefasOk = await _saveTimerSubtarefas(client, lancRes.data && lancRes.data.id, subtarefas, (new Date('2000-01-01T' + fim + ':00') - new Date('2000-01-01T' + ini + ':00')) / 3600000, {
-          userId: user.id,
-          produtoId: state.produtoId || null,
-          etapaId: state.etapaId || null,
-          dataISO: dataISO
-        });
-      } catch (subError) {
-        _toast('Horas salvas, mas subtarefas falharam: ' + subError.message);
+        try {
+          var okSub = await _saveTimerSubtarefas(client, lancRes.data && lancRes.data.id, subtarefas, (new Date('2000-01-01T' + tFim + ':00') - new Date('2000-01-01T' + tIni + ':00')) / 3600000, {
+            userId: user.id,
+            produtoId: state.produtoId || null,
+            etapaId: state.etapaId || null,
+            dataISO: dataISO
+          });
+          if (okSub === false) subtarefasOk = false;
+        } catch (subError) {
+          _toast('Horas salvas, mas subtarefas falharam: ' + subError.message);
+        }
       }
 
       /* Sucesso */
@@ -1522,7 +1595,8 @@
       _recentItems = null;  // invalida cache de recentes
       _hideAll();
       _renderFab();
-      _toast(subtarefasOk ? 'Horas registradas ✓' : 'Horas registradas, mas subtarefas ainda nao estao disponiveis');
+      _toast(!subtarefasOk ? 'Horas registradas, mas subtarefas ainda não estão disponíveis'
+        : (trechos.length > 1 ? trechos.length + ' lançamentos registrados, pausas descontadas' : 'Horas registradas'));
       if (window.renderSemana) window.renderSemana();
     },
 
