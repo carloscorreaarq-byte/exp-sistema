@@ -1772,6 +1772,13 @@ body.prancha-arrastando, body.prancha-arrastando * { cursor: grabbing !important
 .tarefa-check.readonly:hover { border-color: var(--cinza); background: transparent; }
 .tarefa-desc { font-size: 12px; flex: 1; }
 .tarefa-desc.done { text-decoration: line-through; color: var(--txt-3); }
+.prev-done { text-decoration: line-through; color: var(--txt-3); }
+/* Visualização limpa: leitura sem riscado, para reconferir (24/11/2026) */
+.rev-limpa .tarefa-desc.done, .rev-limpa .prev-done { text-decoration: none; color: var(--txt); }
+.rev-limpa .tarefa-check.done, .rev-limpa .prancha-preview-check.done { background: transparent; border-color: var(--cinza); }
+.rev-limpa .tarefa-check.done::after, .rev-limpa .prancha-preview-check.done::after { filter: invert(.7); }
+.rr-livre { display: none !important; }
+.rev-limpa .rr-livre { display: inline-flex !important; }
 /* ── Prioridade da tarefa de revisão — P1 alerta · P2 atenção · P3 normal ── */
 /* Margem negativa compensa o padding: o fundo colorido ganha respiro sem deslocar o conteúdo */
 .tarefa-item.prio-p1, .tarefa-item.prio-p2 { margin-left: -8px; margin-right: -8px; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
@@ -11032,8 +11039,11 @@ async function selecionarRevisao(id) {
         <label class="rev-chave" title="Esconde os itens marcados e as pranchas concluídas, para ver só o que falta">
           <input type="checkbox" ${_revOcultaFeitos() ? 'checked' : ''} onchange="alternarOcultarFeitos()"><span class="rev-chave-trilho"></span>Ocultar feitos
         </label>
+        <label class="rev-chave" title="Mostra os itens sem riscado, para reconferir a revisão; libera o botão de re-revisar para todos">
+          <input type="checkbox" ${_revLimpa() ? 'checked' : ''} onchange="alternarRevLimpa(this.checked)"><span class="rev-chave-trilho"></span>Visualização limpa
+        </label>
       </div>` : ''}
-      <div id="pranchas-wrap" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
+      <div id="pranchas-wrap" class="${_revLimpa() ? 'rev-limpa' : ''}" style="margin-top:${_totalPranchas > 0 ? '14px' : '0'}">
         ${(pranchas || []).filter(pr => !(_revOcultaFeitos() && _pranchaConcluida(pr))).map(pr => renderPrancha({ ...pr, comentarios: comentariosPorPrancha[pr.id] || [] }, podePreencher)).join('')}
         ${_revOcultaFeitos() && (pranchas || []).some(_pranchaConcluida) ? `<div class="rev-ocultas-nota">${(pranchas || []).filter(_pranchaConcluida).length} prancha${(pranchas || []).filter(_pranchaConcluida).length > 1 ? 's concluídas ocultas' : ' concluída oculta'}</div>` : ''}
         ${!pranchas?.length ? '<div class="empty-note">Nenhuma prancha nesta revisão.</div>' : ''}
@@ -11145,7 +11155,7 @@ function renderPrancha(pr, isSocioOrCoord) {
       ${mediaViewBtn}
       ${_rcContadorHtml(t.id)}
       <div class="tarefa-item-tools">
-        ${G._podeRR ? `<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>` : ''}
+        ${`<button class="ck-item-act rr-btn${t.re_revisar ? ' on' : ''}${G._podeRR ? '' : ' rr-livre'}" type="button" title="${t.re_revisar ? 'Tirar da re-revisão' : 'Marcar para re-revisar (ponto crítico, segunda rodada)'}" aria-label="Re-revisar" onclick="alternarReRevisar('${t.id}', ${t.re_revisar ? 'true' : 'false'})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>`}
         ${`<button class="ck-item-act rc-btn" type="button" title="Responder este item" aria-label="Responder este item" onclick="rcAlternar('${t.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>`}
         ${isSocioOrCoord ? `<button class="tarefa-tool-btn ${camClass}" type="button" title="Anexar" onclick="abrirTempMediaUpload('revisao_tarefa', ${tarefaIdJs}, ${tarefaTituloJs})">${GI.camera}</button>` : ''}
         ${isSocioOrCoord ? `<button class="ck-item-act" type="button" title="Editar tarefa" onclick="editarTarefaRevisao('${t.id}','${prId}')">${GI.edit}</button>` : ''}
@@ -11168,7 +11178,7 @@ function renderPrancha(pr, isSocioOrCoord) {
     ? `<div class="prancha-preview">
         ${previewTarefas.map(t => `<div class="prancha-preview-task prio-${(t.prioridade || 'P3').toLowerCase()}">
           <div class="prancha-preview-check ${t.concluida ? 'done' : ''}"></div>
-          <span style="${t.concluida ? 'text-decoration:line-through;color:var(--txt-3)' : ''}">${_escN(t.descricao)}</span>
+          <span class="${t.concluida ? 'prev-done' : ''}">${_escN(t.descricao)}</span>
         </div>`).join('')}
         ${restante > 0 ? `<div class="prancha-preview-more">+ ${restante} tarefa${restante>1?'s':''} mais</div>` : ''}
       </div>`
@@ -11252,6 +11262,18 @@ async function alternarReRevisar(tarefaId, atual) {
   const upd = atual
     ? { re_revisar: false, re_revisar_por: null, re_revisar_em: null, re_revisar_ok: false, re_revisar_ok_por: null, re_revisar_ok_em: null }
     : { re_revisar: true, re_revisar_por: G.usuario.id, re_revisar_em: agora, re_revisar_ok: false, re_revisar_ok_por: null, re_revisar_ok_em: null };
+  // Fora do grupo da revisão (visualização limpa): grava pela função do banco (24/11/2026)
+  if (!G._podeRR) {
+    const { error: e2 } = await sb.rpc('rev_marcar_rerevisar', { p_tarefa: tarefaId, p_marcar: !atual });
+    if (e2) {
+      toast(/function|schema/i.test(e2.message || '') ? 'Falta rodar o SQL rev_marcar_rerevisar.sql no Supabase.' : 'Não foi possível marcar: ' + e2.message, 5000);
+      return;
+    }
+    toast(atual ? 'Item tirado da re-revisão.' : 'Item marcado para re-revisar.');
+    await selecionarRevisao(G._revisaoAtiva);
+    carregarRevisoes();
+    return;
+  }
   let { error } = await sb.from('tarefas_revisao').update(upd).eq('id', tarefaId);
   if (error && /column|schema/i.test(error.message || '')) {
     // SQL da re-revisão ainda não rodado: grava só a marca
@@ -11605,6 +11627,17 @@ function alternarAbrirTodas(ligar) {
     const hint = c.querySelector('.prancha-expand-hint');
     if (hint) hint.textContent = ligar ? 'Recolher' : 'Clique para expandir';
   });
+}
+
+// ── Visualização limpa (chave, lembrada neste navegador) ──────────────────
+function _revLimpa() {
+  if (G._revLimpaVal == null) { try { G._revLimpaVal = localStorage.getItem('exp_rev_limpa') === '1'; } catch (e) { G._revLimpaVal = false; } }
+  return G._revLimpaVal;
+}
+function alternarRevLimpa(ligar) {
+  G._revLimpaVal = !!ligar;
+  try { localStorage.setItem('exp_rev_limpa', ligar ? '1' : '0'); } catch (e) {}
+  document.getElementById('pranchas-wrap')?.classList.toggle('rev-limpa', !!ligar);
 }
 
 // ── Próximo pendente: abre a prancha e marca o item com borda ─────────────
